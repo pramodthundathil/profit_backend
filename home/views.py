@@ -21,13 +21,41 @@ from .permissions import (
     HasActiveSubscription, CanViewBranch
 )
 
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 class GymRegistrationView(APIView):
     """
     Public endpoint for gym registration
     """
     permission_classes = [permissions.AllowAny]
-    
+    @swagger_auto_schema(
+        operation_description="Public endpoint to register a new gym and its primary administrator account.",
+        request_body=GymRegistrationSerializer,
+        responses={
+            status.HTTP_201_CREATED: openapi.Response(
+                description="Gym registered successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                        'gym': openapi.Schema(type=openapi.TYPE_OBJECT),
+                        'admin': openapi.Schema(type=openapi.TYPE_OBJECT)
+                    }
+                )
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Invalid input data",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                        'errors': openapi.Schema(type=openapi.TYPE_OBJECT)
+                    }
+                )
+            )
+        }
+    )
     def post(self, request):
         serializer = GymRegistrationSerializer(data=request.data)
         if serializer.is_valid():

@@ -8,6 +8,8 @@ from .views import (
     PaymentTransactionViewSet, DashboardStatsView
 )
 
+from .import views_admin
+
 router = DefaultRouter()
 router.register(r'gyms', GymOfficeViewSet, basename='gym')
 router.register(r'branches', GymBranchViewSet, basename='branch')
@@ -29,4 +31,9 @@ urlpatterns = [
     
     # Router URLs
     path('', include(router.urls)),
+
+
+
+    # admin dashboard urls
+    path('dashboard/', views_admin.admin_dashboard, name='admin-dashboard'),
 ]

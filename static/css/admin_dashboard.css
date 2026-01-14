@@ -1,0 +1,78 @@
+:root {
+    --primary-color: #FFD700;
+    --secondary-color: #FF8C00; 
+    --text-dark: #000000;
+    --bg-light: #f8f9fa;
+    --glass-bg: rgba(255, 255, 255, 0.95);
+}
+
+body {
+    background-color: var(--bg-light);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--text-dark);
+}
+
+/* Notification Bar */
+.notification-bar {
+    background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+    color: var(--text-dark);
+    font-weight: 600;
+    padding: 10px 0;
+    position: relative;
+    z-index: 1040;
+}
+
+/* Glassmorphism Navbar */
+.glass-navbar {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+.nav-link:hover {
+    color: var(--secondary-color) !important;
+}
+
+/* Stats Cards */
+.stat-card {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.03);
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.stat-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Table */
+.table-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.03);
+    padding: 1rem;
+    border: none;
+}
+
+@media (max-width: 992px) {
+    .overflow-dropdown {
+        display: block !important;
+    }
+    .desktop-nav {
+        display: none !important;
+    }
+}

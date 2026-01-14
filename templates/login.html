@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profit Gym Admin Login</title>
+    <style>
+        body {
+            background-color: #000000;
+            color: #FFD700;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background-color: #111;
+            padding: 2.5rem;
+            border-radius: 10px;
+            border: 2px solid #FF8C00;
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2);
+            width: 100%;
+            max-width: 380px;
+        }
+        h2 {
+            text-align: center;
+            color: #FFD700;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #FF8C00;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #FF8C00;
+            background-color: #000;
+            color: #fff;
+            border-radius: 5px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input:focus {
+            border-color: #FFD700;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #FF8C00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        button:hover {
+            background-color: #FFD700;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>Profit Gym Admin</h2>
+        <form  method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="email">Email ID</label>
+                <input type="email" id="email" name="email" placeholder="admin@profitgym.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit">LOGIN</button>
+        </form>
+    </div>
+
+    <footer style="position: absolute; bottom: 20px; width: 100%; text-align: center; color: #FF8C00; font-size: 0.8rem; opacity: 0.8;">
+        Developed and Maintained &copy; Copyright by ByteBoot Techno Solutions Pvt Ltd
+    </footer>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Check for Django messages
+        {% if messages %}
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                background: '#111',
+                color: '#FFD700',
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            })
+
+            {% for message in messages %}
+                Toast.fire({
+                    icon: '{{ message.tags }}' === 'error' ? 'error' : 'success',
+                    title: '{{ message }}'
+                })
+            {% endfor %}
+        {% endif %}
+    </script>
+</body>
+</html>
