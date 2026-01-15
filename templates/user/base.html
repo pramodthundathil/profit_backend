@@ -197,6 +197,9 @@
             <a href="{% url 'user-dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'user-dashboard' %}active{% endif %}">
                 <i class="bi bi-grid-fill"></i> Dashboard
             </a>
+            <a href="{% url 'member-list' %}" class="nav-link {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-person-vcard-fill"></i> Members
+            </a>
             <a href="{% url 'user-staff-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-staff-list' %}active{% endif %}">
                 <i class="bi bi-people-fill"></i> Staff
             </a>
@@ -243,12 +246,21 @@
     <!-- Main Content -->
     <div class="main-content">
         <!-- Header -->
-        <header class="d-flex justify-content-between align-items-center mb-4 pt-2">
+        <header class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
             <div>
-                <h4 class="fw-bold mb-1">{% block header_title %}Overview{% endblock %}</h4>
-                <p class="text-muted mb-0">{% block header_subtitle %}Welcome back, {{ request.user.get_full_name }}{% endblock %}</p>
+                {% block breadcrumb %}
+                <!-- Default Breadcrumb (can be overridden) -->
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1">
+                        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+                    </ol>
+                </nav>
+                {% endblock %}
+                <h1 class="h2">{% block header_title %}Dashboard{% endblock %}</h1>
+                <p class="text-muted">{% block header_subtitle %}Welcome back, {{ request.user.first_name }}{% endblock %}</p>
             </div>
-            <div class="d-none d-md-block">
+            <div class="btn-toolbar mb-2 mb-md-0">
                 {% if gym.get_subscription_status.status_text == 'Active' %}
                     <span class="badge bg-success">{{ gym.get_subscription_status.status_text }}</span>
                 {% else %}
@@ -271,7 +283,7 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        {% if messages %}
+        "{% if messages %}"
             const Toast = Swal.mixin({
                 toast: true,
                 position: 'top-end',
@@ -284,13 +296,13 @@
                 }
             })
 
-            {% for message in messages %}
+            "{% for message in messages %}"
                 Toast.fire({
                     icon: '{{ message.tags }}' === 'error' ? 'error' : 'success',
                     title: '{{ message }}'
                 })
-            {% endfor %}
-        {% endif %}
+            "{% endfor %}"
+        "{% endif %}"
     </script>
     
     {% block scripts %}

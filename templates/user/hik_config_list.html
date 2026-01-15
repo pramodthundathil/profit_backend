@@ -4,13 +4,22 @@
 {% block header_title %}HikVision Configurations{% endblock %}
 {% block header_subtitle %}Manage your device connections{% endblock %}
 
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Device Settings</li>
+    </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-dark">Configuration List</h5>
-                <a href="{% url 'user-add-hik-config' %}" class="btn btn-warning btn-sm">
+                <a href="{% url 'user-add-hik-config' %}" class="btn btn-dark btn-sm">
                     <i class="bi bi-plus-lg"></i> Add Configuration
                 </a>
             </div>

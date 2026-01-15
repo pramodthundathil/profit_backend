@@ -2,6 +2,17 @@
 {% load static %}
 
 {% block header_title %}{% if config %}Edit{% else %}Add{% endif %} HikVision Configuration{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'user-hik-config-list' %}" class="text-decoration-none text-muted">Device Settings</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% if config %}Edit{% else %}Add{% endif %} Configuration</li>
+    </ol>
+</nav>
+{% endblock %}
+
 {% block header_subtitle %}Configure your access control device{% endblock %}
 
 {% block content %}
@@ -116,8 +127,8 @@
                     </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                        <a href="{% url 'user-hik-config-list' %}" class="btn btn-light me-md-2">Cancel</a>
-                        <button type="submit" class="btn btn-warning px-4">Save Configuration</button>
+                        <a href="{% url 'user-hik-config-list' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-dark px-4">Save Configuration</button>
                     </div>
                 </form>
             </div>

@@ -1,0 +1,329 @@
+{% extends 'user/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% if is_edit %}Edit Member{% else %}Add Member{% endif %}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block header_subtitle %}
+{% if is_edit %}Update member information{% else %}Register a new member and assign subscription{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            {% if form.errors or subscription_form.errors %}
+                <div class="alert alert-danger">
+                    Please correct the errors below.
+                    {{ form.errors }}
+                    {{ subscription_form.errors }}
+                </div>
+            {% endif %}
+
+            <!-- Member Details Section -->
+            <h5 class="mb-3 text-primary border-bottom pb-2">Personal Information</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">First Name *</label>
+                    {{ member_form.first_name }}
+                    {{ member_form.first_name.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Last Name *</label>
+                    {{ member_form.last_name }}
+                    {{ member_form.last_name.errors }}
+                </div>
+                <!-- Branch Selection (Visible only if user has permission to see multiple branches, assumed handled by form/view logic) -->
+                {% if member_form.branch.field.widget.input_type != 'hidden' %}
+                <div class="col-md-4">
+                    <label class="form-label">Branch *</label>
+                    {{ member_form.branch }}
+                    {{ member_form.branch.errors }}
+                </div>
+                {% else %}
+                    <!-- Render hidden field -->
+                    {{ member_form.branch }}
+                {% endif %}
+                
+                <div class="col-md-4">
+                    <label class="form-label">Gender *</label>
+                    {{ member_form.gender }}
+                    {{ member_form.gender.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Date of Birth</label>
+                    {{ member_form.date_of_birth }}
+                    {{ member_form.date_of_birth.errors }}
+                </div>
+                 <div class="col-md-4">
+                    <label class="form-label">Blood Group</label>
+                    {{ member_form.blood_group }}
+                    {{ member_form.blood_group.errors }}
+                </div>
+            </div>
+
+            <h5 class="mb-3 text-primary border-bottom pb-2">Contact Details</h5>
+            <div class="row g-3 mb-4">
+                 <div class="col-md-6">
+                    <label class="form-label">Mobile Number *</label>
+                    {{ member_form.mobile_number }}
+                    {{ member_form.mobile_number.errors }}
+                </div>
+                 <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    {{ member_form.email }}
+                    {{ member_form.email.errors }}
+                </div>
+                <div class="col-12">
+                     <label class="form-label">Address</label>
+                    {{ member_form.address }}
+                    {{ member_form.address.errors }}
+                </div>
+                 <div class="col-md-6">
+                    <label class="form-label">Emergency Contact Name</label>
+                    {{ member_form.emergency_contact_name }}
+                </div>
+                 <div class="col-md-6">
+                    <label class="form-label">Emergency Contact Number</label>
+                    {{ member_form.emergency_contact_number }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Access Token / RFID (Optional)</label>
+                    {{ member_form.access_token }}
+                    {{ member_form.access_token.errors }}
+                </div>
+            </div>
+            
+            <h5 class="mb-3 text-primary border-bottom pb-2">Physical Details & Documents</h5>
+            <div class="row g-3 mb-4">
+                 <div class="col-md-3">
+                    <label class="form-label">Height (cm)</label>
+                    {{ member_form.height }}
+                </div>
+                 <div class="col-md-3">
+                    <label class="form-label">Weight (kg)</label>
+                    {{ member_form.weight }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Medical History</label>
+                    {{ member_form.medical_history }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Photo</label>
+                    <div class="input-group">
+                        {{ member_form.photo }}
+                        <button type="button" class="btn btn-outline-secondary" id="startCameraBtn" title="Take Photo">
+                            <i class="bi bi-camera"></i>
+                        </button>
+                    </div>
+                    <!-- Camera Interface (Hidden by default) -->
+                    <div id="cameraArea" class="mt-2 d-none">
+                        <div class="position-relative bg-dark rounded overflow-hidden" style="width: 100%; max-width: 320px; aspect-ratio: 4/3; margin: 0 auto;">
+                            <video id="videoElement" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                            <canvas id="canvasElement" class="d-none"></canvas>
+                        </div>
+                        <div class="text-center mt-2 d-flex justify-content-center gap-2">
+                             <button type="button" class="btn btn-danger btn-sm" id="captureBtn"><i class="bi bi-circle-fill"></i> Capture</button>
+                             <button type="button" class="btn btn-secondary btn-sm" id="closeCameraBtn">Cancel</button>
+                        </div>
+                    </div>
+                    <!-- Preview Captured Image -->
+                    <div id="previewArea" class="mt-2 d-none text-center">
+                        <img id="capturedImage" src="" class="rounded border shadow-sm" style="max-width: 150px; height: auto;">
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-1 d-block mx-auto" id="retakeBtn">Retake</button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">ID Proof</label>
+                    {{ member_form.id_proof }}
+                </div>
+            </div>
+
+            <!-- Subscription Details Section (Only for Create) -->
+            {% if subscription_form %}
+            <h5 class="mb-3 text-primary border-bottom pb-2">Initial Subscription</h5>
+            <div class="bg-light p-3 rounded mb-4">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Subscription Type *</label>
+                        {{ subscription_form.subscription_type }}
+                        {{ subscription_form.subscription_type.errors }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Duration/Period *</label>
+                        {{ subscription_form.subscription_period }}
+                        {{ subscription_form.subscription_period.errors }}
+                    </div>
+                     <div class="col-md-4">
+                        <label class="form-label">Start Date *</label>
+                        {{ subscription_form.start_date }}
+                         {{ subscription_form.start_date.errors }}
+                    </div>
+                     <div class="col-md-4">
+                        <label class="form-label">Batch</label>
+                        {{ subscription_form.batch }}
+                         {{ subscription_form.batch.errors }}
+                    </div>
+                    <div class="col-md-4 pt-4">
+                        <div class="form-check">
+                            {{ subscription_form.batch_flexible }}
+                            <label class="form-check-label">Flexible Batch Timing?</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-2 text-muted">Payment Details</h6>
+                 <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Base Amount *</label>
+                        {{ subscription_form.base_amount }}
+                    </div>
+                     <div class="col-md-3">
+                        <label class="form-label">Discount (%)</label>
+                         {{ subscription_form.discount_percentage }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Fixed Discount</label>
+                         {{ subscription_form.discount_amount }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Final Amount</label>
+                         {{ subscription_form.final_amount }}
+                    </div>
+                    
+                     <div class="col-md-4">
+                        <label class="form-label">Payment Terms</label>
+                         {{ subscription_form.payment_terms }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Amount Paid *</label>
+                         {{ subscription_form.amount_paid }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'member-list' %}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-dark px-4">Save Member</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Simple script to auto-calculate final amount
+    document.addEventListener('DOMContentLoaded', function() {
+        const baseInput = document.getElementById('id_base_amount');
+        const discPercInput = document.getElementById('id_discount_percentage');
+        const discAmtInput = document.getElementById('id_discount_amount');
+        const finalInput = document.getElementById('id_final_amount');
+        
+        function calculateTotal() {
+            if (!baseInput || !finalInput) return;
+            
+            const base = parseFloat(baseInput.value) || 0;
+            const perc = parseFloat(discPercInput.value) || 0;
+            const fix = parseFloat(discAmtInput.value) || 0;
+            
+            const percValid = Math.min(Math.max(perc, 0), 100);
+            const discountFromPerc = (base * percValid) / 100;
+            
+            const total = Math.max(0, base - discountFromPerc - fix);
+            finalInput.value = total.toFixed(2);
+        }
+        
+        if (baseInput) {
+            baseInput.addEventListener('input', calculateTotal);
+            discPercInput.addEventListener('input', calculateTotal);
+            discAmtInput.addEventListener('input', calculateTotal);
+        }
+    });
+    // Camera Capture Logic
+    const startCameraBtn = document.getElementById('startCameraBtn');
+    const closeCameraBtn = document.getElementById('closeCameraBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const cameraArea = document.getElementById('cameraArea');
+    const previewArea = document.getElementById('previewArea');
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvasElement');
+    const capturedImage = document.getElementById('capturedImage');
+    const photoInput = document.getElementById('id_photo'); // Adjust ID if needed (Django default: id_photo)
+    let stream = null;
+
+    if (startCameraBtn) {
+        startCameraBtn.addEventListener('click', async () => {
+             try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                cameraArea.classList.remove('d-none');
+                startCameraBtn.parentElement.classList.add('d-none'); // Hide input group temporarily
+            } catch (err) {
+                alert("Error accessing camera: " + err.message);
+            }
+        });
+    }
+
+    if (closeCameraBtn) {
+        closeCameraBtn.addEventListener('click', stopCamera);
+    }
+
+    if (captureBtn) {
+        captureBtn.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            // Convert to data URL for preview
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            capturedImage.src = dataUrl;
+            
+            // Convert to File object for input
+            canvas.toBlob((blob) => {
+                const file = new File([blob], "captured_photo.jpg", { type: "image/jpeg" });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                if (photoInput) {
+                    photoInput.files = dataTransfer.files;
+                }
+            }, 'image/jpeg');
+
+            stopCamera();
+            previewArea.classList.remove('d-none');
+            cameraArea.classList.add('d-none');
+        });
+    }
+    
+    if (retakeBtn) {
+        retakeBtn.addEventListener('click', () => {
+            previewArea.classList.add('d-none');
+            startCameraBtn.click(); // Restart camera
+        });
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        cameraArea.classList.add('d-none');
+        if (previewArea.classList.contains('d-none')) {
+             startCameraBtn.parentElement.classList.remove('d-none');
+        }
+    }
+
+</script>
+{% endblock %}
