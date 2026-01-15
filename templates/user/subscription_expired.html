@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Expired</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #FFD700;
+            --secondary-color: #FF8C00;
+            --text-dark: #000000;
+            --bg-light: #f8f9fa;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        body {
+            background: linear-gradient(135deg, #fff5e6 0%, #ffe4b3 100%);
+            min-height: 100vh;
+            padding: 2rem 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 10px 40px rgba(255, 140, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .card-header-custom {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #ff6b00 100%);
+            padding: 2rem;
+            border: none;
+        }
+
+        .card-header-custom h3 {
+            color: white;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .warning-icon {
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .status-badge {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+            color: var(--text-dark);
+            padding: 0.75rem 1.5rem;
+            border-radius: 30px;
+            border: 2px solid var(--primary-color);
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .info-section {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .info-section h5 {
+            color: var(--secondary-color);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .reason-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .reason-list li {
+            padding: 0.75rem 0;
+            display: flex;
+            align-items: center;
+            color: var(--text-dark);
+        }
+
+        .reason-list li i {
+            color: var(--secondary-color);
+            margin-right: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .plan-card {
+            background: white;
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .plan-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary-color);
+            box-shadow: 0 15px 35px rgba(255, 140, 0, 0.2);
+        }
+
+        .plan-card.featured {
+            border-color: var(--primary-color);
+            position: relative;
+        }
+
+        .plan-card.featured::before {
+            content: 'POPULAR';
+            position: absolute;
+            top: 15px;
+            right: -30px;
+            background: var(--secondary-color);
+            color: white;
+            padding: 5px 40px;
+            transform: rotate(45deg);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .plan-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .plan-header h5 {
+            color: var(--text-dark);
+            font-weight: 700;
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .plan-body {
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--secondary-color);
+            margin: 1rem 0;
+        }
+
+        .plan-duration {
+            color: #666;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .select-btn {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            color: var(--text-dark);
+            padding: 0.75rem 2rem;
+            border-radius: 30px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .select-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 140, 0, 0.3);
+        }
+
+        .footer-custom {
+            background: var(--bg-light);
+            padding: 2rem;
+            text-align: center;
+            border-top: 2px solid var(--primary-color);
+        }
+
+        .support-link {
+            color: var(--secondary-color);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .support-link:hover {
+            color: #ff6b00;
+            text-decoration: underline;
+        }
+
+        .signout-btn {
+            background: white;
+            border: 2px solid var(--secondary-color);
+            color: var(--secondary-color);
+            padding: 0.5rem 2rem;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        .signout-btn:hover {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .section-title {
+            color: var(--text-dark);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.75rem;
+        }
+
+        .section-subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-11 col-lg-10">
+                <div class="main-card">
+                    <!-- Header -->
+                    <div class="card-header-custom">
+                        <h3>
+                            <i class="fas fa-exclamation-triangle me-3"></i>
+                            Action Required: Subscription Expired
+                        </h3>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="p-4 p-md-5">
+                        <!-- Warning Section -->
+                        <div class="text-center mb-4">
+                            <i class="fas fa-hourglass-end warning-icon"></i>
+                            <p class="lead mb-3">
+                                Your gym <strong class="text-dark">{{ gym.name }}</strong> does not have an active subscription or trial.
+                            </p>
+                            {% if status.status_text %}
+                            <div class="status-badge">
+                                <i class="fas fa-info-circle me-2"></i>Status: <strong>{{ status.status_text }}</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Info Section -->
+                        <div class="info-section">
+                            <h5><i class="fas fa-question-circle me-2"></i>Why am I seeing this?</h5>
+                            <ul class="reason-list">
+                                <li>
+                                    <i class="fas fa-calendar-times"></i>
+                                    <span>Your 15-day trial period may have ended</span>
+                                </li>
+                                <li>
+                                    <i class="fas fa-clock"></i>
+                                    <span>Your previous subscription plan has expired</span>
+                                </li>
+                                <li>
+                                    <i class="fas fa-user-lock"></i>
+                                    <span>The gym account has not been activated</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Plans Section -->
+                        <div class="mt-5">
+                            <h4 class="section-title text-center">
+                                <i class="fas fa-crown me-2" style="color: var(--primary-color);"></i>
+                                Renew Plan to Continue Access
+                            </h4>
+                            <p class="section-subtitle text-center">Choose a plan below to reactivate your gym's access immediately</p>
+
+                            <div class="row g-4">
+                                {% for plan in plans %}
+                                <div class="col-lg-4 col-md-6">
+                                    <div class="plan-card {% if forloop.counter == 2 %}featured{% endif %}">
+                                        <div class="plan-header">
+                                            <h5>{{ plan.name }}</h5>
+                                        </div>
+                                        <div class="plan-body">
+                                            <div class="plan-price">₹{{ plan.price }}</div>
+                                            <div class="plan-duration">{{ plan.duration }}</div>
+                                            <button class="select-btn" onclick="alert('Payment integration pending for {{ plan.name }}')">
+                                                <i class="fas fa-check-circle me-2"></i>Select Plan
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="footer-custom">
+                        <p class="mb-2">
+                            <i class="fas fa-headset me-2"></i>
+                            If you believe this is an error, please contact support at 
+                            <a href="mailto:support@byteboot.in" class="support-link">support@byteboot.in</a>
+                        </p>
+                        <a href="{% url 'signout' %}" class="signout-btn">
+                            <i class="fas fa-sign-out-alt me-2"></i>Sign Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

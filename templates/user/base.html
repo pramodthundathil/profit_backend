@@ -1,0 +1,276 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gym Dashboard | {{ gym.name|default:"ProFit" }}{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #000000;
+            --accent-color: #FFD700;
+            --sidebar-width: 250px;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: #1a1a1a;
+            color: #fff;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .sidebar-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--accent-color);
+            margin-bottom: 10px;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: #fff;
+            background: rgba(255, 215, 0, 0.1);
+            border-left-color: var(--accent-color);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0,0,0,0.05);
+            height: 100%;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .icon-gold { background: rgba(255, 215, 0, 0.1); color: #d4b106; }
+        .icon-blue { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
+        .icon-green { background: rgba(25, 135, 84, 0.1); color: #198754; }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Tables */
+        .table-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .table-header {
+            margin-bottom: 20px;
+        }
+
+        .custom-table th {
+            font-weight: 600;
+            color: #6c757d;
+            border-bottom-width: 1px;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .custom-table td {
+            vertical-align: middle;
+            font-size: 14px;
+        }
+
+        /* Status Badges */
+        .badge-soft-success { background: rgba(25, 135, 84, 0.1); color: #198754; }
+        .badge-soft-warning { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+        .badge-soft-danger { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Mobile Toggle -->
+    <button class="btn btn-dark d-lg-none position-fixed top-0 start-0 m-3 z-3" onclick="document.getElementById('sidebar').classList.toggle('show')">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            {% if gym.logo %}
+            <img src="{{ gym.logo.url }}" alt="Logo" class="sidebar-logo">
+            {% else %}
+            <div class="sidebar-logo d-flex align-items-center justify-content-center bg-dark mx-auto text-warning fs-3">
+                <i class="bi bi-building"></i>
+            </div>
+            {% endif %}
+            <h5 class="mb-0 text-truncate px-2">{{ gym.name }}</h5>
+            <small class="text-white-50">Gym Admin Dashboard</small>
+        </div>
+        
+        <nav class="mt-4">
+            <a href="{% url 'user-dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'user-dashboard' %}active{% endif %}">
+                <i class="bi bi-grid-fill"></i> Dashboard
+            </a>
+            <a href="{% url 'user-staff-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-staff-list' %}active{% endif %}">
+                <i class="bi bi-people-fill"></i> Staff
+            </a>
+            <a href="{% url 'user-dashboard' %}#subscriptions" class="nav-link">
+                <i class="bi bi-credit-card-fill"></i> Subscriptions
+            </a>
+            <a href="{% url 'user-dashboard' %}#payments" class="nav-link">
+                <i class="bi bi-cash-stack"></i> Payments
+            </a>
+            <a href="{% url 'user-branch-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-branch-list' %}active{% endif %}">
+                <i class="bi bi-shop"></i> Branches
+            </a>
+            <div class="mt-auto border-top border-secondary pt-3 mt-4">
+                <a href="{% url 'signout' %}" class="nav-link text-danger">
+                    <i class="bi bi-box-arrow-right"></i> Sign Out
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="d-flex justify-content-between align-items-center mb-4 pt-2">
+            <div>
+                <h4 class="fw-bold mb-1">{% block header_title %}Overview{% endblock %}</h4>
+                <p class="text-muted mb-0">{% block header_subtitle %}Welcome back, {{ request.user.get_full_name }}{% endblock %}</p>
+            </div>
+            <div class="d-none d-md-block">
+                {% if gym.get_subscription_status.status_text == 'Active' %}
+                    <span class="badge bg-success">{{ gym.get_subscription_status.status_text }}</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">{{ gym.get_subscription_status.status_text }}</span>
+                {% endif %}
+            </div>
+        </header>
+
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        {% if messages %}
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            })
+
+            {% for message in messages %}
+                Toast.fire({
+                    icon: '{{ message.tags }}' === 'error' ? 'error' : 'success',
+                    title: '{{ message }}'
+                })
+            {% endfor %}
+        {% endif %}
+    </script>
+    
+    {% block scripts %}
+    {% endblock %}
+</body>
+</html>

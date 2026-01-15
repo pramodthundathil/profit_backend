@@ -1,0 +1,394 @@
+{% extends 'admin/dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <!-- Breadcrumb & Header -->
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'gym-office-list' %}" class="text-decoration-none text-muted">Gym Offices</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ gym.name }}</li>
+                </ol>
+            </nav>
+            <h4 class="fw-bold mb-0">{{ gym.name }}</h4>
+        </div>
+        <div class="col-auto">
+             <a href="{% url 'gym-office-edit' gym.pk %}" class="btn btn-warning-subtle text-warning fw-bold ms-2">
+                <i class="bi bi-pencil me-2"></i>Edit
+            </a>
+             <button class="btn btn-danger-subtle text-danger fw-bold ms-2 delete-gym" data-gym-id="{{ gym.pk }}" data-gym-name="{{ gym.name }}">
+                <i class="bi bi-trash me-2"></i>Delete Gym
+            </button>
+        </div>
+    </div>
+
+    <!-- Gym Overview Cards -->
+    <div class="row g-4 mb-4">
+        <!-- Contact Info -->
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">Contact Information</h6>
+                    <div class="mb-3">
+                        <label class="small text-muted d-block">Email Address</label>
+                        <span class="fw-medium">{{ gym.email }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted d-block">Phone Number</label>
+                        <span class="fw-medium">{{ gym.phone }}</span>
+                    </div>
+                    <div>
+                        <label class="small text-muted d-block">Address</label>
+                        <span class="fw-medium">{{ gym.address }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscription Info -->
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">Subscription Status</h6>
+                    {% with status=gym.get_subscription_status %}
+                    <div class="mb-3">
+                         <span class="badge {% if status.is_subscription_active %}bg-success{% elif status.is_trial_active %}bg-warning{% else %}bg-danger{% endif %} rounded-pill px-3 py-2">
+                             {{ status.status_text }}
+                         </span>
+                    </div>
+                    {% if gym.subscription_valid_until %}
+                    <div class="mb-3">
+                        <label class="small text-muted d-block">Valid Until</label>
+                        <span class="fw-medium">{{ gym.subscription_valid_until|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if gym.trial_ends_at %}
+                    <div>
+                        <label class="small text-muted d-block">Trial Ends</label>
+                        <span class="fw-medium">{{ gym.trial_ends_at|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- License Info -->
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                         <h6 class="text-muted text-uppercase small fw-bold mb-0">License & Limits</h6>
+                         {% if not gym.license_key %}
+                            <a href="{% url 'add-license-key' gym.pk %}" class="btn btn-sm btn-primary py-0 rounded-pill" style="font-size: 0.75rem;">+ Add</a>
+                         {% else %}
+                            <div>
+                                <a href="{% url 'edit-license-key' gym.pk %}" class="btn btn-link p-0 text-warning me-2" title="Edit License"><i class="bi bi-pencil-square"></i></a>
+                                <button class="btn btn-link p-0 text-danger delete-license" data-gym-id="{{ gym.pk }}" title="Delete License" style="border:none; background:none;"><i class="bi bi-trash"></i></button>
+                            </div>
+                         {% endif %}
+                    </div>
+                    {% if gym.license_key %}
+                    <div class="mb-3">
+                        <span class="badge bg-secondary-subtle text-secondary small w-100">{{ gym.license_key.key }}</span>
+                    </div>
+                   
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Max Branches</span>
+                            <span class="fw-bold">{% if gym.license_key.max_branches == 0 %}∞{% else %}{{ gym.license_key.max_branches }}{% endif %}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Max Members</span>
+                             <span class="fw-bold">{% if gym.license_key.max_members == 0 %}∞{% else %}{{ gym.license_key.max_members }}{% endif %}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Max Staff</span>
+                             <span class="fw-bold">{% if gym.license_key.max_staff == 0 %}∞{% else %}{{ gym.license_key.max_staff }}{% endif %}</span>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning small mb-0">No active license key assigned.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Tabs -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-bottom px-4 pt-4">
+            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active fw-medium" data-bs-toggle="tab" href="#branches" role="tab">Branches</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-medium" data-bs-toggle="tab" href="#users" role="tab">Users</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-medium" data-bs-toggle="tab" href="#subscriptions" role="tab">Subscription History</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-medium" data-bs-toggle="tab" href="#payments" role="tab">Payments</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body p-4 bg-light-subtle">
+            <div class="tab-content">
+                <!-- Branches Tab -->
+                <div class="tab-pane fade show active" id="branches" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">Registered Branches</h6>
+                        <a href="{% url 'add-gym-branch' gym.pk %}" class="btn btn-sm btn-primary rounded-pill px-3">
+                            <i class="bi bi-plus-lg me-1"></i> Add Branch
+                        </a>
+                    </div>
+                    {% if branches %}
+                    <div class="table-responsive bg-white rounded-3 shadow-sm">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Name</th>
+                                    <th>Address</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for branch in branches %}
+                                <tr>
+                                    <td class="ps-4 fw-medium">{{ branch.name }}</td>
+                                    <td>{{ branch.address }}</td>
+                                    <td>{{ branch.phone }}</td>
+                                    <td>
+                                        {% if branch.is_active %}
+                                            <span class="badge bg-success-subtle text-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-shop fs-1 mb-3 d-block opacity-25"></i>
+                            No branches found for this gym.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Users Tab -->
+                <div class="tab-pane fade" id="users" role="tabpanel">
+                     <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">Associated Users</h6>
+                        <a href="{% url 'add-gym-user' gym.pk %}" class="btn btn-sm btn-primary rounded-pill px-3">
+                            <i class="bi bi-person-plus me-1"></i> Add User
+                        </a>
+                    </div>
+                    {% if users %}
+                    <div class="table-responsive bg-white rounded-3 shadow-sm">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">User</th>
+                                    <th>Role</th>
+                                    <th>Branch</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-light rounded-circle p-1 me-2" style="width:32px;height:32px;text-align:center;">
+                                                <i class="bi bi-person text-secondary"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">{{ user.get_full_name }}</div>
+                                                <small class="text-muted">{{ user.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge bg-info-subtle text-info text-capitalize">{{ user.role }}</span></td>
+                                    <td>{{ user.branch.name|default:"-" }}</td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success-subtle text-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-people fs-1 mb-3 d-block opacity-25"></i>
+                            No users found for this gym.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Subscriptions Tab -->
+                <div class="tab-pane fade" id="subscriptions" role="tabpanel">
+                    {% if subscriptions %}
+                    <div class="table-responsive bg-white rounded-3 shadow-sm">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Plan</th>
+                                    <th>Started</th>
+                                    <th>Expires</th>
+                                    <th>Amount</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in subscriptions %}
+                                <tr>
+                                    <td class="ps-4 fw-medium">{{ sub.plan_name }}</td>
+                                    <td>{{ sub.started_at|date:"M d, Y" }}</td>
+                                    <td>{{ sub.expires_at|date:"M d, Y" }}</td>
+                                    <td>₹{{ sub.amount_paid }}</td>
+                                    <td>
+                                        {% if sub.is_extension %}
+                                            <span class="badge bg-primary-subtle text-primary">Extension</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary">Initial</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-card-checklist fs-1 mb-3 d-block opacity-25"></i>
+                            No subscription history found.
+                        </div>
+                    {% endif %}
+                </div>
+
+                 <!-- Payments Tab -->
+                <div class="tab-pane fade" id="payments" role="tabpanel">
+                    {% if payments %}
+                    <div class="table-responsive bg-white rounded-3 shadow-sm">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">ID</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pay in payments %}
+                                <tr>
+                                    <td class="ps-4 text-muted small">#{{ pay.id }}</td>
+                                    <td>{{ pay.created_at|date:"M d, Y H:i" }}</td>
+                                    <td class="fw-bold">₹{{ pay.amount }}</td>
+                                    <td>
+                                        {% if pay.status == 'completed' %}
+                                            <span class="badge bg-success-subtle text-success">Completed</span>
+                                        {% elif pay.status == 'pending' %}
+                                            <span class="badge bg-warning-subtle text-warning">Pending</span>
+                                        {% elif pay.status == 'failed' %}
+                                            <span class="badge bg-danger-subtle text-danger">Failed</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary">{{ pay.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>Razorpay</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-wallet2 fs-1 mb-3 d-block opacity-25"></i>
+                            No payment transactions found.
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Form (Hidden) -->
+<form id="deleteForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+         // Delete Confirmation
+        const deleteButtons = document.querySelectorAll('.delete-gym');
+        
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const gymId = this.dataset.gymId;
+                const gymName = this.dataset.gymName;
+                const deleteUrl = "{% url 'gym-office-delete' 0 %}".replace('0', gymId);
+                
+                Swal.fire({
+                    title: 'Delete Gym?',
+                    text: `Are you sure you want to delete "${gymName}"? This action moves it to trash.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Delete it!',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.getElementById('deleteForm');
+                        form.action = deleteUrl;
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+        // Delete License Confirmation
+        const deleteLicenseButtons = document.querySelectorAll('.delete-license');
+        
+        deleteLicenseButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const gymId = this.dataset.gymId;
+                const deleteUrl = "{% url 'delete-license-key' 0 %}".replace('0', gymId);
+                
+                Swal.fire({
+                    title: 'Delete License?',
+                    text: `Are you sure you want to delete the license key? This will revoke limits.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Delete it!',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.getElementById('deleteForm');
+                        form.action = deleteUrl;
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

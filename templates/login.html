@@ -74,6 +74,7 @@
     </style>
 </head>
 <body>
+    {% block content %}
     <div class="login-card">
         <h2>Profit Gym Admin</h2>
         <form  method="POST">
@@ -89,7 +90,7 @@
             <button type="submit">LOGIN</button>
         </form>
     </div>
-
+{% endblock %}
     <footer style="position: absolute; bottom: 20px; width: 100%; text-align: center; color: #FF8C00; font-size: 0.8rem; opacity: 0.8;">
         Developed and Maintained &copy; Copyright by ByteBoot Techno Solutions Pvt Ltd
     </footer>

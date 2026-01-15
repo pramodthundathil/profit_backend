@@ -8,7 +8,7 @@ from .views import (
     PaymentTransactionViewSet, DashboardStatsView
 )
 
-from .import views_admin
+from .import views_admin, views_user
 
 router = DefaultRouter()
 router.register(r'gyms', GymOfficeViewSet, basename='gym')
@@ -32,8 +32,28 @@ urlpatterns = [
     # Router URLs
     path('', include(router.urls)),
 
+    #user dashboard
+    path('user/dashboard/', views_user.user_dashboard, name='user-dashboard'),
+    path('user/branches/', views_user.branch_list, name='user-branch-list'),
+    path('user/staff/', views_user.staff_list, name='user-staff-list'),
+    path('user/add-branch/', views_user.add_branch, name='user-add-branch'),
+    path('user/add-staff/', views_user.add_staff, name='user-add-staff'),
+    path('subscription-expired/', views_user.subscription_expired, name='subscription_expired'),
+
 
 
     # admin dashboard urls
     path('dashboard/', views_admin.admin_dashboard, name='admin-dashboard'),
+    path("signout",views_admin.signout,name="signout"),
+
+    path('dashboard/gym-office-list/', views_admin.gym_office_list, name='gym-office-list'),
+    path('dashboard/add-gym-office/', views_admin.add_gym_office, name='add-gym-office'),
+    path('dashboard/gym-office/<int:pk>/', views_admin.gym_office_detail, name='gym-office-detail'),
+    path('dashboard/gym-office/<int:pk>/edit/', views_admin.gym_office_edit, name='gym-office-edit'),
+    path('dashboard/gym-office/<int:gym_id>/add-branch/', views_admin.add_gym_branch, name='add-gym-branch'),
+    path('dashboard/gym-office/<int:gym_id>/add-user/', views_admin.add_gym_user, name='add-gym-user'),
+    path('dashboard/gym-office/<int:gym_id>/add-license/', views_admin.add_license_key, name='add-license-key'),
+    path('dashboard/gym-office/<int:gym_id>/edit-license/', views_admin.edit_license_key, name='edit-license-key'),
+    path('dashboard/gym-office/<int:gym_id>/delete-license/', views_admin.delete_license_key, name='delete-license-key'),
+    path('dashboard/gym-office/<int:pk>/delete/', views_admin.gym_office_delete, name='gym-office-delete'),
 ]

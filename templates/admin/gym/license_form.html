@@ -1,0 +1,105 @@
+{% extends 'admin/dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <div class="row align-items-center mb-4">
+        <div class="col">
+             <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'gym-office-list' %}" class="text-decoration-none text-muted">Gym Offices</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'gym-office-detail' gym.pk %}" class="text-decoration-none text-muted">{{ gym.name }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+                </ol>
+            </nav>
+            <h4 class="fw-bold mb-0">{{ title }}</h4>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <form method="POST">
+                {% csrf_token %}
+                
+                 {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="row g-4">
+                    <!-- Validity -->
+                    <div class="col-12">
+                        <label for="{{ form.valid_until.id_for_label }}" class="form-label fw-bold">License Valid Until</label>
+                        {{ form.valid_until }}
+                        {% if form.valid_until.errors %}
+                            <div class="text-danger small">{{ form.valid_until.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Limits -->
+                    <div class="col-12">
+                        <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">Usage Limits</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="{{ form.max_branches.id_for_label }}" class="form-label">Max Branches</label>
+                                {{ form.max_branches }}
+                                <div class="form-text small">Inter '0' for unlimited branches.</div>
+                                {% if form.max_branches.errors %}
+                                    <div class="text-danger small">{{ form.max_branches.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.max_members.id_for_label }}" class="form-label">Max Members</label>
+                                {{ form.max_members }}
+                                <div class="form-text small">Inter '0' for unlimited members.</div>
+                                {% if form.max_members.errors %}
+                                    <div class="text-danger small">{{ form.max_members.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.max_staff.id_for_label }}" class="form-label">Max Staff</label>
+                                {{ form.max_staff }}
+                                <div class="form-text small">Inter '0' for unlimited staff.</div>
+                                {% if form.max_staff.errors %}
+                                    <div class="text-danger small">{{ form.max_staff.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Features -->
+                    <div class="col-12">
+                        <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">Enabled Features</h6>
+                        <div class="d-flex flex-wrap gap-4">
+                            <div class="form-check form-switch">
+                                {{ form.fetcher_multi_branch }}
+                                <label class="form-check-label" for="{{ form.fetcher_multi_branch.id_for_label }}">Multi-Branch Support</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                {{ form.fetcher_food_log }}
+                                <label class="form-check-label" for="{{ form.fetcher_food_log.id_for_label }}">Food Logging</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                {{ form.fetcher_attendance }}
+                                <label class="form-check-label" for="{{ form.fetcher_attendance.id_for_label }}">Attendance System</label>
+                            </div>
+                             <div class="form-check form-switch">
+                                {{ form.fetcher_payment }}
+                                <label class="form-check-label" for="{{ form.fetcher_payment.id_for_label }}">Payment Processing</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 d-flex justify-content-end gap-2">
+                    <a href="{% url 'gym-office-detail' gym.pk %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save License</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

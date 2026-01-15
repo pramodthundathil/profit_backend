@@ -1,0 +1,235 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block title %}Gym Dashboard | {{ gym.name|default:"ProFit" }}{% endblock %}
+
+{% block content %}
+    {% if gym %}
+    <!-- Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon icon-gold">
+                    <i class="bi bi-shop"></i>
+                </div>
+                <div class="stat-value">{{ branches.count }}</div>
+                <div class="stat-label">Active Branches</div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div class="stat-value">{{ members.count }}</div>
+                <div class="stat-label">Total Staff</div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon icon-green">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+                <div class="stat-value">{{ gym.get_subscription_status.days_remaining|default:"-" }}</div>
+                <div class="stat-label">Days Remaining</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Branches Section -->
+    <div id="branches" class="row mb-4">
+        <div class="col-12">
+            <div class="table-card">
+                <div class="table-header d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold fs-6 mb-0">Gym Branches</h5>
+                </div>
+                <div class="table-responsive">
+                    <table id="branchesTable" class="table custom-table mb-0 table-striped">
+                        <thead>
+                            <tr>
+                                <th>Branch Name</th>
+                                <th>Manager</th>
+                                <th>Contact</th>
+                                <th>Staff Count</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for branch in branches %}
+                            <tr>
+                                <td>
+                                    <div class="fw-medium">{{ branch.name }}</div>
+                                    <small class="text-muted">{{ branch.address|truncatechars:30 }}</small>
+                                </td>
+                                <td>
+                                    {% if branch.created_by %}
+                                        {{ branch.created_by.get_full_name }}
+                                    {% else %}
+                                        <span class="text-muted">Not Assigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>{{ branch.phone }}</div>
+                                    <small class="text-muted">{{ branch.email }}</small>
+                                </td>
+                                <td>{{ branch.get_staff_count }}</td>
+                                <td>
+                                    {% if branch.is_active %}
+                                        <span class="badge badge-soft-success">Active</span>
+                                    {% else %}
+                                        <span class="badge badge-soft-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff Members -->
+    <div id="members" class="row mb-4">
+        <div class="col-12">
+            <div class="table-card">
+                <div class="table-header d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold fs-6 mb-0">Staff Members</h5>
+                </div>
+                <div class="table-responsive">
+                    <table id="staffTable" class="table custom-table mb-0 table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Branch</th>
+                                <th>Contact</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in members %}
+                            <tr>
+                                <td>
+                                    <div class="fw-medium">{{ member.get_full_name }}</div>
+                                    <small class="text-muted">{{ member.email }}</small>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ member.get_role_display }}</span></td>
+                                <td>{{ member.branch.name|default:"Headquarters" }}</td>
+                                <td>{{ member.phone_number }}</td>
+                                <td>
+                                    {% if member.is_active %}
+                                        <span class="badge badge-soft-success">Active</span>
+                                    {% else %}
+                                        <span class="badge badge-soft-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments and Subscriptions Grid -->
+    <div class="row g-4">
+        <!-- Payments -->
+        <div class="col-12 col-lg-6">
+            <div id="payments" class="table-card h-100">
+                <div class="table-header">
+                    <h5 class="fw-bold fs-6 mb-0">Recent Payments</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table custom-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Plan</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments|slice:":5" %}
+                            <tr>
+                                <td>{{ payment.plan_name }}</td>
+                                <td>₹{{ payment.amount }}</td>
+                                <td>
+                                    {% if payment.status == 'completed' %}
+                                        <span class="badge badge-soft-success">Success</span>
+                                    {% elif payment.status == 'pending' %}
+                                        <span class="badge badge-soft-warning">Pending</span>
+                                    {% else %}
+                                        <span class="badge badge-soft-danger">{{ payment.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ payment.created_at|date:"M d, Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No transactions found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscriptions -->
+        <div class="col-12 col-lg-6">
+            <div id="subscriptions" class="table-card h-100">
+                <div class="table-header">
+                    <h5 class="fw-bold fs-6 mb-0">Subscription History</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table custom-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Plan</th>
+                                <th>Started</th>
+                                <th>Expires</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in subscriptions|slice:":5" %}
+                            <tr>
+                                <td>{{ sub.plan_name }}</td>
+                                <td>{{ sub.started_at|date:"M d, Y" }}</td>
+                                <td>{{ sub.expires_at|date:"M d, Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-4 text-muted">No subscription history.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <div class="alert alert-warning">
+        Your account is not associated with any Gym Office. Please contact support.
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#branchesTable').DataTable({
+            "pageLength": 5,
+            "lengthChange": false
+        });
+        $('#staffTable').DataTable({
+            "pageLength": 5,
+            "lengthChange": false
+        });
+    });
+</script>
+{% endblock %}
