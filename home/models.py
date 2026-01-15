@@ -36,7 +36,25 @@ def generate_license_key():
     return str(uuid.uuid4()).replace('-', '').upper()[:20]
 
 
-class LicenseKey(models.Model):
+class SoftDeleteMixin(models.Model):
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+    def soft_delete(self):
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def restore(self):
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
+
+
+class LicenseKey(SoftDeleteMixin, models.Model):
     """Model for managing license keys"""
     key = models.CharField(max_length=100, unique=True, editable=False)
     assigned_to = models.OneToOneField(
@@ -46,7 +64,7 @@ class LicenseKey(models.Model):
         blank=True,
         related_name='assigned_license'
     )
-    valid_until = models.DateField(blank=True, null=True, editable=False)
+    valid_until = models.DateField(blank=True, null=True)
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -63,7 +81,6 @@ class LicenseKey(models.Model):
     
     # Additional features stored as JSON for flexibility
     features = models.JSONField(default=dict, blank=True, help_text="Additional features in JSON format")
-
     class Meta:
         verbose_name = "License Key"
         verbose_name_plural = "License Keys"
@@ -97,7 +114,7 @@ class LicenseKey(models.Model):
         return f"{self.key} - {status}"
 
 
-class GymOffice(models.Model):
+class GymOffice(SoftDeleteMixin, models.Model):
     """Model representing a gym office/headquarters"""
     name = models.CharField(max_length=255)
     address = models.TextField()
@@ -160,6 +177,10 @@ class GymOffice(models.Model):
 
     def is_subscription_active(self):
         """Check if subscription is active"""
+        # Check license validity first (manual override)
+        if self.license_key and self.license_key.is_valid():
+            return True
+            
         if not self.subscription_valid_until:
             return False
         return date.today() <= self.subscription_valid_until
@@ -174,23 +195,24 @@ class GymOffice(models.Model):
             return False
         
         if not self.license_key.fetcher_multi_branch:
-            return self.gym_branches.filter(is_active=True).count() < 1
+            # Check for non-deleted active branches
+            return self.gym_branches.filter(is_active=True, is_deleted=False).count() < 1
         
         max_branches = self.license_key.max_branches
         if max_branches == 0:  # Unlimited
             return True
         
-        return self.gym_branches.filter(is_active=True).count() < max_branches
+        return self.gym_branches.filter(is_active=True, is_deleted=False).count() < max_branches
 
     def get_active_branches_count(self):
         """Get count of active branches"""
-        return self.gym_branches.filter(is_active=True).count()
+        return self.gym_branches.filter(is_active=True, is_deleted=False).count()
 
     def extend_subscription(self, months=12, payment_transaction=None):
         """Extend subscription for specified months"""
         # Determine the start date for extension
         if self.is_subscription_active():
-            start_date = self.subscription_valid_until
+            start_date = self.subscription_valid_until if self.subscription_valid_until else date.today()
             new_end_date = start_date + relativedelta(months=months)
         elif self.is_trial_active():
             start_date = self.trial_ends_at.date()
@@ -228,20 +250,28 @@ class GymOffice(models.Model):
 
     def get_subscription_status(self):
         """Get detailed subscription status"""
+        is_license_active = self.license_key and self.license_key.is_valid()
+        is_sub_active = self.subscription_valid_until and date.today() <= self.subscription_valid_until
+        
         status = {
             'can_access': self.can_access_service(),
             'is_trial_active': self.is_trial_active(),
-            'is_subscription_active': self.is_subscription_active(),
+            'is_subscription_active': is_sub_active or is_license_active,
             'trial_ends_at': self.trial_ends_at,
             'subscription_ends_at': self.subscription_valid_until,
+            'license_valid_until': self.license_key.valid_until if self.license_key else None,
             'days_remaining': None,
             'status_text': 'Inactive'
         }
         
-        if self.is_subscription_active():
+        if is_license_active:
+            days_remaining = (self.license_key.valid_until - date.today()).days
+            status['days_remaining'] = days_remaining
+            status['status_text'] = f'Active (License: {days_remaining} days)'
+        elif is_sub_active:
             days_remaining = (self.subscription_valid_until - date.today()).days
             status['days_remaining'] = days_remaining
-            status['status_text'] = f'Active ({days_remaining} days remaining)'
+            status['status_text'] = f'Active (Sub: {days_remaining} days)'
         elif self.is_trial_active():
             days_remaining = (self.trial_ends_at.date() - date.today()).days
             status['days_remaining'] = days_remaining
@@ -249,7 +279,7 @@ class GymOffice(models.Model):
         elif not self.is_active:
             status['status_text'] = 'Account Disabled'
         else:
-            status['status_text'] = 'Subscription Expired'
+            status['status_text'] = 'Expired'
         
         return status
 
@@ -265,7 +295,7 @@ class GymOffice(models.Model):
         return self.name
 
 
-class GymBranch(models.Model):
+class GymBranch(SoftDeleteMixin, models.Model):
     """Model representing a gym branch"""
     name = models.CharField(max_length=255)
     address = models.TextField()
@@ -316,13 +346,13 @@ class GymBranch(models.Model):
 
     def get_staff_count(self):
         """Get count of staff in this branch"""
-        return self.users.filter(role__in=['staff', 'trainer'], is_active=True).count()
+        return self.users.filter(role__in=['staff', 'trainer'], is_active=True, is_deleted=False).count()
 
     def __str__(self):
         return f"{self.gym.name} - {self.name}"
 
 
-class CustomUser(AbstractBaseUser, PermissionsMixin):
+class CustomUser(SoftDeleteMixin, AbstractBaseUser, PermissionsMixin):
     """Custom user model with role-based access"""
     USER_ROLES = (
         ('admin', 'Super Admin'),
@@ -353,7 +383,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     branch = models.ForeignKey(
         'GymBranch',
         on_delete=models.SET_NULL,
-        null=True,
+        null=True, 
         blank=True,
         related_name='users'
     )
@@ -396,15 +426,25 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             if self.branch:
                 raise ValidationError("Gym admin cannot be assigned to a specific branch")
         
-        # Branch admin, staff, and trainers must have both gym and branch
-        if self.role in ['branch_admin', 'staff', 'trainer']:
+        # Branch admin must have both gym and branch
+        if self.role == 'branch_admin':
+            if not self.gym:
+                raise ValidationError("Branch Manager must be assigned to a gym")
+            if not self.branch:
+                raise ValidationError("Branch Manager must be assigned to a specific branch")
+        
+        # Staff and Trainers must have gym, but branch is optional (Headquarters staff)
+        if self.role in ['staff', 'trainer']:
             if not self.gym:
                 raise ValidationError(f"{self.get_role_display()} must be assigned to a gym")
-            if not self.branch:
-                raise ValidationError(f"{self.get_role_display()} must be assigned to a branch")
-            # Verify branch belongs to gym
-            if self.branch and self.gym and self.branch.gym != self.gym:
+            
+            # If branch is assigned, it must belong to the gym
+            if self.branch and self.branch.gym != self.gym:
                 raise ValidationError("Branch must belong to the assigned gym")
+        
+        # Verify branch belongs to gym (general check if both present)
+        if self.branch and self.gym and self.branch.gym != self.gym:
+             raise ValidationError("Branch must belong to the assigned gym")
 
     def save(self, *args, **kwargs):
         # Auto-generate username if not provided
@@ -447,18 +487,18 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def get_accessible_branches(self):
         """Get all branches this user can access"""
         if self.role == 'admin':
-            return GymBranch.objects.all()
+            return GymBranch.objects.filter(is_deleted=False)
         elif self.role == 'gym_admin' and self.gym:
-            return self.gym.gym_branches.all()
+            return self.gym.gym_branches.filter(is_deleted=False)
         elif self.role in ['branch_admin', 'staff', 'trainer'] and self.branch:
-            return GymBranch.objects.filter(id=self.branch.id)
+            return GymBranch.objects.filter(id=self.branch.id, is_deleted=False)
         return GymBranch.objects.none()
 
     def __str__(self):
         return f"{self.get_full_name()} ({self.get_role_display()})"
 
 
-class SubscriptionHistory(models.Model):
+class SubscriptionHistory(SoftDeleteMixin, models.Model):
     """Track subscription history and payments"""
     gym = models.ForeignKey(
         GymOffice, 
@@ -489,7 +529,7 @@ class SubscriptionHistory(models.Model):
         return f"{self.gym.name} - {self.plan_name} ({self.started_at.date()} to {self.expires_at.date()})"
 
 
-class PaymentTransaction(models.Model):
+class PaymentTransaction(SoftDeleteMixin, models.Model):
     """Track payment transactions"""
     PAYMENT_STATUS = (
         ('pending', 'Pending'),
@@ -528,3 +568,30 @@ class PaymentTransaction(models.Model):
 
     def __str__(self):
         return f"{self.gym.name} - ₹{self.amount} ({self.get_status_display()})"
+
+
+
+# configuration management for hik access control 
+
+
+class HikConfigurationDb(models.Model):
+    gym = models.ForeignKey(
+        GymOffice,
+        on_delete=models.CASCADE,
+        related_name='hik_configuration',
+        null=True, blank=True
+    )
+    gym_branch = models.ForeignKey(
+        GymBranch,
+        on_delete=models.CASCADE,
+        related_name='hik_configuration',
+        null=True, blank=True
+    )
+    middleware_url = models.CharField(max_length=255)
+    middleware_port = models.CharField(max_length=11)
+    device_ip = models.CharField(max_length=255)
+    device_port = models.CharField(max_length=11)
+    device_username = models.CharField(max_length=255)
+    device_password = models.CharField(max_length=255)
+
+

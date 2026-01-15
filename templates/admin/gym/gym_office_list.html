@@ -1,0 +1,211 @@
+{% extends 'admin/dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <!-- Header -->
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h4 class="fw-bold mb-0">Gym Offices</h4>
+            <p class="text-muted">Manage all registered gym offices</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'add-gym-office' %}" class="btn btn-warning fw-bold text-dark rounded-pill">
+                <i class="bi bi-plus-lg me-2"></i>Add Gym Office
+            </a>
+        </div>
+    </div>
+
+    <!-- Gym List Card -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table id="gymTable" class="table table-hover align-middle" style="width:100%">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="border-0 rounded-start ps-4">Gym Info</th>
+                            <th class="border-0">Contact</th>
+                            <th class="border-0">Subscription</th>
+                            <th class="border-0">Branches</th>
+                            <th class="border-0">Status</th>
+                            <th class="border-0 rounded-end text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gym in gym_offices %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle me-3 bg-light text-warning d-flex align-items-center justify-content-center rounded-circle" style="width: 45px; height: 45px;">
+                                        {% if gym.logo %}
+                                            <img src="{{ gym.logo.url }}" alt="{{ gym.name }}" class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
+                                        {% else %}
+                                            <i class="bi bi-building fs-5"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-0 text-dark">{{ gym.name }}</h6>
+                                        <small class="text-muted">ID: {{ gym.id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="mb-1"><i class="bi bi-envelope me-2 text-muted"></i>{{ gym.email }}</span>
+                                    <span><i class="bi bi-telephone me-2 text-muted"></i>{{ gym.phone }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% with status=gym.get_subscription_status %}
+                                    {% if status.is_subscription_active %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">
+                                            Active
+                                        </span>
+                                        <div class="small text-muted mt-1">{{ status.days_remaining }} days left</div>
+                                    {% elif status.is_trial_active %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3">
+                                            Trial
+                                        </span>
+                                        <div class="small text-muted mt-1">{{ status.days_remaining }} days left</div>
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">
+                                            Expired
+                                        </span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-diagram-3 me-2 text-primary"></i>
+                                    <span class="fw-medium">{{ gym.get_active_branches_count }}</span>
+                                    <span class="text-muted ms-1">Active</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if gym.is_active %}
+                                    <span class="status-indicator active me-2"></span>
+                                    <span class="fw-medium text-success">Active</span>
+                                {% else %}
+                                    <span class="status-indicator inactive me-2"></span>
+                                    <span class="fw-medium text-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="dropdown">
+                                    <button class="btn btn-light btn-sm rounded-circle shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                        <li>
+                                            <a class="dropdown-item py-2" href="{% url 'gym-office-detail' gym.pk %}">
+                                                <i class="bi bi-eye me-2 text-primary"></i> View Details
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2" href="{% url 'gym-office-edit' gym.pk %}">
+                                                <i class="bi bi-pencil me-2 text-warning"></i> Edit Gym
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2 text-danger delete-gym" href="#" data-gym-id="{{ gym.pk }}" data-gym-name="{{ gym.name }}">
+                                                <i class="bi bi-trash me-2"></i> Delete Gym
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Form (Hidden) -->
+<form id="deleteForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<!-- DataTables CSS & JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<style>
+    /* Custom DataTable Styling */
+    .dataTables_wrapper .dataTables_length select {
+        padding-right: 2rem;
+        border-radius: 0.5rem;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+    }
+    .page-link {
+        border: none;
+        color: #6c757d;
+        border-radius: 0.5rem;
+        margin: 0 0.2rem;
+    }
+    .page-item.active .page-link {
+        background-color: #ffc107;
+        color: #000;
+        font-weight: bold;
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .status-indicator.active { background-color: #198754; }
+    .status-indicator.inactive { background-color: #dc3545; }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable
+        $('#gymTable').DataTable({
+            responsive: true,
+            order: [[0, 'asc']], // Sort by Name by default
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search gyms...",
+                paginate: {
+                    previous: "<i class='bi bi-chevron-left'></i>",
+                    next: "<i class='bi bi-chevron-right'></i>"
+                }
+            },
+            columnDefs: [
+                { orderable: false, targets: 5 } // Disable sorting on Actions column
+            ]
+        });
+
+        // Delete Confirmation
+        $('.delete-gym').on('click', function(e) {
+            e.preventDefault();
+            const gymId = $(this).data('gym-id');
+            const gymName = $(this).data('gym-name');
+            const deleteUrl = "{% url 'gym-office-delete' 0 %}".replace('0', gymId);
+            
+            Swal.fire({
+                title: 'Delete Gym?',
+                text: `Are you sure you want to delete "${gymName}"? This action moves it to trash.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Delete it!',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#deleteForm').attr('action', deleteUrl).submit();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

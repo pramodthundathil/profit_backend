@@ -1,0 +1,73 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}Gym Branches{% endblock %}
+{% block header_subtitle %}Manage your gym branches{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="table-card">
+            <div class="table-header d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold fs-6 mb-0">All Branches</h5>
+                <a href="{% url 'user-add-branch' %}" class="btn btn-sm btn-dark">
+                    <i class="bi bi-plus-lg me-1"></i> Add Branch
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table id="branchesTable" class="table custom-table mb-0 table-striped">
+                    <thead>
+                        <tr>
+                            <th>Branch Name</th>
+                            <th>Manager</th>
+                            <th>Contact</th>
+                            <th>Staff Count</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for branch in branches %}
+                        <tr>
+                            <td>
+                                <div class="fw-medium">{{ branch.name }}</div>
+                                <small class="text-muted">{{ branch.address|truncatechars:30 }}</small>
+                            </td>
+                            <td>
+                                {% if branch.created_by %}
+                                    {{ branch.created_by.get_full_name }}
+                                {% else %}
+                                    <span class="text-muted">Not Assigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>{{ branch.phone }}</div>
+                                <small class="text-muted">{{ branch.email }}</small>
+                            </td>
+                            <td>{{ branch.get_staff_count }}</td>
+                            <td>
+                                {% if branch.is_active %}
+                                    <span class="badge badge-soft-success">Active</span>
+                                {% else %}
+                                    <span class="badge badge-soft-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#branchesTable').DataTable({
+            "pageLength": 10,
+            "lengthChange": false
+        });
+    });
+</script>
+{% endblock %}
