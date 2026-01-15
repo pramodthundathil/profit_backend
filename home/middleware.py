@@ -59,7 +59,8 @@ class LicenseValidationMiddleware:
                 request.headers.get('Accept') == 'application/json' or 
                 path.startswith('/api/') or 
                 path.startswith('/v1/') or 
-                path.startswith('/v2/') 
+                path.startswith('/v2/') or 
+                path.startswith('/v3/') 
                 # path.startswith('/auth/') 
             )
 

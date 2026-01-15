@@ -7,18 +7,18 @@ from django.shortcuts import get_object_or_404
 
 from .models import (
     CustomUser, GymOffice, GymBranch, LicenseKey,
-    SubscriptionHistory, PaymentTransaction
+    SubscriptionHistory, PaymentTransaction, HikConfigurationDb
 )
 from .serializers import (
     CustomUserSerializer, UserCreateSerializer, UserUpdateSerializer,
     ChangePasswordSerializer, GymOfficeSerializer, GymOfficeCreateSerializer,
     GymBranchSerializer, LicenseKeySerializer, SubscriptionHistorySerializer,
-    PaymentTransactionSerializer, GymRegistrationSerializer
+    PaymentTransactionSerializer, GymRegistrationSerializer, HikConfigurationDbSerializer
 )
 from .permissions import (
     IsSuperAdmin, IsGymAdmin, IsBranchAdmin, CanManageGym,
     CanManageBranch, CanCreateBranch, CanManageUsers, IsOwnerOrReadOnly,
-    HasActiveSubscription, CanViewBranch
+    HasActiveSubscription, CanViewBranch, CanManageHikConfiguration
 )
 
 from drf_yasg.utils import swagger_auto_schema
@@ -527,3 +527,47 @@ class DashboardStatsView(APIView):
             }
         
         return Response(stats)
+
+
+class HikConfigurationDbViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Hik Configuration management
+    """
+    queryset = HikConfigurationDb.objects.all()
+    serializer_class = HikConfigurationDbSerializer
+    permission_classes = [permissions.IsAuthenticated, CanManageHikConfiguration]
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if not user.is_authenticated:
+            return HikConfigurationDb.objects.none()
+
+        # Super admin
+        if user.role == 'admin':
+            return HikConfigurationDb.objects.all()
+            
+        # Gym admin
+        if user.role == 'gym_admin' and user.gym:
+             return HikConfigurationDb.objects.filter(
+                 Q(gym=user.gym) | Q(gym_branch__gym=user.gym)
+             )
+        
+        # Branch admin
+        if user.role == 'branch_admin' and user.branch:
+            return HikConfigurationDb.objects.filter(gym_branch=user.branch)
+            
+        return HikConfigurationDb.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        
+        # Enforce branch for branch manager
+        if user.role == 'branch_admin':
+            serializer.save(gym_branch=user.branch)
+        else:
+             serializer.save()
+
+
+
+
