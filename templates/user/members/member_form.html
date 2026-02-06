@@ -207,6 +207,11 @@
                         <label class="form-label">Payment Terms</label>
                          {{ subscription_form.payment_terms }}
                     </div>
+                    <div class="col-md-4" id="installment_area" style="display:none;">
+                        <label class="form-label">Installments</label>
+                         {{ subscription_form.installment_count }}
+                         <div id="installment_preview" class="form-text text-primary fw-bold mt-1"></div>
+                    </div>
                     <div class="col-md-4">
                         <label class="form-label">Amount Paid *</label>
                          {{ subscription_form.amount_paid }}
@@ -245,11 +250,71 @@
             finalInput.value = total.toFixed(2);
         }
         
+        const paymentTerms = document.getElementById('id_payment_terms');
+        const installmentArea = document.getElementById('installment_area');
+        const installmentInput = document.getElementById('id_installment_count');
+        const installmentPreview = document.getElementById('installment_preview');
+
+        function calculateTotal() {
+            if (!baseInput || !finalInput) return;
+            
+            const base = parseFloat(baseInput.value) || 0;
+            const perc = parseFloat(discPercInput.value) || 0;
+            const fix = parseFloat(discAmtInput.value) || 0;
+            
+            const percValid = Math.min(Math.max(perc, 0), 100);
+            const discountFromPerc = (base * percValid) / 100;
+            
+            const total = Math.max(0, base - discountFromPerc - fix);
+            finalInput.value = total.toFixed(2);
+            
+            calculateInstallments(total);
+        }
+        
+        function calculateInstallments(total) {
+            if (!installmentInput || !paymentTerms || paymentTerms.value !== 'Installment') {
+                if(installmentPreview) installmentPreview.textContent = '';
+                return;
+            }
+            
+            const count = parseInt(installmentInput.value) || 1;
+            if (count > 1 && total > 0) {
+                const perInst = (total / count).toFixed(2);
+                if(installmentPreview) installmentPreview.textContent = `${count} x ${perInst} / month`;
+            } else {
+                if(installmentPreview) installmentPreview.textContent = '';
+            }
+        }
+        
+        function toggleInstallments() {
+             if (paymentTerms && installmentArea) {
+                if (paymentTerms.value === 'Installment') {
+                   installmentArea.style.display = 'block'; 
+                } else {
+                   installmentArea.style.display = 'none';
+                   if(installmentInput) installmentInput.value = 1;
+                }
+                calculateTotal(); // Re-calc preview
+            }
+        }
+        
         if (baseInput) {
             baseInput.addEventListener('input', calculateTotal);
             discPercInput.addEventListener('input', calculateTotal);
             discAmtInput.addEventListener('input', calculateTotal);
         }
+        
+        if (paymentTerms) {
+            paymentTerms.addEventListener('change', toggleInstallments);
+        }
+        
+        if (installmentInput) {
+            installmentInput.addEventListener('input', () => calculateTotal());
+        }
+        
+        // Initial run
+        toggleInstallments();
+        calculateTotal();
     });
     // Camera Capture Logic
     const startCameraBtn = document.getElementById('startCameraBtn');

@@ -387,6 +387,10 @@ class Subscription(models.Model):
             self.final_amount = max(self.base_amount - total_discount, 0)
         
         super().save(*args, **kwargs)
+        
+        # Generate installments if applicable
+        if self.payment_terms == 'Installment':
+            self.generate_installments()
     
     def clean(self):
         # Validate batch belongs to same gym
@@ -480,6 +484,40 @@ class Subscription(models.Model):
             return 0
         return (self.end_date - timezone.now().date()).days
     
+    def generate_installments(self):
+        """Auto-generate installments based on terms"""
+        if self.payment_terms != 'Installment' or self.installment_count <= 1:
+            return
+
+        # Calculate installment amount
+        total_amount = self.final_amount
+        count = self.installment_count
+        amount_per_installment = total_amount / count
+        
+        # Check if existing installments need to be regenerated?
+        # Only regenerate if total counts mismatch or forced
+        current_count = self.installments.count()
+        if current_count == count:
+             # Logic to update amounts if total changed could go here
+             return
+
+        # Clear existing pending installments if re-generating (simplified logic)
+        self.installments.filter(status='Pending').delete()
+        
+        # Create new installments
+        start = self.start_date
+        for i in range(1, count + 1):
+             # 30 days gap for simplicity, or 1 month
+             due = start + timedelta(days=(i-1)*30)
+             
+             SubscriptionInstallment.objects.create(
+                 subscription=self,
+                 installment_number=i,
+                 due_date=due,
+                 amount=amount_per_installment,
+                 status='Pending'
+             )
+
     @property
     def duration_display(self):
         """Human readable duration"""
@@ -515,4 +553,42 @@ class SubscriptionFreeze(models.Model):
     
     def __str__(self):
         return f"{self.subscription.member.full_name} - Frozen {self.days_frozen} days"
+
+
+# ============================================================================
+# SUBSCRIPTION INSTALLMENT MODEL
+# ============================================================================
+
+class SubscriptionInstallment(models.Model):
+    """ Individual installment for a subscription """
+    subscription = models.ForeignKey(
+        Subscription, 
+        on_delete=models.CASCADE, 
+        related_name="installments"
+    )
+    
+    installment_number = models.PositiveIntegerField()
+    due_date = models.DateField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    status = models.CharField(
+        max_length=20,
+        choices=(
+            ("Pending", "Pending"),
+            ("Paid", "Paid"),
+            ("Overdue", "Overdue")
+        ),
+        default="Pending"
+    )
+    
+    paid_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['due_date']
+        unique_together = ['subscription', 'installment_number']
+        
+    def __str__(self):
+        return f"{self.subscription} - Installment {self.installment_number} ({self.amount})"
 

@@ -1,0 +1,182 @@
+{% extends 'user/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.member_id }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Add Subscription</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block header_subtitle %}
+Create a new subscription plan for {{ member.full_name }}
+{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            {% if subscription_form.errors %}
+                <div class="alert alert-danger">
+                    Please correct the errors below.
+                    {{ subscription_form.errors }}
+                </div>
+            {% endif %}
+
+            <h5 class="mb-3 text-primary border-bottom pb-2">Subscription Details</h5>
+            <div class="bg-light p-3 rounded mb-4">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Subscription Type *</label>
+                        {{ subscription_form.subscription_type }}
+                        {{ subscription_form.subscription_type.errors }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Duration/Period *</label>
+                        {{ subscription_form.subscription_period }}
+                        {{ subscription_form.subscription_period.errors }}
+                    </div>
+                     <div class="col-md-4">
+                        <label class="form-label">Start Date *</label>
+                        {{ subscription_form.start_date }}
+                         {{ subscription_form.start_date.errors }}
+                    </div>
+                     <div class="col-md-4">
+                        <label class="form-label">Batch</label>
+                        {{ subscription_form.batch }}
+                         {{ subscription_form.batch.errors }}
+                    </div>
+                    <div class="col-md-4 pt-4">
+                        <div class="form-check">
+                            {{ subscription_form.batch_flexible }}
+                            <label class="form-check-label">Flexible Batch Timing?</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-2 text-muted">Payment Details</h6>
+                 <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Base Amount *</label>
+                        {{ subscription_form.base_amount }}
+                    </div>
+                     <div class="col-md-3">
+                        <label class="form-label">Discount (%)</label>
+                         {{ subscription_form.discount_percentage }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Fixed Discount</label>
+                         {{ subscription_form.discount_amount }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Final Amount</label>
+                         {{ subscription_form.final_amount }}
+                    </div>
+                    
+                     <div class="col-md-4">
+                        <label class="form-label">Payment Terms</label>
+                         {{ subscription_form.payment_terms }}
+                    </div>
+                    <div class="col-md-4" id="installment_area">
+                        <label class="form-label">Installments</label>
+                         {{ subscription_form.installment_count }}
+                         <div id="installment_preview" class="form-text text-primary fw-bold mt-1"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Amount Paid *</label>
+                         {{ subscription_form.amount_paid }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'member-detail' member.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-dark px-4">Add Subscription</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const baseInput = document.getElementById('id_base_amount');
+        const discPercInput = document.getElementById('id_discount_percentage');
+        const discAmtInput = document.getElementById('id_discount_amount');
+        const finalInput = document.getElementById('id_final_amount');
+        const paymentTerms = document.getElementById('id_payment_terms');
+        const installmentInput = document.getElementById('id_installment_count');
+        const installmentPreview = document.getElementById('installment_preview');
+
+        function calculateTotal() {
+            if (!baseInput || !finalInput) return;
+            
+            const base = parseFloat(baseInput.value) || 0;
+            const perc = parseFloat(discPercInput.value) || 0;
+            const fix = parseFloat(discAmtInput.value) || 0;
+            
+            const percValid = Math.min(Math.max(perc, 0), 100);
+            const discountFromPerc = (base * percValid) / 100;
+            
+            const total = Math.max(0, base - discountFromPerc - fix);
+            finalInput.value = total.toFixed(2);
+            
+            calculateInstallments(total);
+        }
+        
+        function calculateInstallments(total) {
+             if (!installmentInput || !paymentTerms || paymentTerms.value !== 'Installment') {
+                if(installmentPreview) installmentPreview.textContent = '';
+                return;
+            }
+            
+            const count = parseInt(installmentInput.value) || 1;
+            if (count > 1 && total > 0) {
+                const perInst = (total / count).toFixed(2);
+                if(installmentPreview) installmentPreview.textContent = `${count} x ${perInst} / month`;
+            } else {
+                if(installmentPreview) installmentPreview.textContent = '';
+            }
+        }
+        
+        function toggleInstallments() {
+            if (paymentTerms && installmentArea) {
+                if (paymentTerms.value === 'Installment') {
+                   // installmentArea.style.display = 'block'; 
+                   // Rely on CSS or keeping it visible but enabled
+                   installmentArea.querySelector('input').disabled = false;
+                   if(installmentArea.querySelector('input').value == "")  installmentArea.querySelector('input').value = 1;
+                } else {
+                   // installmentArea.style.display = 'none';
+                   installmentArea.querySelector('input').disabled = true;
+                   installmentArea.querySelector('input').value = 1;
+                }
+                calculateTotal();
+            }
+        }
+        
+        if (baseInput) {
+            baseInput.addEventListener('input', calculateTotal);
+            discPercInput.addEventListener('input', calculateTotal);
+            discAmtInput.addEventListener('input', calculateTotal);
+        }
+        
+        if (installmentInput) {
+             installmentInput.addEventListener('input', () => calculateTotal());
+        }
+        
+        if (paymentTerms) {
+            paymentTerms.addEventListener('change', toggleInstallments);
+            toggleInstallments(); // Initial check
+        }
+    });
+</script>
+{% endblock %}

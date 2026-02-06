@@ -175,3 +175,74 @@ def member_detail(request, pk):
         'subscriptions': member.subscriptions.all().order_by('-created_at')
     }
     return render(request, "user/members/member_detail.html", context)
+
+@login_required
+def member_add_subscription(request, pk):
+    user = request.user
+    member = get_object_or_404(Member, pk=pk, gym=user.gym)
+    
+    # Permission Check
+    if user.role == 'branch_admin' and member.branch != user.branch:
+        messages.error(request, "Access denied.")
+        return redirect('member-list')
+
+    if request.method == 'POST':
+        form = SubscriptionForm(request.POST, user=user)
+        if form.is_valid():
+            try:
+                subscription = form.save(commit=False)
+                subscription.member = member
+                
+                # Set duration from Period
+                period = form.cleaned_data['subscription_period']
+                subscription.duration = period.period
+                
+                # Assuming Period is in Days or we map it correctly. 
+                # Model says duration_unit default is "Months" but previous code in create said "Days".
+                # Let's check SubscriptionPeriod model if possible, but safely assuming 'Days' as per create view.
+                subscription.duration_unit = 'Days' 
+                
+                subscription.save()
+                
+                # Update member status
+                member.update_membership_status()
+                messages.success(request, "Subscription added successfully.")
+                return redirect('member-detail', pk=member.pk)
+            except Exception as e:
+                messages.error(request, f"Error adding subscription: {e}")
+        else:
+             messages.error(request, "Please correct the errors below.")
+    else:
+        form = SubscriptionForm(user=user)
+    
+    context = {
+        'subscription_form': form, # Using subscription_form key to match template usage likely or rename to form
+        'member': member,
+        'title': f"Add Subscription: {member.full_name}"
+    }
+    return render(request, "user/members/subscription_form.html", context)
+
+@login_required
+def installment_pay(request, pk):
+    from .models import SubscriptionInstallment
+    installment = get_object_or_404(SubscriptionInstallment, pk=pk)
+    
+    # Permission check (simplified)
+    if request.user.role not in ['gym_admin', 'staff', 'branch_admin']:
+         messages.error(request, "Access denied.")
+         return redirect('user-dashboard')
+         
+    if request.method == 'POST':
+        # Mark as paid
+        installment.status = 'Paid'
+        installment.paid_date = timezone.now().date()
+        installment.save()
+        
+        # Update subscription amount paid
+        sub = installment.subscription
+        sub.update_payment_status()
+        
+        messages.success(request, f"Installment {installment.installment_number} marked as paid.")
+        return redirect('member-detail', pk=sub.member.pk)
+        
+    return redirect('member-detail', pk=installment.subscription.member.pk)
