@@ -573,7 +573,6 @@ class PaymentTransaction(SoftDeleteMixin, models.Model):
 
 # configuration management for hik access control 
 
-
 class HikConfigurationDb(models.Model):
     gym = models.ForeignKey(
         GymOffice,
@@ -593,5 +592,15 @@ class HikConfigurationDb(models.Model):
     device_port = models.CharField(max_length=11)
     device_username = models.CharField(max_length=255)
     device_password = models.CharField(max_length=255)
+
+    # Meta class with CheckConstraint removed due to compatibility issues. 
+    # Validation is enforced in clean() method.
+
+    def clean(self):
+        super().clean()
+        if self.gym is None and self.gym_branch is None:
+            raise ValidationError(
+                'Either gym or gym_branch must be provided.'
+            )
 
 

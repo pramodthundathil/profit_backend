@@ -78,6 +78,48 @@ class GymUserForm(forms.ModelForm):
             user.save()
         return user
 
+class GymUserEditForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'phone_number', 'username', 'role', 'branch', 'is_active']
+        widgets = {
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-select'}),
+            'branch': forms.Select(attrs={'class': 'form-select'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        gym = kwargs.pop('gym', None)
+        super(GymUserEditForm, self).__init__(*args, **kwargs)
+        
+        # Limit roles to branch_admin, staff, trainer
+        allowed_roles = [
+            ('branch_admin', 'Branch Manager'),
+            ('staff', 'Staff'),
+            ('trainer', 'Trainer'),
+        ]
+        self.fields['role'].choices = allowed_roles
+        
+        # Filter branches to only those belonging to the gym
+        if gym:
+            self.fields['branch'].queryset = GymBranch.objects.filter(gym=gym, is_deleted=False)
+            
+        # Make branch optional by default (enforced by role in clean)
+        self.fields['branch'].required = False
+        
+    def clean(self):
+        cleaned_data = super().clean()
+        role = cleaned_data.get('role')
+        branch = cleaned_data.get('branch')
+        
+        if role == 'branch_admin' and not branch:
+             self.add_error('branch', 'Branch Manager must be assigned to a specific branch.')
+             
+        return cleaned_data
+
 from .models import LicenseKey
 
 class LicenseKeyForm(forms.ModelForm):
@@ -134,3 +176,56 @@ class GymOfficeCreationForm(forms.ModelForm):
             raise forms.ValidationError("A user with this email already exists.")
             
         return cleaned_data
+
+
+from .models import HikConfigurationDb
+
+class HikConfigurationForm(forms.ModelForm):
+    class Meta:
+        model = HikConfigurationDb
+        fields = [
+            'gym', 'gym_branch', 
+            'middleware_url', 'middleware_port', 
+            'device_ip', 'device_port', 
+            'device_username', 'device_password'
+        ]
+        widgets = {
+            'gym': forms.Select(attrs={'class': 'form-select'}),
+            'gym_branch': forms.Select(attrs={'class': 'form-select'}),
+            'middleware_url': forms.TextInput(attrs={'class': 'form-control'}),
+            'middleware_port': forms.TextInput(attrs={'class': 'form-control'}),
+            'device_ip': forms.TextInput(attrs={'class': 'form-control'}),
+            'device_port': forms.TextInput(attrs={'class': 'form-control'}),
+            'device_username': forms.TextInput(attrs={'class': 'form-control'}),
+            'device_password': forms.PasswordInput(attrs={'class': 'form-control', 'render_value': True}), 
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super(HikConfigurationForm, self).__init__(*args, **kwargs)
+        
+        if user:
+            # Logic for Branch Manager
+            if user.role == 'branch_admin':
+                 self.fields['gym'].widget = forms.HiddenInput()
+                 self.fields['gym'].required = False
+                 self.fields['gym'].initial = user.gym
+                 
+                 self.fields['gym_branch'].widget = forms.HiddenInput()
+                 self.fields['gym_branch'].required = False
+                 self.fields['gym_branch'].initial = user.branch
+            
+            # Logic for Gym Admin
+            elif user.role == 'gym_admin':
+                # Gym hidden as it is implied
+                self.fields['gym'].widget = forms.HiddenInput()
+                self.fields['gym'].required = False
+                self.fields['gym'].initial = user.gym
+                
+                # Filter branches and set empty label for Main Office
+                if user.gym:
+                    self.fields['gym_branch'].queryset = GymBranch.objects.filter(gym=user.gym, is_deleted=False)
+                
+                self.fields['gym_branch'].empty_label = f"Main Office ({user.gym.name})"
+                self.fields['gym_branch'].required = False
+

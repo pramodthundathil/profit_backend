@@ -56,7 +56,7 @@
             margin-bottom: 10px;
         }
 
-        .nav-link {
+        .sidebar .nav-link {
             color: rgba(255, 255, 255, 0.8);
             padding: 12px 20px;
             display: flex;
@@ -65,13 +65,13 @@
             transition: all 0.2s;
         }
 
-        .nav-link:hover, .nav-link.active {
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
             color: #fff;
             background: rgba(255, 215, 0, 0.1);
             border-left-color: var(--accent-color);
         }
 
-        .nav-link i {
+        .sidebar .nav-link i {
             margin-right: 10px;
             font-size: 1.1rem;
         }
@@ -197,6 +197,9 @@
             <a href="{% url 'user-dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'user-dashboard' %}active{% endif %}">
                 <i class="bi bi-grid-fill"></i> Dashboard
             </a>
+            <a href="{% url 'member-list' %}" class="nav-link {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-person-vcard-fill"></i> Members
+            </a>
             <a href="{% url 'user-staff-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-staff-list' %}active{% endif %}">
                 <i class="bi bi-people-fill"></i> Staff
             </a>
@@ -209,6 +212,29 @@
             <a href="{% url 'user-branch-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-branch-list' %}active{% endif %}">
                 <i class="bi bi-shop"></i> Branches
             </a>
+            <!-- Settings Dropdown -->
+            <a class="nav-link d-flex align-items-center justify-content-between {% if 'hik-config' in request.resolver_match.url_name or 'gym-config' in request.resolver_match.url_name %}active{% endif %}" 
+               data-bs-toggle="collapse" 
+               href="#settingsCollapse" 
+               role="button" 
+               aria-expanded="{% if 'hik-config' in request.resolver_match.url_name or 'gym-config' in request.resolver_match.url_name %}true{% else %}false{% endif %}" 
+               aria-controls="settingsCollapse">
+                <span><i class="bi bi-gear-fill"></i> Settings</span>
+                <i class="bi bi-chevron-down small"></i>
+            </a>
+            <div class="collapse {% if 'hik-config' in request.resolver_match.url_name or 'gym-config' in request.resolver_match.url_name %}show{% endif %}" id="settingsCollapse">
+                <div class="ms-3 border-start border-secondary ps-2">
+                    <a href="{% url 'user-hik-config-list' %}" class="nav-link py-2 small {% if 'hik-config' in request.resolver_match.url_name %}text-warning{% endif %}" style="font-size: 0.9em;">
+                        Device Settings
+                    </a>
+                    <a href="{% url 'gym-config-list' %}" class="nav-link py-2 small {% if 'gym-config' in request.resolver_match.url_name %}text-warning{% endif %}" style="font-size: 0.9em;">
+                        Gym Configuration
+                    </a>
+                    <a href="{% url 'user-dashboard' %}#subscriptions" class="nav-link py-2 small" style="font-size: 0.9em;">
+                        Subscription Settings
+                    </a>
+                </div>
+            </div>
             <div class="mt-auto border-top border-secondary pt-3 mt-4">
                 <a href="{% url 'signout' %}" class="nav-link text-danger">
                     <i class="bi bi-box-arrow-right"></i> Sign Out
@@ -220,12 +246,21 @@
     <!-- Main Content -->
     <div class="main-content">
         <!-- Header -->
-        <header class="d-flex justify-content-between align-items-center mb-4 pt-2">
+        <header class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
             <div>
-                <h4 class="fw-bold mb-1">{% block header_title %}Overview{% endblock %}</h4>
-                <p class="text-muted mb-0">{% block header_subtitle %}Welcome back, {{ request.user.get_full_name }}{% endblock %}</p>
+                {% block breadcrumb %}
+                <!-- Default Breadcrumb (can be overridden) -->
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1">
+                        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+                    </ol>
+                </nav>
+                {% endblock %}
+                <h1 class="h2">{% block header_title %}Dashboard{% endblock %}</h1>
+                <p class="text-muted">{% block header_subtitle %}Welcome back, {{ request.user.first_name }}{% endblock %}</p>
             </div>
-            <div class="d-none d-md-block">
+            <div class="btn-toolbar mb-2 mb-md-0">
                 {% if gym.get_subscription_status.status_text == 'Active' %}
                     <span class="badge bg-success">{{ gym.get_subscription_status.status_text }}</span>
                 {% else %}
@@ -248,7 +283,7 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        {% if messages %}
+        "{% if messages %}"
             const Toast = Swal.mixin({
                 toast: true,
                 position: 'top-end',
@@ -261,13 +296,13 @@
                 }
             })
 
-            {% for message in messages %}
+            "{% for message in messages %}"
                 Toast.fire({
                     icon: '{{ message.tags }}' === 'error' ? 'error' : 'success',
                     title: '{{ message }}'
                 })
-            {% endfor %}
-        {% endif %}
+            "{% endfor %}"
+        "{% endif %}"
     </script>
     
     {% block scripts %}

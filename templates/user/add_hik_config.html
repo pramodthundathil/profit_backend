@@ -1,0 +1,138 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}{% if config %}Edit{% else %}Add{% endif %} HikVision Configuration{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'user-hik-config-list' %}" class="text-decoration-none text-muted">Device Settings</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% if config %}Edit{% else %}Add{% endif %} Configuration</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block header_subtitle %}Configure your access control device{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Gym and Branch Selection -->
+                    {% if form.gym.field.widget.input_type != 'hidden' %}
+                    <div class="mb-3">
+                        <label for="{{ form.gym.id_for_label }}" class="form-label">
+                            {{ form.gym.label }}
+                        </label>
+                        {{ form.gym }}
+                        {% if form.gym.errors %}
+                        <div class="text-danger small mt-1">{{ form.gym.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        {{ form.gym }}
+                    {% endif %}
+                    
+                    {% if form.gym_branch.field.widget.input_type != 'hidden' %}
+                    <div class="mb-3">
+                        <label for="{{ form.gym_branch.id_for_label }}" class="form-label">
+                            {{ form.gym_branch.label }}
+                        </label>
+                        {{ form.gym_branch }}
+                        <div class="form-text">Leave empty if this is for the main gym office.</div>
+                        {% if form.gym_branch.errors %}
+                        <div class="text-danger small mt-1">{{ form.gym_branch.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        {{ form.gym_branch }}
+                    {% endif %}
+                    
+                    <h6 class="fw-bold mt-4 mb-3 text-muted border-bottom pb-2">Middleware Settings</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="{{ form.middleware_url.id_for_label }}" class="form-label">Middleware URL/IP</label>
+                                {{ form.middleware_url }}
+                                {% if form.middleware_url.errors %}
+                                <div class="text-danger small mt-1">{{ form.middleware_url.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.middleware_port.id_for_label }}" class="form-label">Port</label>
+                                {{ form.middleware_port }}
+                                {% if form.middleware_port.errors %}
+                                <div class="text-danger small mt-1">{{ form.middleware_port.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mt-4 mb-3 text-muted border-bottom pb-2">Device Settings</h6>
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="{{ form.device_ip.id_for_label }}" class="form-label">Device IP</label>
+                                {{ form.device_ip }}
+                                {% if form.device_ip.errors %}
+                                <div class="text-danger small mt-1">{{ form.device_ip.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.device_port.id_for_label }}" class="form-label">Device Port</label>
+                                {{ form.device_port }}
+                                {% if form.device_port.errors %}
+                                <div class="text-danger small mt-1">{{ form.device_port.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.device_username.id_for_label }}" class="form-label">Username</label>
+                                {{ form.device_username }}
+                                {% if form.device_username.errors %}
+                                <div class="text-danger small mt-1">{{ form.device_username.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.device_password.id_for_label }}" class="form-label">Password</label>
+                                {{ form.device_password }}
+                                {% if form.device_password.errors %}
+                                <div class="text-danger small mt-1">{{ form.device_password.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'user-hik-config-list' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-dark px-4">Save Configuration</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -4,6 +4,15 @@
 {% block header_title %}Gym Branches{% endblock %}
 {% block header_subtitle %}Manage your gym branches{% endblock %}
 
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Branches</li>
+    </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12">
@@ -23,6 +32,7 @@
                             <th>Contact</th>
                             <th>Staff Count</th>
                             <th>Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -50,6 +60,16 @@
                                 {% else %}
                                     <span class="badge badge-soft-danger">Inactive</span>
                                 {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'user-edit-branch' branch.id %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <a href="{% url 'user-delete-branch' branch.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this branch?');">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

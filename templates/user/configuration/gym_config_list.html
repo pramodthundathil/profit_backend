@@ -1,0 +1,174 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}Gym Configuration{% endblock %}
+{% block header_subtitle %}Manage batches, subscription types, and periods{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Configuration</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<ul class="nav nav-tabs mb-4" id="configTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="batches-tab" data-bs-toggle="tab" data-bs-target="#batches" type="button" role="tab" aria-controls="batches" aria-selected="true">Batches</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="types-tab" data-bs-toggle="tab" data-bs-target="#types" type="button" role="tab" aria-controls="types" aria-selected="false">Subscription Types</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="periods-tab" data-bs-toggle="tab" data-bs-target="#periods" type="button" role="tab" aria-controls="periods" aria-selected="false">Subscription Periods</button>
+  </li>
+</ul>
+
+<div class="tab-content" id="configTabsContent">
+  <!-- Batches Tab -->
+  <div class="tab-pane fade show active" id="batches" role="tabpanel" aria-labelledby="batches-tab">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-dark">Batches</h5>
+            <a href="{% url 'batch-create' %}" class="btn btn-dark btn-sm">
+                <i class="bi bi-plus-lg"></i> Add Batch
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for batch in batches %}
+                        <tr>
+                            <td>{{ batch.batch_name }}</td>
+                            <td>{{ batch.batch_time }}</td>
+                            <td>
+                                {% if batch.batch_status %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if request.user.role == 'gym_admin' %}
+                                <a href="{% url 'batch-edit' batch.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></a>
+                                <form action="{% url 'batch-delete' batch.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted">No batches found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- Subscription Types Tab -->
+  <div class="tab-pane fade" id="types" role="tabpanel" aria-labelledby="types-tab">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-dark">Subscription Types</h5>
+            <a href="{% url 'subtype-create' %}" class="btn btn-dark btn-sm">
+                <i class="bi bi-plus-lg"></i> Add Type
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subtype in sub_types %}
+                        <tr>
+                            <td>{{ subtype.name }}</td>
+                            <td>
+                                {% if subtype.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if request.user.role == 'gym_admin' %}
+                                <a href="{% url 'subtype-edit' subtype.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></a>
+                                <form action="{% url 'subtype-delete' subtype.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted">No subscription types found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- Subscription Periods Tab -->
+  <div class="tab-pane fade" id="periods" role="tabpanel" aria-labelledby="periods-tab">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-dark">Subscription Periods</h5>
+            <a href="{% url 'subperiod-create' %}" class="btn btn-dark btn-sm">
+                <i class="bi bi-plus-lg"></i> Add Period
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Period (Days)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for period in sub_periods %}
+                        <tr>
+                            <td>{{ period.period }} Days</td>
+                            <td>
+                                {% if request.user.role == 'gym_admin' %}
+                                <a href="{% url 'subperiod-edit' period.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></a>
+                                <form action="{% url 'subperiod-delete' period.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center text-muted">No subscription periods found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

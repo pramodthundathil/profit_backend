@@ -240,3 +240,66 @@ class CanViewBranch(permissions.BasePermission):
         # Others can view only their branch
         return obj == user.branch
 
+
+class CanManageHikConfiguration(permissions.BasePermission):
+    """
+    Check permission for HikVision Configuration
+    
+    Rules:
+    - Superuser/Admin: All access
+    - Staff: No access
+    - Gym Admin: Add, Update, Delete for own gym and branches
+    - Branch Manager: Add, Edit, Update for own branch (No Delete)
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+            
+        # Super admin always has access
+        if user.role == 'admin':
+            return True
+        
+        # Staff has no access
+        if user.role == 'staff':
+            return False
+            
+        # Gym Admin
+        if user.role == 'gym_admin':
+            return True
+            
+        # Branch Admin
+        if user.role == 'branch_admin':
+            # Cannot delete
+            if request.method == 'DELETE':
+                return False
+            return True
+            
+        return False
+    
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        
+        # Super admin
+        if user.role == 'admin':
+            return True
+            
+        # Gym Admin
+        if user.role == 'gym_admin':
+            # Access if belongs to gym or one of its branches
+            if obj.gym == user.gym:
+                return True
+            if obj.gym_branch and obj.gym_branch.gym == user.gym:
+                return True
+            return False
+            
+        # Branch Admin
+        if user.role == 'branch_admin':
+            # Cannot delete (already checked in has_permission but safe to double check)
+            if request.method == 'DELETE':
+                return False
+            # Access only own branch
+            return obj.gym_branch == user.branch
+            
+        return False
+

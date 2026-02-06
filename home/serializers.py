@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import (
     CustomUser, GymOffice, GymBranch, LicenseKey,
-    SubscriptionHistory, PaymentTransaction
+    SubscriptionHistory, PaymentTransaction, HikConfigurationDb
 )
 
 
@@ -455,3 +455,53 @@ class GymRegistrationSerializer(serializers.Serializer):
             'gym': gym,
             'admin': admin
         }
+
+
+class HikConfigurationDbSerializer(serializers.ModelSerializer):
+    """
+    Serializer for HikVision Configuration
+    """
+    gym_name = serializers.CharField(source='gym.name', read_only=True)
+    branch_name = serializers.CharField(source='gym_branch.name', read_only=True)
+
+    class Meta:
+        model = HikConfigurationDb
+        fields = [
+            'id', 'gym', 'gym_name', 'gym_branch', 'branch_name',
+            'middleware_url', 'middleware_port', 'device_ip',
+            'device_port', 'device_username', 'device_password'
+        ]
+
+    def validate(self, data):
+        """
+        Validate configuration
+        """
+        request = self.context.get('request')
+        user = request.user if request else None
+        
+        # Check permissions and constraints
+        gym = data.get('gym')
+        gym_branch = data.get('gym_branch')
+        
+        if not gym and not gym_branch:
+             # If partial update, we might not have these fields, but model validation handles required check.
+             # However, for create, we need at least one.
+             if not self.instance:
+                 raise serializers.ValidationError("Either gym or gym_branch must be provided.")
+
+        # If User is Branch Manager, they can only assign to their branch
+        if user and user.role == 'branch_admin':
+            if gym:
+                raise serializers.ValidationError({"gym": "Branch Manager cannot configure for the entire Gym Office."})
+            if gym_branch and gym_branch != user.branch:
+                # This might be redundant if we force it in perform_create but good for validation
+                 raise serializers.ValidationError({"gym_branch": "You can only configure your own branch."})
+
+        # If User is Gym Admin, they can assign to gym or their branches
+        if user and user.role == 'gym_admin':
+            if gym and gym != user.gym:
+                 raise serializers.ValidationError({"gym": "You can only configure your own gym."})
+            if gym_branch and gym_branch.gym != user.gym:
+                 raise serializers.ValidationError({"gym_branch": "You can only configure branches within your gym."})
+
+        return data

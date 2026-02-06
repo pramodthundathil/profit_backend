@@ -1,0 +1,275 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ member.member_id }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block header_subtitle %}
+    Member Profile & History
+{% endblock %}
+
+{% block content %}
+<!-- Payment Status Banner for Current Subscription -->
+{% with sub=member.current_subscription %}
+    {% if sub and sub.payment_status_label != 'Paid' %}
+    <div class="alert alert-{% if sub.payment_status_label == 'Partial' %}warning{% else %}danger{% endif %} d-flex align-items-center mb-4 shadow-sm border-0" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+        <div>
+            <h6 class="alert-heading mb-1 fw-bold">Payment Attention Required</h6>
+            <div class="mb-0">
+                The current subscription is <strong>{{ sub.payment_status_label }}y Paid</strong>. 
+                Amount Due: <strong>{{ sub.due_amount }}</strong>. 
+                <a href="#" class="alert-link text-decoration-underline">Record Payment</a>
+            </div>
+        </div>
+    </div>
+    {% elif sub and sub.payment_status_label == 'Paid' %}
+    <div class="alert alert-success d-flex align-items-center mb-4 shadow-sm border-0 py-2" role="alert">
+        <i class="bi bi-check-circle-fill fs-5 me-2"></i>
+        <div class="fw-medium">
+            Active plan is fully paid.
+        </div>
+    </div>
+    {% endif %}
+{% endwith %}
+
+<div class="row g-4">
+    <!-- Left Column: Profile Card -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center pt-4">
+                <div class="mb-3 position-relative d-inline-block">
+                    {% if member.photo %}
+                    <img src="{{ member.photo.url }}" class="rounded-circle border border-3 border-light shadow-sm" style="width: 120px; height: 120px; object-fit: cover;">
+                    {% else %}
+                    <div class="rounded-circle bg-light text-primary fw-bold d-flex align-items-center justify-content-center mx-auto border" style="width: 120px; height: 120px; font-size: 3rem;">
+                        {{ member.first_name|first|upper }}
+                    </div>
+                    {% endif %}
+                    
+                    <span class="position-absolute bottom-0 end-0 badge rounded-pill {% if member.membership_status == 'Active' %}bg-success{% else %}bg-secondary{% endif %} border border-white">
+                        {{ member.membership_status }}
+                    </span>
+                </div>
+                
+                <h4 class="mb-1">{{ member.full_name }}</h4>
+                <p class="text-muted mb-3">{{ member.member_id }}</p>
+                
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                    <a href="{% url 'member-edit' member.id %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+                    {% if member.mobile_number %}
+                    <a href="tel:{{ member.mobile_number }}" class="btn btn-outline-success btn-sm"><i class="bi bi-telephone"></i> Call</a>
+                    {% endif %}
+                </div>
+                
+                <ul class="list-group list-group-flush text-start small">
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-muted">Mobile</span>
+                        <span class="fw-medium">{{ member.mobile_number }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-muted">Branch</span>
+                        <span class="fw-medium">{{ member.branch.name|default:"Main" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-muted">Gender</span>
+                        <span class="fw-medium">{{ member.gender }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-muted">Age</span>
+                        <span class="fw-medium">{{ member.age }} yrs</span>
+                    </li>
+                     <li class="list-group-item d-flex justify-content-between px-0">
+                        <span class="text-muted">Access Token</span>
+                        <span class="fw-medium font-monospace">{{ member.access_token|default:"-" }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Details Tabs -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-3 px-4">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#subscriptions" role="tab">Subscriptions</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#payments" role="tab">Payment History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#health" role="tab">Health & Info</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#docs" role="tab">Documents</a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card-body p-4 tab-content">
+                <!-- Subscriptions Tab -->
+                <div class="tab-pane fade show active" id="subscriptions" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Subscription History</h6>
+                        <a href="{% url 'member-subscription-add' member.pk %}" class="btn btn-sm btn-dark"><i class="bi bi-plus-lg"></i> New Subscription</a>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Plan</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                    <th>Status</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in subscriptions %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-medium">{{ sub.subscription_type.name|default:"Custom Plan" }}</div>
+                                        <small class="text-muted">{{ sub.get_duration_display }}</small>
+                                    </td>
+                                    <td>{{ sub.start_date|date:"d M Y" }}</td>
+                                    <td>{{ sub.end_date|date:"d M Y" }}</td>
+                                    <td>
+                                        {% if sub.status == 'Active' %}
+                                        <span class="badge bg-success bg-opacity-10 text-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ sub.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ sub.final_amount }}</td>
+                                </tr>
+                                {% if sub.payment_terms == 'Installment' %}
+                                <tr>
+                                    <td colspan="5" class="bg-light p-3">
+                                        <div class="small fw-bold mb-2">Installment Plan</div>
+                                        <table class="table table-sm table-bordered bg-white mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Due Date</th>
+                                                    <th>Amount</th>
+                                                    <th>Status</th>
+                                                    <th style="width: 100px;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for inst in sub.installments.all %}
+                                                <tr>
+                                                    <td>{{ inst.installment_number }}</td>
+                                                    <td>{{ inst.due_date|date:"d M Y" }}</td>
+                                                    <td>{{ inst.amount }}</td>
+                                                    <td>
+                                                        {% if inst.status == 'Paid' %}
+                                                        <span class="badge bg-success">Paid</span>
+                                                        {% else %}
+                                                        <span class="badge bg-warning text-dark">Pending</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if inst.status != 'Paid' %}
+                                                        <form method="post" action="{% url 'installment-pay' inst.pk %}" style="display:inline;" onsubmit="return confirm('Mark this installment as paid?');">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-primary btn-sm py-0 px-2" style="font-size: 0.75rem;">Pay</button>
+                                                        </form>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-3 text-muted">No subscriptions found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Payments Tab (Placeholder as Payment model linking might be separate) -->
+                <div class="tab-pane fade" id="payments" role="tabpanel">
+                     <p class="text-muted text-center py-4">Payment history module integration pending.</p>
+                </div>
+                
+                <!-- Health Info Tab -->
+                <div class="tab-pane fade" id="health" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="small text-muted text-uppercase fw-bold">Height / Weight</label>
+                            <p>{{ member.height|default:"-" }} cm / {{ member.weight|default:"-" }} kg</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small text-muted text-uppercase fw-bold">Blood Group</label>
+                            <p>{{ member.blood_group|default:"-" }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="small text-muted text-uppercase fw-bold">Address</label>
+                            <p>{{ member.address|default:"-" }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="small text-muted text-uppercase fw-bold">Medical History</label>
+                            <p class="mb-0">{{ member.medical_history|default:"None provided" }}</p>
+                        </div>
+                         <div class="col-12 mt-4">
+                            <label class="small text-muted text-uppercase fw-bold">Emergency Contact</label>
+                            <p class="mb-0">{{ member.emergency_contact_name }} - {{ member.emergency_contact_number }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documents Tab -->
+                <div class="tab-pane fade" id="docs" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card h-100 border-dashed">
+                                <div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
+                                    <i class="bi bi-person-badge fs-2 text-muted mb-2"></i>
+                                    <h6 class="mb-2">Profile Photo</h6>
+                                    {% if member.photo %}
+                                    <a href="{{ member.photo.url }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                    {% else %}
+                                    <span class="text-muted small">Not uploaded</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100 border-dashed">
+                                <div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
+                                    <i class="bi bi-file-earmark-person fs-2 text-muted mb-2"></i>
+                                    <h6 class="mb-2">ID Proof</h6>
+                                    {% if member.id_proof %}
+                                    <a href="{{ member.id_proof.url }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                    {% else %}
+                                    <span class="text-muted small">Not uploaded</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

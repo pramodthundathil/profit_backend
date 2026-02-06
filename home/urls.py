@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     GymRegistrationView, GymOfficeViewSet, GymBranchViewSet,
     CustomUserViewSet, LicenseKeyViewSet, SubscriptionHistoryViewSet,
-    PaymentTransactionViewSet, DashboardStatsView
+    PaymentTransactionViewSet, DashboardStatsView, HikConfigurationDbViewSet
 )
 
 from .import views_admin, views_user
@@ -17,6 +17,7 @@ router.register(r'users', CustomUserViewSet, basename='user')
 router.register(r'licenses', LicenseKeyViewSet, basename='license')
 router.register(r'subscriptions', SubscriptionHistoryViewSet, basename='subscription')
 router.register(r'payments', PaymentTransactionViewSet, basename='payment')
+router.register(r'hik-configs', HikConfigurationDbViewSet, basename='hik-config')
 
 urlpatterns = [
     # Public registration endpoint
@@ -35,10 +36,23 @@ urlpatterns = [
     #user dashboard
     path('user/dashboard/', views_user.user_dashboard, name='user-dashboard'),
     path('user/branches/', views_user.branch_list, name='user-branch-list'),
+    path('user/branches/<int:pk>/edit/', views_user.edit_branch, name='user-edit-branch'),
+    path('user/branches/<int:pk>/delete/', views_user.delete_branch, name='user-delete-branch'),
     path('user/staff/', views_user.staff_list, name='user-staff-list'),
+    path('user/staff/<int:pk>/edit/', views_user.edit_staff, name='user-edit-staff'),
+    path('user/staff/<int:pk>/delete/', views_user.delete_staff, name='user-delete-staff'),
     path('user/add-branch/', views_user.add_branch, name='user-add-branch'),
     path('user/add-staff/', views_user.add_staff, name='user-add-staff'),
     path('subscription-expired/', views_user.subscription_expired, name='subscription_expired'),
+    
+    # Hik Settings
+    path('user/settings/hik/', views_user.hik_config_list, name='user-hik-config-list'),
+    path('user/settings/hik/add/', views_user.add_hik_config, name='user-add-hik-config'),
+    path('user/settings/hik/<int:pk>/edit/', views_user.edit_hik_config, name='user-edit-hik-config'),
+    path('user/settings/hik/<int:pk>/delete/', views_user.delete_hik_config, name='user-delete-hik-config'),
+
+    # Gym Configuration
+
 
 
 
