@@ -101,12 +101,23 @@ WSGI_APPLICATION = 'profit_backend.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'profitdb',
+#         'USER': 'postgres',
+#         'PASSWORD': '1234',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'profitdb',
-        'USER': 'postgres',
-        'PASSWORD': '1234',
+        'USER': 'profit_user',
+        'PASSWORD': '1234@qwer',
         'HOST': 'localhost',
         'PORT': '5432',
     }
