@@ -10,6 +10,9 @@ from .models import (
     SubscriptionHistory, PaymentTransaction, HikConfigurationDb
 )
 from .serializers import (
+    CustomUserSerializer, UserCreateSerializer, UserUpdateSerializer,
+    ChangePasswordSerializer, GymOfficeSerializer, GymOfficeCreateSerializer,
+    GymBranchSerializer, LicenseKeySerializer, SubscriptionHistorySerializer,
     PaymentTransactionSerializer, GymRegistrationSerializer, HikConfigurationDbSerializer,
     CustomTokenObtainPairSerializer
 )
