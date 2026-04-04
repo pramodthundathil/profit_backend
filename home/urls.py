@@ -5,7 +5,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     GymRegistrationView, GymOfficeViewSet, GymBranchViewSet,
     CustomUserViewSet, LicenseKeyViewSet, SubscriptionHistoryViewSet,
-    PaymentTransactionViewSet, DashboardStatsView, HikConfigurationDbViewSet
+    PaymentTransactionViewSet, DashboardStatsView, HikConfigurationDbViewSet,
+    CustomTokenObtainPairView
 )
 
 from .import views_admin, views_user
@@ -24,7 +25,7 @@ urlpatterns = [
     path('register/', GymRegistrationView.as_view(), name='gym-registration'),
     
     # JWT Authentication
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # Dashboard stats

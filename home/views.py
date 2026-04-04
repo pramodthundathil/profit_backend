@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -20,9 +20,58 @@ from .permissions import (
     CanManageBranch, CanCreateBranch, CanManageUsers, IsOwnerOrReadOnly,
     HasActiveSubscription, CanViewBranch, CanManageHikConfiguration
 )
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+
+# ============================================================================
+# AUTH ENDPOINTS
+# ============================================================================
+
+class LoginRequestSerializer(serializers.Serializer):
+    """Clean serializer for Swagger Login documentation"""
+    email = serializers.EmailField(help_text="User's email address")
+    password = serializers.CharField(
+        style={'input_type': 'password'},
+        help_text="User's password"
+    )
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Custom Login view for Swagger documentation
+    """
+    @swagger_auto_schema(
+        tags=['Auth/Public'],
+        operation_description="Login with email and password to receive JWT tokens.",
+        request_body=LoginRequestSerializer,
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Login successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'access': openapi.Schema(type=openapi.TYPE_STRING),
+                        'refresh': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            status.HTTP_401_UNAUTHORIZED: "Invalid credentials"
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        # Serializer already expects 'email' because USERNAME_FIELD = 'email'
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        except Exception:
+            return Response(
+                {"detail": "No active account found with the given credentials"}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
 
 class GymRegistrationView(APIView):
     """
@@ -32,6 +81,7 @@ class GymRegistrationView(APIView):
     @swagger_auto_schema(
         operation_description="Public endpoint to register a new gym and its primary administrator account.",
         request_body=GymRegistrationSerializer,
+        tags=['Auth/Public'],
         responses={
             status.HTTP_201_CREATED: openapi.Response(
                 description="Gym registered successfully",
@@ -76,6 +126,7 @@ class GymOfficeViewSet(viewsets.ModelViewSet):
     Only super admin can create/delete gyms
     """
     queryset = GymOffice.objects.all()
+    serializer_class = GymOfficeSerializer # Base serializer for Swagger
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -102,6 +153,31 @@ class GymOfficeViewSet(viewsets.ModelViewSet):
         
         return GymOffice.objects.none()
     
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Gym Management'], request_body=GymOfficeCreateSerializer)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
     @action(detail=True, methods=['get'])
     def subscription_status(self, request, pk=None):
         """Get detailed subscription status"""
@@ -109,6 +185,15 @@ class GymOfficeViewSet(viewsets.ModelViewSet):
         status_data = gym.get_subscription_status()
         return Response(status_data)
     
+    @swagger_auto_schema(
+        tags=['Admin/Gym Management'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'months': openapi.Schema(type=openapi.TYPE_INTEGER, default=12)
+            }
+        )
+    )
     @action(detail=True, methods=['post'])
     def extend_subscription(self, request, pk=None):
         """Extend subscription (admin only)"""
@@ -136,6 +221,7 @@ class GymOfficeViewSet(viewsets.ModelViewSet):
             'subscription_status': gym.get_subscription_status()
         })
     
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
     @action(detail=True, methods=['get'])
     def branches(self, request, pk=None):
         """Get all branches of this gym"""
@@ -144,6 +230,7 @@ class GymOfficeViewSet(viewsets.ModelViewSet):
         serializer = GymBranchSerializer(branches, many=True)
         return Response(serializer.data)
     
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
     @action(detail=True, methods=['get'])
     def users(self, request, pk=None):
         """Get all users of this gym"""
@@ -159,6 +246,30 @@ class GymBranchViewSet(viewsets.ModelViewSet):
     """
     queryset = GymBranch.objects.all()
     serializer_class = GymBranchSerializer
+    
+    @swagger_auto_schema(tags=['Admin/Branch Management'])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Branch Management'], request_body=GymBranchSerializer)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Branch Management'])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Branch Management'])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Branch Management'])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Branch Management'])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
     
     def get_permissions(self):
         if self.action == 'create':
@@ -193,6 +304,7 @@ class GymBranchViewSet(viewsets.ModelViewSet):
         else:
             serializer.save(created_by=user)
     
+    @swagger_auto_schema(tags=['Admin/Branch Management'])
     @action(detail=True, methods=['get'])
     def users(self, request, pk=None):
         """Get all users in this branch"""
@@ -201,6 +313,7 @@ class GymBranchViewSet(viewsets.ModelViewSet):
         serializer = CustomUserSerializer(users, many=True)
         return Response(serializer.data)
     
+    @swagger_auto_schema(tags=['Admin/Branch Management'])
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
         """Toggle branch active status"""
@@ -219,6 +332,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     ViewSet for User management
     """
     queryset = CustomUser.objects.all()
+    serializer_class = CustomUserSerializer # Base serializer for Swagger
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -226,6 +340,30 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         elif self.action in ['update', 'partial_update']:
             return UserUpdateSerializer
         return CustomUserSerializer
+    
+    @swagger_auto_schema(tags=['User Management'])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['User Management'], request_body=UserCreateSerializer)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['User Management'])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['User Management'], request_body=UserUpdateSerializer)
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['User Management'], request_body=UserUpdateSerializer)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['User Management'])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -267,12 +405,14 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
     
+    @swagger_auto_schema(tags=['User Management'])
     @action(detail=False, methods=['get'])
     def me(self, request):
         """Get current user details"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
     
+    @swagger_auto_schema(tags=['User Management'], request_body=ChangePasswordSerializer)
     @action(detail=True, methods=['post'])
     def change_password(self, request, pk=None):
         """Change user password"""
@@ -292,6 +432,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    @swagger_auto_schema(tags=['User Management'])
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
         """Toggle user active status"""
@@ -319,6 +460,12 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             'is_active': user.is_active
         })
     
+    @swagger_auto_schema(
+        tags=['User Management'],
+        manual_parameters=[
+            openapi.Parameter('role', openapi.IN_QUERY, description="Role to filter by", type=openapi.TYPE_STRING)
+        ]
+    )
     @action(detail=False, methods=['get'])
     def by_role(self, request):
         """Filter users by role"""
@@ -334,6 +481,12 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
+    @swagger_auto_schema(
+        tags=['User Management'],
+        manual_parameters=[
+            openapi.Parameter('branch_id', openapi.IN_QUERY, description="Branch ID to filter by", type=openapi.TYPE_INTEGER)
+        ]
+    )
     @action(detail=False, methods=['get'])
     def by_branch(self, request):
         """Filter users by branch"""
@@ -358,6 +511,40 @@ class LicenseKeyViewSet(viewsets.ModelViewSet):
     serializer_class = LicenseKeySerializer
     permission_classes = [IsSuperAdmin]
     
+    @swagger_auto_schema(tags=['Admin/Licensing'])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Licensing'])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Licensing'])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Licensing'])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Licensing'])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Licensing'])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Admin/Licensing'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'gym_id': openapi.Schema(type=openapi.TYPE_INTEGER)
+            },
+            required=['gym_id']
+        )
+    )
     @action(detail=True, methods=['post'])
     def assign(self, request, pk=None):
         """Assign license key to a gym"""
@@ -396,6 +583,7 @@ class LicenseKeyViewSet(viewsets.ModelViewSet):
             'license': LicenseKeySerializer(license_key).data
         })
     
+    @swagger_auto_schema(tags=['Admin/Licensing'])
     @action(detail=False, methods=['get'])
     def available(self, request):
         """Get all available (unused) license keys"""
@@ -411,6 +599,14 @@ class SubscriptionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = SubscriptionHistory.objects.all()
     serializer_class = SubscriptionHistorySerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Gym Management'])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
     
     def get_queryset(self):
         user = self.request.user
@@ -451,6 +647,17 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
         
         return PaymentTransaction.objects.none()
     
+    @swagger_auto_schema(
+        tags=['Admin/Payments'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'razorpay_payment_id': openapi.Schema(type=openapi.TYPE_STRING),
+                'razorpay_signature': openapi.Schema(type=openapi.TYPE_STRING)
+            },
+            required=['razorpay_payment_id', 'razorpay_signature']
+        )
+    )
     @action(detail=True, methods=['post'])
     def verify_payment(self, request, pk=None):
         """Verify Razorpay payment"""
@@ -488,6 +695,7 @@ class DashboardStatsView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated, HasActiveSubscription]
     
+    @swagger_auto_schema(tags=['Stats/Dashboard'])
     def get(self, request):
         user = request.user
         stats = {}
@@ -536,6 +744,30 @@ class HikConfigurationDbViewSet(viewsets.ModelViewSet):
     queryset = HikConfigurationDb.objects.all()
     serializer_class = HikConfigurationDbSerializer
     permission_classes = [permissions.IsAuthenticated, CanManageHikConfiguration]
+    
+    @swagger_auto_schema(tags=['Admin/Settings'])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Settings'], request_body=HikConfigurationDbSerializer)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Settings'])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Settings'])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Settings'])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=['Admin/Settings'])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
     
     def get_queryset(self):
         user = self.request.user
