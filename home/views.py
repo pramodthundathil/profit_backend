@@ -302,8 +302,10 @@ class GymBranchViewSet(viewsets.ModelViewSet):
         
         if user.role == 'gym_admin':
             serializer.save(gym=user.gym, created_by=user)
-        else:
+        elif user.role == 'admin':
             serializer.save(created_by=user)
+        else:
+            return Response({'error': 'You are not authorized to create a branch'}, status=status.HTTP_403_FORBIDDEN)
     
     @swagger_auto_schema(tags=['Admin/Branch Management'])
     @action(detail=True, methods=['get'])

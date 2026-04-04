@@ -251,13 +251,17 @@ class UserCreateSerializer(serializers.ModelSerializer):
             if branch:
                 raise serializers.ValidationError({"branch": "Gym admin cannot be assigned to a specific branch."})
         
-        # Branch-level roles must have both gym and branch
+        # Branch-level roles must have gym
         if role in ['branch_admin', 'staff', 'trainer']:
             if not gym:
                 raise serializers.ValidationError({"gym": f"{role} must be assigned to a gym."})
-            if not branch:
-                raise serializers.ValidationError({"branch": f"{role} must be assigned to a branch."})
-            # Verify branch belongs to gym
+            
+            # Branch Manager (branch_admin) MUST have a branch
+            if role == 'branch_admin' and not branch:
+                raise serializers.ValidationError({"branch": "Branch Manager must be assigned to a branch."})
+            
+            # For staff and trainer, branch is optional (Headquarters/Main Branch if null)
+            # Verify branch belongs to gym if provided
             if branch and gym and branch.gym != gym:
                 raise serializers.ValidationError({"branch": "Branch must belong to the assigned gym."})
         
