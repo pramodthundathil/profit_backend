@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import (
@@ -504,4 +506,27 @@ class HikConfigurationDbSerializer(serializers.ModelSerializer):
             if gym_branch and gym_branch.gym != user.gym:
                  raise serializers.ValidationError({"gym_branch": "You can only configure branches within your gym."})
 
+        return data
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom JWT Token Serializer to include user role and basic info
+    """
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Add custom data to the response
+        data['role'] = self.user.role
+        data['email'] = self.user.email
+        data['username'] = self.user.username or self.user.email.split('@')[0]
+        data['user_id'] = self.user.id
+        
+        if self.user.gym:
+            data['gym_id'] = self.user.gym.id
+            data['gym_name'] = self.user.gym.name
+        
+        if self.user.branch:
+            data['branch_id'] = self.user.branch.id
+            data['branch_name'] = self.user.branch.name
+            
         return data

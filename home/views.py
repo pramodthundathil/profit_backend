@@ -10,10 +10,8 @@ from .models import (
     SubscriptionHistory, PaymentTransaction, HikConfigurationDb
 )
 from .serializers import (
-    CustomUserSerializer, UserCreateSerializer, UserUpdateSerializer,
-    ChangePasswordSerializer, GymOfficeSerializer, GymOfficeCreateSerializer,
-    GymBranchSerializer, LicenseKeySerializer, SubscriptionHistorySerializer,
-    PaymentTransactionSerializer, GymRegistrationSerializer, HikConfigurationDbSerializer
+    PaymentTransactionSerializer, GymRegistrationSerializer, HikConfigurationDbSerializer,
+    CustomTokenObtainPairSerializer
 )
 from .permissions import (
     IsSuperAdmin, IsGymAdmin, IsBranchAdmin, CanManageGym,
@@ -61,8 +59,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         }
     )
     def post(self, request, *args, **kwargs):
-        # Serializer already expects 'email' because USERNAME_FIELD = 'email'
-        serializer = self.get_serializer(data=request.data)
+        # Use our custom serializer
+        serializer = CustomTokenObtainPairSerializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
