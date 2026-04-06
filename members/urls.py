@@ -26,4 +26,5 @@ urlpatterns = [
     path('api/subscription/<int:pk>/update/', views.subscription_update_api, name='api-subscription-update'),
     path('api/subscription/<int:pk>/delete/', views.subscription_delete_api, name='api-subscription-delete'),
     path('api/installment/<int:pk>/pay/', views.installment_pay_api, name='api-installment-pay'),
+    path('api/subscriptions/list/', views.subscription_list_api, name='api-subscription-list'),
 ]

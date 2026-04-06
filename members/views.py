@@ -16,6 +16,7 @@ from .serializers import (
     MemberMobileListSerializer,
     MemberDetailSerializer,
     SubscriptionSerializer,
+    SubscriptionListSerializer,
 )
 
 # ============================================================================
@@ -324,3 +325,109 @@ def installment_pay_api(request, pk):
             "status": installment.status,
             "remaining_amount": float(installment.remaining_amount)
         })
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Get list of subscriptions with filtering, sorting and statistics",
+    responses={200: openapi.Response(
+        description="Subscription list and stats",
+        schema=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'stats': openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'total': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'active': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'expired': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'near_expiry': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    }
+                ),
+                'subscriptions': openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(type=openapi.TYPE_OBJECT)
+                )
+            }
+        )
+    )},
+    manual_parameters=[
+        openapi.Parameter('branch', openapi.IN_QUERY, description="Filter by branch ID", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('status', openapi.IN_QUERY, description="Filter by status (Active, Expired, etc.)", type=openapi.TYPE_STRING),
+        openapi.Parameter('search', openapi.IN_QUERY, description="Search by member name/ID/phone", type=openapi.TYPE_STRING),
+        openapi.Parameter('sort_by', openapi.IN_QUERY, description="Sort by: end_date, start_date, branch. Prefix with '-' for descending.", type=openapi.TYPE_STRING),
+    ]
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def subscription_list_api(request):
+    """API view to get all subscriptions with stats, filtering and sorting"""
+    user = request.user
+    if not user.gym:
+        return Response({"error": "No gym associated"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # 1. Base Queryset
+    subscriptions = Subscription.objects.filter(member__gym=user.gym).select_related('member', 'member__branch', 'subscription_type')
+
+    # 2. Apply Branch Permission/Filter
+    branch_filter = request.GET.get('branch', '')
+    if user.role == 'branch_admin' and user.branch:
+        subscriptions = subscriptions.filter(member__branch=user.branch)
+    elif branch_filter:
+        subscriptions = subscriptions.filter(member__branch_id=branch_filter)
+
+    # 3. Calculate Stats BEFORE status filtering (based on user's branch scope)
+    today = timezone.now().date()
+    # "near by expired" - we'll use 15 days as default
+    near_expiry_date = today + timedelta(days=15)
+    
+    # We use the scoped queryset for stats
+    stats_qs = subscriptions
+    
+    stats = {
+        "total": stats_qs.count(),
+        "active": stats_qs.filter(status='Active').count(),
+        "expired": stats_qs.filter(status='Expired').count(),
+        "near_expiry": stats_qs.filter(
+            status='Active',
+            end_date__gte=today,
+            end_date__lte=near_expiry_date
+        ).count()
+    }
+
+    # 4. Apply Filters
+    status_filter = request.GET.get('status', 'Active') # Default to Active as per user request
+    if status_filter and status_filter.lower() != 'all':
+        subscriptions = subscriptions.filter(status=status_filter)
+
+    search_query = request.GET.get('search', '')
+    if search_query:
+        subscriptions = subscriptions.filter(
+            Q(member__first_name__icontains=search_query) |
+            Q(member__last_name__icontains=search_query) |
+            Q(member__mobile_number__icontains=search_query) |
+            Q(member__member_id__icontains=search_query)
+        )
+
+    # 5. Apply Sorting
+    sort_by = request.GET.get('sort_by', 'end_date')
+    
+    # Mapping for friendly sort names
+    sort_mapping = {
+        'end_date': 'end_date',
+        '-end_date': '-end_date',
+        'start_date': 'start_date',
+        '-start_date': '-start_date',
+        'branch': 'member__branch__name',
+        '-branch': '-member__branch__name',
+    }
+    
+    db_sort_field = sort_mapping.get(sort_by, 'end_date')
+    subscriptions = subscriptions.order_by(db_sort_field)
+
+    # 6. Serialization
+    serializer = SubscriptionListSerializer(subscriptions[:200], many=True)
+    
+    return Response({
+        "stats": stats,
+        "subscriptions": serializer.data
+    })

@@ -1,4 +1,4 @@
-from .models import Member, Subscription, SubscriptionInstallment
+from .models import Member, Subscription, SubscriptionInstallment, GymBranch
 from utils.models import TypeSubscription
 from rest_framework import serializers
 
@@ -30,6 +30,24 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'amount_paid', 'balance_amount',
             'days_remaining', 'is_fully_paid',
             'payment_terms', 'installment_count', 'installments'
+        ]
+
+
+class SubscriptionListSerializer(serializers.ModelSerializer):
+    """Serializer for subscription list including member details"""
+    member_name = serializers.CharField(source='member.full_name', read_only=True)
+    member_id = serializers.CharField(source='member.member_id', read_only=True)
+    branch_name = serializers.CharField(source='member.branch.name', read_only=True)
+    subscription_type_name = serializers.CharField(source='subscription_type.name', read_only=True)
+    days_remaining = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = [
+            'id', 'member_id', 'member_name', 'branch_name',
+            'subscription_type_name', 'start_date', 'end_date', 
+            'status', 'final_amount', 'amount_paid', 'balance_amount',
+            'days_remaining', 'is_fully_paid'
         ]
 
 
