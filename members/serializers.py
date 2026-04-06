@@ -1,5 +1,6 @@
 from .models import Member, Subscription, SubscriptionInstallment
 from utils.models import TypeSubscription
+from rest_framework import serializers
 
 class SubscriptionInstallmentSerializer(serializers.ModelSerializer):
     """Serializer for individual installments"""
