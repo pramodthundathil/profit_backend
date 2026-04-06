@@ -11,13 +11,32 @@ class SubscriptionInstallmentSerializer(serializers.ModelSerializer):
 
 class SubscriptionSerializer(serializers.ModelSerializer):
     """Serializer for member subscriptions"""
-    subscription_type_name = serializers.CharField(source='subscription_type.name', read_only=True)
-    batch_name = serializers.CharField(source='batch.batch_name', read_only=True)
+    subscription_type_name = serializers.SerializerMethodField()
+    batch_name = serializers.SerializerMethodField()
     duration_display = serializers.CharField(read_only=True)
     balance_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     days_remaining = serializers.IntegerField(read_only=True)
 
     installments = SubscriptionInstallmentSerializer(many=True, read_only=True)
+    
+    member_name = serializers.CharField(source='member.full_name', read_only=True)
+    member_id_code = serializers.CharField(source='member.member_id', read_only=True)
+    member_mobile = serializers.CharField(source='member.mobile_number', read_only=True)
+    member_photo = serializers.SerializerMethodField()
+
+    def get_subscription_type_name(self, obj):
+        return obj.subscription_type.name if obj.subscription_type else "Custom"
+
+    def get_batch_name(self, obj):
+        return obj.batch.batch_name if obj.batch else "Any Time"
+
+    def get_member_photo(self, obj):
+        if obj.member and obj.member.photo:
+            try:
+                return obj.member.photo.url
+            except ValueError:
+                return None
+        return None
 
     class Meta:
         model = Subscription
@@ -28,8 +47,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'start_date', 'end_date', 'status', 
             'base_amount', 'discount_amount', 'final_amount', 
             'amount_paid', 'balance_amount',
-            'days_remaining', 'is_fully_paid',
-            'payment_terms', 'installment_count', 'installments'
+            'is_fully_paid', 'payment_terms', 'installment_count', 'installments',
+            'member_name', 'member_id_code', 'member_mobile', 'member_photo',
+            'days_remaining'
         ]
 
 
@@ -37,9 +57,17 @@ class SubscriptionListSerializer(serializers.ModelSerializer):
     """Serializer for subscription list including member details"""
     member_name = serializers.CharField(source='member.full_name', read_only=True)
     member_id = serializers.CharField(source='member.member_id', read_only=True)
-    branch_name = serializers.CharField(source='member.branch.name', read_only=True)
-    subscription_type_name = serializers.CharField(source='subscription_type.name', read_only=True)
+    branch_name = serializers.SerializerMethodField()
+    subscription_type_name = serializers.SerializerMethodField()
     days_remaining = serializers.IntegerField(read_only=True)
+
+    def get_branch_name(self, obj):
+        if obj.member and obj.member.branch:
+            return obj.member.branch.name
+        return "Main Branch"
+
+    def get_subscription_type_name(self, obj):
+        return obj.subscription_type.name if obj.subscription_type else "Custom"
 
     class Meta:
         model = Subscription
@@ -53,9 +81,12 @@ class SubscriptionListSerializer(serializers.ModelSerializer):
 
 class MemberMobileListSerializer(serializers.ModelSerializer):
     """Optimized serializer for mobile member listing"""
-    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    branch_name = serializers.SerializerMethodField()
     full_name = serializers.CharField(read_only=True)
     active_subscription = serializers.SerializerMethodField()
+
+    def get_branch_name(self, obj):
+        return obj.branch.name if obj.branch else "Main Branch"
 
     class Meta:
         model = Member
@@ -79,11 +110,14 @@ class MemberMobileListSerializer(serializers.ModelSerializer):
 
 class MemberDetailSerializer(serializers.ModelSerializer):
     """Full detail serializer for a member including all subscriptions"""
-    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    branch_name = serializers.SerializerMethodField()
     full_name = serializers.CharField(read_only=True)
     subscriptions = SubscriptionSerializer(many=True, read_only=True)
     age = serializers.IntegerField(read_only=True)
     bmi = serializers.FloatField(read_only=True)
+
+    def get_branch_name(self, obj):
+        return obj.branch.name if obj.branch else "Main Branch"
 
     class Meta:
         model = Member
