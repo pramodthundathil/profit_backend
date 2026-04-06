@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
@@ -12,7 +12,19 @@ from .models import Payment
 from .serializers import PaymentSerializer, PaymentSummarySerializer
 from members.models import Subscription, SubscriptionInstallment
 
-@method_decorator(name='list', decorator=swagger_auto_schema(tags=['Payments'], operation_description="List payments with filtering and sorting"))
+from drf_yasg import openapi
+
+@method_decorator(name='list', decorator=swagger_auto_schema(
+    tags=['Payments'], 
+    operation_description="List payments with filtering and sorting",
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description="Search by name, ID or receipt", type=openapi.TYPE_STRING),
+        openapi.Parameter('sort', openapi.IN_QUERY, description="Sort by date (payment_date or -payment_date)", type=openapi.TYPE_STRING),
+        openapi.Parameter('days', openapi.IN_QUERY, description="Number of days to look back (default 30)", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('branch', openapi.IN_QUERY, description="Filter by branch ID", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('include_stats', openapi.IN_QUERY, description="Include summary stats in response", type=openapi.TYPE_BOOLEAN),
+    ]
+))
 @method_decorator(name='retrieve', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Get specific payment details"))
 @method_decorator(name='create', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Record a new payment"))
 @method_decorator(name='update', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Update payment record"))
@@ -39,10 +51,31 @@ class PaymentViewSet(viewsets.ModelViewSet):
              queryset = queryset.filter(member__branch=user.branch)
              
         # Date filtering (Last 30 days by default)
-        days = int(self.request.query_params.get('days', 30))
+        try:
+            days = int(self.request.query_params.get('days', 30))
+        except (ValueError, TypeError):
+            days = 30
+            
         if days > 0:
              start_date = timezone.now().date() - timedelta(days=days)
              queryset = queryset.filter(payment_date__gte=start_date)
+        
+        # Search (Member Name, ID, Receipt No)
+        search_query = self.request.query_params.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(member__first_name__icontains=search_query) |
+                Q(member__last_name__icontains=search_query) |
+                Q(member__member_id__icontains=search_query) |
+                Q(receipt_number__icontains=search_query)
+            )
+
+        # Sorting
+        sort_by = self.request.query_params.get('sort', '-payment_date')
+        if sort_by in ['payment_date', '-payment_date']:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-payment_date')
              
         return queryset
 
