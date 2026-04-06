@@ -1,8 +1,8 @@
 from django.urls import path
-from . import views_user
+from . import views, views_user
 
 urlpatterns = [
-    # Member Management
+    # Template-based views (for dashboard/web interface)
     path('user/members/', views_user.member_list, name='member-list'),
     path('user/members/add/', views_user.member_create, name='member-create'),
     path('user/members/<int:pk>/', views_user.member_detail, name='member-detail'),
@@ -10,4 +10,19 @@ urlpatterns = [
     path('user/members/<int:pk>/delete/', views_user.member_delete, name='member-delete'),
     path('user/members/<int:pk>/subscription/add/', views_user.member_add_subscription, name='member-subscription-add'),
     path('user/members/installment/<int:pk>/pay/', views_user.installment_pay, name='installment-pay'),
+
+    # REST API endpoints (for mobile app & integrations)
+    path('api/mobile/list/', views.mobile_member_list, name='api-mobile-member-list'),
+    
+    # Member API CRUD
+    path('api/members/create/', views.member_create_api, name='api-member-create'),
+    path('api/members/list/', views.mobile_member_list, name='api-member-list'), # Reusing mobile list for general list
+    path('api/members/<int:pk>/', views.member_detail_api, name='api-member-detail'),
+    path('api/members/<int:pk>/update/', views.member_update_api, name='api-member-update'),
+    path('api/members/<int:pk>/delete/', views.member_delete_api, name='api-member-delete'),
+    
+    # Subscription API CRUD
+    path('api/members/<int:member_id>/subscription/create/', views.subscription_create_api, name='api-subscription-create'),
+    path('api/subscription/<int:pk>/update/', views.subscription_update_api, name='api-subscription-update'),
+    path('api/subscription/<int:pk>/delete/', views.subscription_delete_api, name='api-subscription-delete'),
 ]
