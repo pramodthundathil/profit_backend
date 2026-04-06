@@ -1,6 +1,12 @@
-from rest_framework import serializers
-from .models import Member, Subscription
+from .models import Member, Subscription, SubscriptionInstallment
 from utils.models import TypeSubscription
+
+class SubscriptionInstallmentSerializer(serializers.ModelSerializer):
+    """Serializer for individual installments"""
+    class Meta:
+        model = SubscriptionInstallment
+        fields = ['id', 'installment_number', 'due_date', 'amount', 'status', 'paid_date']
+
 
 class SubscriptionSerializer(serializers.ModelSerializer):
     """Serializer for member subscriptions"""
@@ -9,6 +15,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     duration_display = serializers.CharField(read_only=True)
     balance_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     days_remaining = serializers.IntegerField(read_only=True)
+
+    installments = SubscriptionInstallmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Subscription
@@ -19,7 +27,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'start_date', 'end_date', 'status', 
             'base_amount', 'discount_amount', 'final_amount', 
             'amount_paid', 'balance_amount',
-            'days_remaining', 'is_fully_paid'
+            'days_remaining', 'is_fully_paid',
+            'payment_terms', 'installment_count', 'installments'
         ]
 
 

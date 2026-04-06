@@ -202,9 +202,24 @@ def subscription_create_api(request, member_id):
     member = get_object_or_404(Member, pk=member_id, gym=request.user.gym)
     serializer = SubscriptionSerializer(data=request.data)
     if serializer.is_valid():
-        subscription = serializer.save(member=member)
-        member.update_membership_status()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        with transaction.atomic():
+            subscription = serializer.save(member=member)
+            
+            # If amount_paid is provided, create a Payment record
+            amount_paid = request.data.get('amount_paid', 0)
+            if float(amount_paid) > 0:
+                from payments.models import Payment
+                Payment.objects.create(
+                    subscription=subscription,
+                    member=member,
+                    amount=amount_paid,
+                    payment_method=request.data.get('payment_method', 'Cash'),
+                    status='Completed',
+                    notes="Initial payment during subscription creation"
+                )
+            
+            member.update_membership_status()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @swagger_auto_schema(
