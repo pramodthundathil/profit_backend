@@ -4,9 +4,11 @@ from rest_framework import serializers
 
 class SubscriptionInstallmentSerializer(serializers.ModelSerializer):
     """Serializer for individual installments"""
+    remaining_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    
     class Meta:
         model = SubscriptionInstallment
-        fields = ['id', 'installment_number', 'due_date', 'amount', 'status', 'paid_date']
+        fields = ['id', 'installment_number', 'due_date', 'amount', 'amount_paid', 'remaining_amount', 'status', 'paid_date']
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

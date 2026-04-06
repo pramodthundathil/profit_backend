@@ -55,6 +55,19 @@ class SubscriptionForm(forms.ModelForm):
         label="Duration"
     )
     
+    payment_method = forms.ChoiceField(
+        choices=(
+            ("Cash", "Cash"),
+            ("UPI", "UPI"),
+            ("Card", "Card"),
+            ("Bank Transfer", "Bank Transfer"),
+            ("Tabby", "Tabby")
+        ),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial="Cash"
+    )
+    
     # We use this to populate the duration field in model save
     
     class Meta:

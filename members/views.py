@@ -224,11 +224,26 @@ def subscription_create_api(request, member_id):
             amount_paid = request.data.get('amount_paid', 0)
             if float(amount_paid) > 0:
                 from payments.models import Payment
+                # Get the first installment (it was created in subscription.save())
+                installment = subscription.installments.order_by('installment_number').first()
+                if installment:
+                    amt = Decimal(str(amount_paid))
+                    installment.amount_paid += amt
+                    if installment.amount_paid >= installment.amount:
+                        installment.status = 'Paid'
+                    else:
+                        installment.status = 'Partially Paid'
+                    installment.paid_date = timezone.now().date()
+                    installment.save()
+                
                 Payment.objects.create(
                     subscription=subscription,
                     member=member,
+                    installment=installment,
                     amount=amount_paid,
                     payment_method=request.data.get('payment_method', 'Cash'),
+                    is_installment=True if installment else False,
+                    installment_number=installment.installment_number if installment else None,
                     status='Completed',
                     notes="Initial payment during subscription creation"
                 )

@@ -394,7 +394,7 @@ class Subscription(models.Model):
         super().save(*args, **kwargs)
         
         # Generate installments if applicable
-        if self.payment_terms == 'Installment':
+        if self.payment_terms in ['Installment', 'Full']:
             self.generate_installments()
     
     def clean(self):
@@ -501,28 +501,39 @@ class Subscription(models.Model):
     
     def generate_installments(self):
         """Auto-generate installments based on terms"""
-        if self.payment_terms != 'Installment' or self.installment_count <= 1:
+        if self.payment_terms == 'Full':
+            count = 1
+        elif self.payment_terms == 'Installment':
+            count = max(1, self.installment_count) # Ensure at least 1
+        else:
             return
 
         # Calculate installment amount
-        total_amount = self.final_amount
-        count = self.installment_count
+        total_amount = Decimal(str(self.final_amount))
         amount_per_installment = total_amount / count
         
         # Check if existing installments need to be regenerated?
-        # Only regenerate if total counts mismatch or forced
-        current_count = self.installments.count()
+        current_installments = self.installments.all()
+        current_count = current_installments.count()
+
+        # If count matches, just update amounts if they differ
         if current_count == count:
-             # Logic to update amounts if total changed could go here
+             for inst in current_installments:
+                 if inst.amount != amount_per_installment and inst.status == 'Pending':
+                     inst.amount = amount_per_installment
+                     inst.save(update_fields=['amount'])
              return
 
-        # Clear existing pending installments if re-generating (simplified logic)
+        # Clear existing pending installments if re-generating
         self.installments.filter(status='Pending').delete()
         
-        # Create new installments
+        # Re-fetch count after deletion
+        current_count = self.installments.count()
+        
+        # Create new installments for the remaining count
         start = self.start_date
-        for i in range(1, count + 1):
-             # 30 days gap for simplicity, or 1 month
+        for i in range(current_count + 1, count + 1):
+             # 30 days gap for simplicity
              due = start + timedelta(days=(i-1)*30)
              
              SubscriptionInstallment.objects.create(

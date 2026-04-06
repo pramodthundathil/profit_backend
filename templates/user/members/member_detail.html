@@ -152,12 +152,19 @@
                                         <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ sub.status }}</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ sub.final_amount }}</td>
+                                    <td>
+                                        <div class="fw-bold">
+                                            ₹{{ sub.final_amount }}
+                                            {% if sub.balance_amount > 0 %}
+                                            <span class="text-danger small ms-1">(Bal: ₹{{ sub.balance_amount }})</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
                                 </tr>
-                                {% if sub.payment_terms == 'Installment' %}
+                                {% if sub.installments.exists %}
                                 <tr>
                                     <td colspan="5" class="bg-light p-3">
-                                        <div class="small fw-bold mb-2">Installment Plan</div>
+                                        <div class="small fw-bold mb-2">Payment Details / Installments</div>
                                         <table class="table table-sm table-bordered bg-white mb-0">
                                             <thead class="table-light">
                                                 <tr>
@@ -173,10 +180,17 @@
                                                 <tr>
                                                     <td>{{ inst.installment_number }}</td>
                                                     <td>{{ inst.due_date|date:"d M Y" }}</td>
-                                                    <td>{{ inst.amount }}</td>
+                                                    <td>
+                                                        {{ inst.amount }}
+                                                        {% if inst.remaining_amount > 0 and inst.status == 'Partially Paid' %}
+                                                        <span class="text-danger small ms-1">(Bal: ₹{{ inst.remaining_amount }})</span>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>
                                                         {% if inst.status == 'Paid' %}
                                                         <span class="badge bg-success">Paid</span>
+                                                        {% elif inst.status == 'Partially Paid' %}
+                                                        <span class="badge bg-info text-white">Partial</span>
                                                         {% else %}
                                                         <span class="badge bg-warning text-dark">Pending</span>
                                                         {% endif %}

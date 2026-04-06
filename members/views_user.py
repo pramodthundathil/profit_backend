@@ -81,6 +81,33 @@ def member_create(request):
                     
                     subscription.save()
                     
+                    # 3. Handle Initial Payment
+                    amount_paid = subscription_form.cleaned_data.get('amount_paid', 0)
+                    if amount_paid and amount_paid > 0:
+                        from payments.models import Payment
+                        # Get the first installment (it was created in subscription.save())
+                        installment = subscription.installments.order_by('installment_number').first()
+                        if installment:
+                            installment.amount_paid += amount_paid
+                            if installment.amount_paid >= installment.amount:
+                                installment.status = 'Paid'
+                            else:
+                                installment.status = 'Partially Paid'
+                            installment.paid_date = timezone.now().date()
+                            installment.save()
+                        
+                        Payment.objects.create(
+                            subscription=subscription,
+                            member=member,
+                            installment=installment,
+                            amount=amount_paid,
+                            payment_method=subscription_form.cleaned_data.get('payment_method', 'Cash'),
+                            is_installment=True if installment else False,
+                            installment_number=installment.installment_number if installment else None,
+                            status='Completed',
+                            notes="Initial payment during member creation"
+                        )
+                    
                     # Update member status
                     member.update_membership_status()
                     
@@ -204,6 +231,33 @@ def member_add_subscription(request, pk):
                 subscription.duration_unit = 'Days' 
                 
                 subscription.save()
+                
+                # Handle Initial Payment
+                amount_paid = form.cleaned_data.get('amount_paid', 0)
+                if amount_paid and amount_paid > 0:
+                    from payments.models import Payment
+                    # Get the first installment (it was created in subscription.save())
+                    installment = subscription.installments.order_by('installment_number').first()
+                    if installment:
+                        installment.amount_paid += amount_paid
+                        if installment.amount_paid >= installment.amount:
+                            installment.status = 'Paid'
+                        else:
+                            installment.status = 'Partially Paid'
+                        installment.paid_date = timezone.now().date()
+                        installment.save()
+                    
+                    Payment.objects.create(
+                        subscription=subscription,
+                        member=member,
+                        installment=installment,
+                        amount=amount_paid,
+                        payment_method=form.cleaned_data.get('payment_method', 'Cash'),
+                        is_installment=True if installment else False,
+                        installment_number=installment.installment_number if installment else None,
+                        status='Completed',
+                        notes="Initial payment during subscription creation"
+                    )
                 
                 # Update member status
                 member.update_membership_status()
