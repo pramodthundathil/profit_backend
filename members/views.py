@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from decimal import Decimal
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -257,7 +258,16 @@ def subscription_delete_api(request, pk):
 
 @swagger_auto_schema(
     method='post',
-    operation_description="Mark an installment as Paid",
+    operation_description="Process payment for an installment (Full or Partial)",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'payment_type': openapi.Schema(type=openapi.TYPE_STRING, enum=['Full', 'Partial'], default='Full'),
+            'amount': openapi.Schema(type=openapi.TYPE_NUMBER, format=openapi.FORMAT_DECIMAL, description="Amount to pay. Defaults to installment balance."),
+            'payment_method': openapi.Schema(type=openapi.TYPE_STRING, enum=['Cash', 'UPI', 'Card', 'Bank Transfer'], default='Cash'),
+            'expiry_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description="Custom sub expiry date. Recommended for Partial payments."),
+        }
+    ),
     responses={200: "Success message", 400: "Error message"}
 )
 @api_view(['POST'])
@@ -272,13 +282,45 @@ def installment_pay_api(request, pk):
     if installment.status == 'Paid':
         return Response({"error": "Installment is already paid"}, status=status.HTTP_400_BAD_REQUEST)
         
+    payment_type = request.data.get('payment_type', 'Full')
+    amount = Decimal(str(request.data.get('amount', installment.remaining_amount)))
+    payment_method = request.data.get('payment_method', 'Cash')
+    expiry_date = request.data.get('expiry_date')
+
     with transaction.atomic():
-        installment.status = 'Paid'
+        # 1. Update Installment
+        installment.amount_paid += amount
+        if installment.amount_paid >= installment.amount:
+            installment.status = 'Paid'
+        else:
+            installment.status = 'Partially Paid'
+        
         installment.paid_date = timezone.now().date()
         installment.save()
         
-        # Update subscription payment status (recalculates amount_paid)
+        # 2. Create Payment record
+        from payments.models import Payment
         sub = installment.subscription
-        sub.update_payment_status()
+        Payment.objects.create(
+            subscription=sub,
+            member=sub.member,
+            installment=installment,
+            amount=amount,
+            payment_method=payment_method,
+            is_installment=True,
+            installment_number=installment.installment_number,
+            status='Completed',
+            notes=f"API: {payment_type} payment for installment {installment.installment_number}"
+        )
+        # Note: update_payment_status is called automatically by Payment.save()
         
-        return Response({"message": f"Installment {installment.installment_number} marked as paid."})
+        # 3. Explicitly set expiry date if it's a partial payment and user provided a date
+        if payment_type == 'Partial' and expiry_date:
+            sub.end_date = expiry_date
+            sub.save(update_fields=['end_date'])
+        
+        return Response({
+            "message": f"Payment of {amount} for installment {installment.installment_number} recorded successfully.",
+            "status": installment.status,
+            "remaining_amount": float(installment.remaining_amount)
+        })

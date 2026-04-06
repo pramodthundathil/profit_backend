@@ -183,10 +183,17 @@
                                                     </td>
                                                     <td>
                                                         {% if inst.status != 'Paid' %}
-                                                        <form method="post" action="{% url 'installment-pay' inst.pk %}" style="display:inline;" onsubmit="return confirm('Mark this installment as paid?');">
-                                                            {% csrf_token %}
-                                                            <button type="submit" class="btn btn-primary btn-sm py-0 px-2" style="font-size: 0.75rem;">Pay</button>
-                                                        </form>
+                                                        <button type="button" 
+                                                            class="btn btn-primary btn-sm py-0 px-2" 
+                                                            style="font-size: 0.75rem;"
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#paymentModal"
+                                                            data-installment-id="{{ inst.pk }}"
+                                                            data-installment-num="{{ inst.installment_number }}"
+                                                            data-amount="{{ inst.remaining_amount }}"
+                                                            data-pay-url="{% url 'installment-pay' inst.pk %}">
+                                                            Pay
+                                                        </button>
                                                         {% endif %}
                                                     </td>
                                                 </tr>
@@ -206,9 +213,42 @@
                     </div>
                 </div>
 
-                <!-- Payments Tab (Placeholder as Payment model linking might be separate) -->
+                <!-- Payments Tab -->
                 <div class="tab-pane fade" id="payments" role="tabpanel">
-                     <p class="text-muted text-center py-4">Payment history module integration pending.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Receipt #</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in member.payments.all %}
+                                <tr>
+                                    <td>{{ payment.payment_date|date:"d M Y" }}</td>
+                                    <td><small class="font-monospace text-primary">{{ payment.receipt_number }}</small></td>
+                                    <td class="fw-bold">₹{{ payment.amount }}</td>
+                                    <td>{{ payment.payment_method }}</td>
+                                    <td>
+                                        {% if payment.is_installment %}
+                                        <span class="badge bg-info bg-opacity-10 text-info">Inst. #{{ payment.installment_number }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Full</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">No payment records found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 
                 <!-- Health Info Tab -->
@@ -272,4 +312,113 @@
         </div>
     </div>
 </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form id="paymentForm" method="post">
+                {% csrf_token %}
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="paymentModalLabel">Record Payment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Payment Type</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_type" id="typeFull" value="Full" checked>
+                                <label class="form-check-label" for="typeFull">Full Payment</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_type" id="typePartial" value="Partial">
+                                <label class="form-check-label" for="typePartial">Partial Payment</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="amountToPay" class="form-label text-muted small fw-bold text-uppercase">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" class="form-control" id="amountToPay" name="amount" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="paymentMethod" class="form-label text-muted small fw-bold text-uppercase">Method</label>
+                            <select class="form-select" id="paymentMethod" name="payment_method">
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="Card">Card</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                        <div class="col-12" id="expiryGroup" style="display: none;">
+                            <label for="expiryDate" class="form-label text-muted small fw-bold text-uppercase">New Expiry Date (Partial Only)</label>
+                            <input type="date" class="form-control" id="expiryDate" name="expiry_date" value="{{ member.current_subscription.end_date|date:'Y-m-d' }}">
+                            <div class="form-text">Choose how long this partial payment covers access.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4">Confirm Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentModal = document.getElementById('paymentModal');
+    const paymentForm = document.getElementById('paymentForm');
+    const amountToPay = document.getElementById('amountToPay');
+    const expiryGroup = document.getElementById('expiryGroup');
+    const expiryDateInput = document.getElementById('expiryDate');
+    const typeRadios = document.querySelectorAll('input[name="payment_type"]');
+
+    // Handle Modal Data Population
+    paymentModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const url = button.getAttribute('data-pay-url');
+        const amount = button.getAttribute('data-amount');
+        const instNum = button.getAttribute('data-installment-num');
+
+        paymentForm.action = url;
+        amountToPay.value = amount;
+        amountToPay.dataset.fullAmount = amount; // Store full amount for easy reset
+        
+        document.getElementById('paymentModalLabel').textContent = `Record Payment: Installment #${instNum}`;
+        
+        // Reset state
+        document.getElementById('typeFull').checked = true;
+        expiryGroup.style.display = 'none';
+        expiryDateInput.required = false;
+        amountToPay.readOnly = false;
+    });
+
+    // Handle Radio Changes
+    typeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'Partial') {
+                expiryGroup.style.display = 'block';
+                expiryDateInput.required = true;
+                amountToPay.readOnly = false;
+            } else {
+                expiryGroup.style.display = 'none';
+                expiryDateInput.required = false;
+                amountToPay.value = amountToPay.dataset.fullAmount;
+                // Note: Keep full amount visible but maybe make readOnly if strictly enforcing full payment
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

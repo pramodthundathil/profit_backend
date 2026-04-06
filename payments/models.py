@@ -24,6 +24,14 @@ class Payment(models.Model):
         related_name="payments"
     )
     
+    installment = models.ForeignKey(
+        'members.SubscriptionInstallment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments'
+    )
+    
     # Payment Details
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(
@@ -96,7 +104,7 @@ class Payment(models.Model):
     def save(self, *args, **kwargs):
         if not self.receipt_number:
             # Generate unique receipt number
-            gym_code = self.member.gym.code
+            gym_code = (self.member.gym.name[:3].upper() if self.member.gym.name else "GYM")
             today = timezone.now().strftime('%Y%m%d')
             
             last_payment = Payment.objects.filter(

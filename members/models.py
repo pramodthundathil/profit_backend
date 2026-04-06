@@ -291,6 +291,11 @@ class Subscription(models.Model):
         decimal_places=2,
         default=0
     )
+    balance_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
     
     # Additional Features (Custom per subscription)
     includes_personal_training = models.BooleanField(default=False)
@@ -418,7 +423,7 @@ class Subscription(models.Model):
         return 0
     
     def update_payment_status(self):
-        """Update payment status based on payments"""
+        """Update payment status based on payments and adjust end date based on installments"""
         total_paid = self.payments.filter(
             status='Completed'
         ).aggregate(
@@ -426,8 +431,22 @@ class Subscription(models.Model):
         )['total'] or Decimal('0')
         
         self.amount_paid = total_paid
+        self.balance_amount = max(self.final_amount - self.amount_paid, 0)
         self.is_fully_paid = (self.amount_paid >= self.final_amount)
-        self.save(update_fields=['amount_paid', 'is_fully_paid'])
+        
+        # Dynamic End Date Logic based on Installments
+        # Only run auto-calculation if not explicitly overridden by a partial payment logic
+        if self.payment_terms == 'Installment':
+            next_installment = self.installments.exclude(status='Paid').order_by('due_date').first()
+            if next_installment:
+                if next_installment.status == 'Pending':
+                    # Only auto-calculate for Pending. If Partially Paid, we trust the manual expiry set in view.
+                    self.end_date = next_installment.due_date - timedelta(days=1)
+            else:
+                # All paid, set to full term
+                self.end_date = self.start_date + timedelta(days=self.get_total_days())
+        
+        self.save(update_fields=['amount_paid', 'balance_amount', 'is_fully_paid', 'end_date'])
         
         # Update member access
         self.member.update_access_status()
@@ -469,10 +488,6 @@ class Subscription(models.Model):
             self.status = 'Active'
             self.save()
     
-    @property
-    def balance_amount(self):
-        """Remaining amount to be paid"""
-        return self.final_amount - self.amount_paid
     
     @property
     def is_expired(self):
@@ -575,10 +590,18 @@ class SubscriptionInstallment(models.Model):
         max_length=20,
         choices=(
             ("Pending", "Pending"),
+            ("Partially Paid", "Partially Paid"),
             ("Paid", "Paid"),
             ("Overdue", "Overdue")
         ),
         default="Pending"
+    )
+    
+    amount_paid = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Amount paid for this specific installment"
     )
     
     paid_date = models.DateField(null=True, blank=True)
@@ -589,6 +612,11 @@ class SubscriptionInstallment(models.Model):
         ordering = ['due_date']
         unique_together = ['subscription', 'installment_number']
         
+    @property
+    def remaining_amount(self):
+        """Amount remaining for this installment"""
+        return max(0, self.amount - self.amount_paid)
+
     def __str__(self):
         return f"{self.subscription} - Installment {self.installment_number} ({self.amount})"
 

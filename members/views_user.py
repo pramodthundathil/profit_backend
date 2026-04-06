@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
@@ -234,16 +235,44 @@ def installment_pay(request, pk):
          return redirect('user-dashboard')
          
     if request.method == 'POST':
-        # Mark as paid
-        installment.status = 'Paid'
+        payment_type = request.POST.get('payment_type', 'Full')
+        amount_str = request.POST.get('amount')
+        amount = Decimal(amount_str) if amount_str else installment.remaining_amount
+        payment_method = request.POST.get('payment_method', 'Cash')
+        expiry_date = request.POST.get('expiry_date')
+        
+        # 1. Update Installment
+        installment.amount_paid += amount
+        if installment.amount_paid >= installment.amount:
+            installment.status = 'Paid'
+        else:
+            installment.status = 'Partially Paid'
+        
         installment.paid_date = timezone.now().date()
         installment.save()
         
-        # Update subscription amount paid
+        # 2. Create Payment record
+        from payments.models import Payment
         sub = installment.subscription
-        sub.update_payment_status()
+        Payment.objects.create(
+            subscription=sub,
+            member=sub.member,
+            installment=installment,
+            amount=amount,
+            payment_method=payment_method,
+            is_installment=True,
+            installment_number=installment.installment_number,
+            status='Completed',
+            notes=f"{payment_type} payment for installment {installment.installment_number}"
+        )
+        # Note: update_payment_status is called automatically by Payment.save()
         
-        messages.success(request, f"Installment {installment.installment_number} marked as paid.")
+        # 3. Explicitly set expiry date if it's a partial payment and user provided a date
+        if payment_type == 'Partial' and expiry_date:
+            sub.end_date = expiry_date
+            sub.save(update_fields=['end_date'])
+        
+        messages.success(request, f"Payment of {amount} for installment {installment.installment_number} recorded successfully.")
         return redirect('member-detail', pk=sub.member.pk)
         
     return redirect('member-detail', pk=installment.subscription.member.pk)
