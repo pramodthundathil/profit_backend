@@ -44,7 +44,7 @@ class SubscriptionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = [
-            'id', 'member_id', 'member_name', 'branch_name',
+            'id', 'member', 'member_id', 'member_name', 'branch_name',
             'subscription_type_name', 'start_date', 'end_date', 
             'status', 'final_amount', 'amount_paid', 'balance_amount',
             'days_remaining', 'is_fully_paid'

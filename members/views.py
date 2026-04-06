@@ -243,6 +243,19 @@ def subscription_update_api(request, pk):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @swagger_auto_schema(
+    method='get',
+    operation_description="Get subscription details",
+    responses={200: SubscriptionSerializer}
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def subscription_detail_api(request, pk):
+    """API view to get subscription details"""
+    subscription = get_object_or_404(Subscription, pk=pk, member__gym=request.user.gym)
+    serializer = SubscriptionSerializer(subscription)
+    return Response(serializer.data)
+
+@swagger_auto_schema(
     method='delete',
     operation_description="Cancel a subscription",
     responses={204: "No Content"}
