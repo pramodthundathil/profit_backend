@@ -25,6 +25,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 class MemberMobileListSerializer(serializers.ModelSerializer):
     """Optimized serializer for mobile member listing"""
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
     full_name = serializers.CharField(read_only=True)
     active_subscription = serializers.SerializerMethodField()
 
@@ -33,7 +34,7 @@ class MemberMobileListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'member_id', 'full_name', 'mobile_number', 
             'photo', 'membership_status', 'is_active',
-            'active_subscription'
+            'active_subscription', 'branch', 'branch_name'
         ]
 
     def get_active_subscription(self, obj):
@@ -50,6 +51,7 @@ class MemberMobileListSerializer(serializers.ModelSerializer):
 
 class MemberDetailSerializer(serializers.ModelSerializer):
     """Full detail serializer for a member including all subscriptions"""
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
     full_name = serializers.CharField(read_only=True)
     subscriptions = SubscriptionSerializer(many=True, read_only=True)
     age = serializers.IntegerField(read_only=True)
@@ -63,7 +65,7 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             'address', 'photo', 'id_proof', 'membership_status',
             'is_active', 'height', 'weight', 'bmi', 'blood_group',
             'medical_history', 'emergency_contact_name', 'emergency_contact_number',
-            'registration_date', 'subscriptions'
+            'registration_date', 'branch', 'branch_name', 'subscriptions'
         ]
 
 class MemberStatsSerializer(serializers.Serializer):

@@ -101,10 +101,16 @@ def member_create_api(request):
     if serializer.is_valid():
         try:
             with transaction.atomic():
-                # For branch managers, force the branch from their profile
+                # Default branch logic
+                branch_id = request.data.get('branch')
                 branch = None
+                
                 if user.role == 'branch_admin' and user.branch:
                     branch = user.branch
+                elif branch_id:
+                    # Verify branch belongs to same gym
+                    from home.models import GymBranch
+                    branch = get_object_or_404(GymBranch, id=branch_id, gym=user.gym)
                 
                 # Save member
                 serializer.save(gym=user.gym, branch=branch)
@@ -112,6 +118,7 @@ def member_create_api(request):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @swagger_auto_schema(
@@ -138,11 +145,30 @@ def member_detail_api(request, pk):
 def member_update_api(request, pk):
     """API view to update a member"""
     member = get_object_or_404(Member, pk=pk, gym=request.user.gym)
+    
+    # Permission check: branch admin can only update their own members
+    if request.user.role == 'branch_admin' and member.branch != request.user.branch:
+        return Response({"error": "Unauthorized to update members from other branches"}, 
+                        status=status.HTTP_403_FORBIDDEN)
+
     serializer = MemberDetailSerializer(member, data=request.data, partial=True)
     if serializer.is_valid():
-        serializer.save()
+        # Handle branch update if provided and user is gym_admin or admin
+        if request.user.role in ['gym_admin', 'admin'] and 'branch' in request.data:
+            branch_id = request.data.get('branch')
+            if branch_id:
+                from home.models import GymBranch
+                branch = get_object_or_404(GymBranch, id=branch_id, gym=request.user.gym)
+                serializer.save(branch=branch)
+            else:
+                serializer.save(branch=None)
+        else:
+            serializer.save()
+            
+        member.update_membership_status()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @swagger_auto_schema(
     method='delete',
