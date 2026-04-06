@@ -61,6 +61,8 @@ class BatchViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Batch_DB.objects.none()
         return Batch_DB.objects.filter(gym=self.request.user.gym)
 
     def perform_create(self, serializer):
@@ -95,6 +97,8 @@ class TypeSubscriptionViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return TypeSubscription.objects.none()
         return TypeSubscription.objects.filter(gym=self.request.user.gym)
 
     def perform_create(self, serializer):
@@ -129,6 +133,8 @@ class SubscriptionPeriodViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return SubscriptionPeriod.objects.none()
         return SubscriptionPeriod.objects.filter(gym=self.request.user.gym)
 
     def perform_create(self, serializer):

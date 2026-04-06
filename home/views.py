@@ -142,6 +142,8 @@ class GymOfficeViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return GymOffice.objects.none()
         user = self.request.user
         
         # Super admin sees all gyms
@@ -280,6 +282,8 @@ class GymBranchViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated(), CanViewBranch()]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return GymBranch.objects.none()
         user = self.request.user
         
         # Super admin sees all branches
@@ -378,6 +382,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return CustomUser.objects.none()
         user = self.request.user
         
         # Super admin sees all users
@@ -612,6 +618,8 @@ class SubscriptionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         return super().retrieve(request, *args, **kwargs)
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return SubscriptionHistory.objects.none()
         user = self.request.user
         
         # Super admin sees all
@@ -638,6 +646,8 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return PaymentTransaction.objects.none()
         user = self.request.user
         
         # Super admin sees all

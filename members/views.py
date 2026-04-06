@@ -42,6 +42,7 @@ def mobile_member_list(request):
 
     branch_filter = request.GET.get('branch', '')
     search_query = request.GET.get('search', '')
+    status_filter = request.GET.get('status', '')
     
     members = Member.objects.filter(gym=user.gym, is_active=True).select_related('branch')
 
@@ -51,7 +52,22 @@ def mobile_member_list(request):
     elif branch_filter:
         members = members.filter(branch_id=branch_filter)
         
-    # Apply search
+    # Apply status filter
+    today = timezone.now().date()
+    expiring_soon = today + timedelta(days=7)
+    
+    if status_filter == 'active':
+        members = members.filter(membership_status='Active')
+    elif status_filter == 'expiring':
+        members = members.filter(
+            subscriptions__status='Active',
+            subscriptions__end_date__gte=today,
+            subscriptions__end_date__lte=expiring_soon
+        ).distinct()
+    elif status_filter == 'expired':
+        members = members.filter(membership_status='Expired')
+
+    # Apply search (after status filter to limit scope)
     if search_query:
         members = members.filter(
             Q(first_name__icontains=search_query) |
