@@ -99,9 +99,20 @@ def member_create_api(request):
 
     serializer = MemberDetailSerializer(data=request.data)
     if serializer.is_valid():
-        serializer.save(gym=user.gym)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            with transaction.atomic():
+                # For branch managers, force the branch from their profile
+                branch = None
+                if user.role == 'branch_admin' and user.branch:
+                    branch = user.branch
+                
+                # Save member
+                serializer.save(gym=user.gym, branch=branch)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @swagger_auto_schema(
     method='get',

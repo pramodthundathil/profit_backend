@@ -5,6 +5,7 @@ from utils.models import TypeSubscription
 class SubscriptionSerializer(serializers.ModelSerializer):
     """Serializer for member subscriptions"""
     subscription_type_name = serializers.CharField(source='subscription_type.name', read_only=True)
+    batch_name = serializers.CharField(source='batch.batch_name', read_only=True)
     duration_display = serializers.CharField(read_only=True)
     balance_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     days_remaining = serializers.IntegerField(read_only=True)
@@ -13,11 +14,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = [
             'id', 'subscription_type', 'subscription_type_name', 
+            'batch', 'batch_name',
             'duration', 'duration_unit', 'duration_display',
             'start_date', 'end_date', 'status', 
-            'final_amount', 'amount_paid', 'balance_amount',
+            'base_amount', 'discount_amount', 'final_amount', 
+            'amount_paid', 'balance_amount',
             'days_remaining', 'is_fully_paid'
         ]
+
 
 class MemberMobileListSerializer(serializers.ModelSerializer):
     """Optimized serializer for mobile member listing"""
