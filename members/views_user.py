@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.utils import timezone
 from .models import Member, Subscription
 from .forms import MemberForm, SubscriptionForm
 from home.models import GymBranch
@@ -31,7 +32,6 @@ def member_list(request):
     
     # Sorting (DataTables handles this, but good to have a default)
     members = members.order_by('-date_added')
-    
     # Branches for filter dropdown (Admin/Staff only)
     branches = GymBranch.objects.filter(gym=user.gym, is_active=True, is_deleted=False) if user.role != 'branch_admin' else None
 
@@ -225,6 +225,7 @@ def member_add_subscription(request, pk):
 @login_required
 def installment_pay(request, pk):
     from .models import SubscriptionInstallment
+    from django.utils import timezone
     installment = get_object_or_404(SubscriptionInstallment, pk=pk)
     
     # Permission check (simplified)

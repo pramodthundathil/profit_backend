@@ -254,3 +254,31 @@ def subscription_delete_api(request, pk):
     subscription.save()
     subscription.member.update_membership_status()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Mark an installment as Paid",
+    responses={200: "Success message", 400: "Error message"}
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def installment_pay_api(request, pk):
+    """API view to mark an installment as Paid"""
+    from .models import SubscriptionInstallment
+    from django.utils import timezone
+    
+    installment = get_object_or_404(SubscriptionInstallment, pk=pk, subscription__member__gym=request.user.gym)
+    
+    if installment.status == 'Paid':
+        return Response({"error": "Installment is already paid"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    with transaction.atomic():
+        installment.status = 'Paid'
+        installment.paid_date = timezone.now().date()
+        installment.save()
+        
+        # Update subscription payment status (recalculates amount_paid)
+        sub = installment.subscription
+        sub.update_payment_status()
+        
+        return Response({"message": f"Installment {installment.installment_number} marked as paid."})
