@@ -206,7 +206,7 @@
             <a href="{% url 'user-dashboard' %}#subscriptions" class="nav-link">
                 <i class="bi bi-credit-card-fill"></i> Subscriptions
             </a>
-            <a href="{% url 'user-dashboard' %}#payments" class="nav-link">
+            <a href="{% url 'payment-list' %}" class="nav-link {% if 'payment' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-cash-stack"></i> Payments
             </a>
             <a href="{% url 'user-branch-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-branch-list' %}active{% endif %}">

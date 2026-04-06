@@ -1,0 +1,132 @@
+{% extends 'user/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block header_title %}Record Payment{% endblock %}
+{% block header_subtitle %}Manually record a payment for a member subscription{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'payment-list' %}" class="text-decoration-none text-muted">Payments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Record Payment</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm transition-hover">
+            <div class="card-header bg-dark text-white py-3">
+                <h5 class="mb-0 fs-6">Payment Recording Form</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Member</label>
+                            {% render_field form.member class="form-select form-select-sm" %}
+                            {% if form.member.errors %}
+                                <div class="text-danger small mt-1">{{ form.member.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Subscription</label>
+                            {% render_field form.subscription class="form-select form-select-sm" %}
+                            {% if form.subscription.errors %}
+                                <div class="text-danger small mt-1">{{ form.subscription.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted mb-1">Installment (Optional)</label>
+                            {% render_field form.installment class="form-select form-select-sm" %}
+                            <small class="text-muted d-block mt-1">Leave blank if not specific to an installment</small>
+                            {% if form.installment.errors %}
+                                <div class="text-danger small mt-1">{{ form.installment.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Amount (₹)</label>
+                            {% render_field form.amount class="form-control form-control-sm" placeholder="0.00" %}
+                            {% if form.amount.errors %}
+                                <div class="text-danger small mt-1">{{ form.amount.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Payment Method</label>
+                            {% render_field form.payment_method class="form-select form-select-sm" %}
+                            {% if form.payment_method.errors %}
+                                <div class="text-danger small mt-1">{{ form.payment_method.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Payment Date</label>
+                            {% render_field form.payment_date class="form-control form-control-sm" %}
+                            {% if form.payment_date.errors %}
+                                <div class="text-danger small mt-1">{{ form.payment_date.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Transaction ID</label>
+                            {% render_field form.transaction_id class="form-control form-control-sm" placeholder="Bank Ref / UPI ID" %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">Collected By</label>
+                            {% render_field form.collected_by class="form-control form-control-sm" placeholder="Staff Name" %}
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted mb-1">Status</label>
+                            {% render_field form.status class="form-select form-select-sm" %}
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted mb-1">Notes</label>
+                            {% render_field form.notes class="form-control form-control-sm" %}
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top d-flex gap-2">
+                        <button type="submit" class="btn btn-dark btn-sm px-4">
+                            Save Payment
+                        </button>
+                        <a href="{% url 'payment-list' %}" class="btn btn-light btn-sm px-4">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .transition-hover:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Dynamic filtering of Subscriptions based on selected Member
+        $('#id_member').change(function() {
+            const memberId = $(this).val();
+            // In a real app, you'd fetch via AJAX. 
+            // For now, simple client-side hint if we had data, or just let server handle it.
+            // Requirement 10 says "payment details for serverside and api curd oprations".
+        });
+    });
+</script>
+{% endblock %}

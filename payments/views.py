@@ -1,3 +1,4 @@
 from django.shortcuts import render
 
-# Create your views here.
+# Regular views are now in views_user.py
+# API views are now in api.py

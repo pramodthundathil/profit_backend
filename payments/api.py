@@ -1,0 +1,124 @@
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from django.db.models import Sum
+from django.utils import timezone
+from datetime import timedelta
+from decimal import Decimal
+from drf_yasg.utils import swagger_auto_schema
+from django.utils.decorators import method_decorator
+
+from .models import Payment
+from .serializers import PaymentSerializer, PaymentSummarySerializer
+from members.models import Subscription, SubscriptionInstallment
+
+@method_decorator(name='list', decorator=swagger_auto_schema(tags=['Payments'], operation_description="List payments with filtering and sorting"))
+@method_decorator(name='retrieve', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Get specific payment details"))
+@method_decorator(name='create', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Record a new payment"))
+@method_decorator(name='update', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Update payment record"))
+@method_decorator(name='partial_update', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Partially update payment record"))
+@method_decorator(name='destroy', decorator=swagger_auto_schema(tags=['Payments'], operation_description="Delete payment record"))
+class PaymentViewSet(viewsets.ModelViewSet):
+    """API for managing payments"""
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.gym:
+             return Payment.objects.none()
+        
+        queryset = Payment.objects.filter(member__gym=user.gym)
+        
+        # Branch filtering
+        branch_id = self.request.query_params.get('branch')
+        if branch_id:
+             queryset = queryset.filter(member__branch_id=branch_id)
+        elif user.role == 'branch_admin' and user.branch:
+             queryset = queryset.filter(member__branch=user.branch)
+             
+        # Date filtering (Last 30 days by default)
+        days = int(self.request.query_params.get('days', 30))
+        if days > 0:
+             start_date = timezone.now().date() - timedelta(days=days)
+             queryset = queryset.filter(payment_date__gte=start_date)
+             
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """Include summary statistics in the list response if requested"""
+        response = super().list(request, *args, **kwargs)
+        if request.query_params.get('include_stats') == 'true':
+            stats_data = self._calculate_stats(request.user)
+            response.data['stats'] = stats_data
+        return response
+
+    @swagger_auto_schema(tags=['Payments'], operation_description="Get MTD (Month-to-Date) statistics for payments")
+    @action(detail=False, methods=['get'], url_path='stats')
+    def stats(self, request):
+        """Dedicated action for statistics"""
+        if not request.user.gym:
+             return Response({"error": "No gym associated"}, status=400)
+        
+        stats_data = self._calculate_stats(request.user)
+        return Response(stats_data)
+
+    def _calculate_stats(self, user):
+        """Helper to calculate MTD statistics"""
+        today = timezone.now().date()
+        month_start = today.replace(day=1)
+        prev_month_end = month_start - timedelta(days=1)
+        prev_month_start = prev_month_end.replace(day=1)
+        
+        # Base filter for the user's gym
+        base_payments = Payment.objects.filter(member__gym=user.gym, status='Completed')
+        base_installments = SubscriptionInstallment.objects.filter(subscription__member__gym=user.gym)
+        base_subscriptions = Subscription.objects.filter(member__gym=user.gym)
+        
+        if user.role == 'branch_admin' and user.branch:
+             base_payments = base_payments.filter(member__branch=user.branch)
+             base_installments = base_installments.filter(subscription__member__branch=user.branch)
+             base_subscriptions = base_subscriptions.filter(member__branch=user.branch)
+
+        # 1. Total Collected (MTD)
+        total_mtd = base_payments.filter(
+            payment_date__gte=month_start, 
+            payment_date__lte=today
+        ).aggregate(sum=Sum('amount'))['sum'] or Decimal('0.00')
+
+        # 2. Previous Month Collection
+        total_prev = base_payments.filter(
+            payment_date__gte=prev_month_start, 
+            payment_date__lte=prev_month_end
+        ).aggregate(sum=Sum('amount'))['sum'] or Decimal('0.00')
+
+        # 3. Pending Due (Current Month)
+        pending_mtd = base_installments.filter(
+            due_date__gte=month_start,
+            due_date__lte=today,
+            status__in=['Pending', 'Partially Paid']
+        )
+        pending_due_sum = sum(inst.remaining_amount for inst in pending_mtd)
+
+        # 4. Overdue (MTD)
+        overdue_mtd = base_installments.filter(
+            due_date__lt=today,
+            status__in=['Pending', 'Partially Paid', 'Overdue']
+        )
+        overdue_sum = sum(inst.remaining_amount for inst in overdue_mtd)
+
+        # 5. Discounts Given (MTD)
+        subscriptions_mtd = base_subscriptions.filter(
+            created_at__date__gte=month_start,
+            created_at__date__lte=today
+        )
+        discounts_sum = sum((sub.base_amount - sub.final_amount) for sub in subscriptions_mtd)
+
+        return {
+            'total_collected_mtd': total_mtd,
+            'total_collected_prev_month': total_prev,
+            'pending_due_mtd': pending_due_sum,
+            'overdue_mtd': overdue_sum,
+            'discounts_mtd': discounts_sum
+        }
