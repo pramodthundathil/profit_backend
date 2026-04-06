@@ -46,58 +46,55 @@ def mobile_member_list(request):
     
     members = Member.objects.filter(gym=user.gym, is_active=True).select_related('branch')
 
-    # Apply permissions
+    # Apply scope permissions (Gym Admin vs Branch Admin)
     if user.role == 'branch_admin' and user.branch:
         members = members.filter(branch=user.branch)
     elif branch_filter:
         members = members.filter(branch_id=branch_filter)
         
-    # Apply status filter
+    # --- 1. Calculate Global Stats (Unfiltered by status/search) ---
     today = timezone.now().date()
     expiring_soon = today + timedelta(days=7)
     
+    # We use .distinct() for expiring to avoid duplicates from multiple subscriptions
+    stats_data = {
+        "total": members.count(),
+        "active": members.filter(membership_status='Active').count(),
+        "expiring": members.filter(
+            subscriptions__status='Active',
+            subscriptions__end_date__gte=today,
+            subscriptions__end_date__lte=expiring_soon
+        ).distinct().count(),
+        "expired": members.filter(membership_status='Expired').count()
+    }
+
+    # --- 2. Apply Result Filters (Status & Search) ---
+    result_members = members.all()
+    
     if status_filter == 'active':
-        members = members.filter(membership_status='Active')
+        result_members = result_members.filter(membership_status='Active')
     elif status_filter == 'expiring':
-        members = members.filter(
+        result_members = result_members.filter(
             subscriptions__status='Active',
             subscriptions__end_date__gte=today,
             subscriptions__end_date__lte=expiring_soon
         ).distinct()
     elif status_filter == 'expired':
-        members = members.filter(membership_status='Expired')
+        result_members = result_members.filter(membership_status='Expired')
 
-    # Apply search (after status filter to limit scope)
     if search_query:
-        members = members.filter(
+        result_members = result_members.filter(
             Q(first_name__icontains=search_query) |
             Q(last_name__icontains=search_query) |
             Q(mobile_number__icontains=search_query) |
             Q(member_id__icontains=search_query)
         )
 
-    # Calculate stats for the user's scope
-    today = timezone.now().date()
-    expiring_soon = today + timedelta(days=7)
-    
-    active_count = members.filter(membership_status='Active').count()
-    expiring_count = members.filter(
-        subscriptions__status='Active',
-        subscriptions__end_date__gte=today,
-        subscriptions__end_date__lte=expiring_soon
-    ).distinct().count()
-    expired_count = members.filter(membership_status='Expired').count()
-
-    # Serialization
-    member_data = MemberMobileListSerializer(members[:100], many=True).data 
+    # Serialization (Increase limit to 500 for better visibility)
+    member_data = MemberMobileListSerializer(result_members[:500], many=True).data 
     
     return Response({
-        "stats": {
-            "total": members.count(),
-            "active": active_count,
-            "expiring": expiring_count,
-            "expired": expired_count
-        },
+        "stats": stats_data,
         "members": member_data
     })
 
