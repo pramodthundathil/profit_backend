@@ -50,15 +50,25 @@ class PaymentViewSet(viewsets.ModelViewSet):
         elif user.role == 'branch_admin' and user.branch:
              queryset = queryset.filter(member__branch=user.branch)
              
-        # Date filtering (Last 30 days by default)
-        try:
-            days = int(self.request.query_params.get('days', 30))
-        except (ValueError, TypeError):
-            days = 30
-            
-        if days > 0:
-             start_date = timezone.now().date() - timedelta(days=days)
-             queryset = queryset.filter(payment_date__gte=start_date)
+        # Date filtering
+        start_date_str = self.request.query_params.get('start_date')
+        end_date_str = self.request.query_params.get('end_date')
+
+        if start_date_str and end_date_str:
+            try:
+                queryset = queryset.filter(payment_date__date__gte=start_date_str, payment_date__date__lte=end_date_str)
+            except Exception:
+                pass
+        else:
+            # Fallback to days (Last 30 days by default)
+            try:
+                days = int(self.request.query_params.get('days', 30))
+            except (ValueError, TypeError):
+                days = 30
+                
+            if days > 0:
+                 start_date = timezone.now().date() - timedelta(days=days)
+                 queryset = queryset.filter(payment_date__gte=start_date)
         
         # Search (Member Name, ID, Receipt No)
         search_query = self.request.query_params.get('search')
@@ -83,7 +93,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         """Include summary statistics in the list response if requested"""
         response = super().list(request, *args, **kwargs)
         if request.query_params.get('include_stats') == 'true':
-            stats_data = self._calculate_stats(request.user)
+            stats_data = self._calculate_stats(request.user, request)
             response.data['stats'] = stats_data
         return response
 
@@ -94,15 +104,40 @@ class PaymentViewSet(viewsets.ModelViewSet):
         if not request.user.gym:
              return Response({"error": "No gym associated"}, status=400)
         
-        stats_data = self._calculate_stats(request.user)
+        stats_data = self._calculate_stats(request.user, request)
         return Response(stats_data)
 
-    def _calculate_stats(self, user):
-        """Helper to calculate MTD statistics"""
+    def _calculate_stats(self, user, request=None):
+        """Helper to calculate statistics"""
         today = timezone.now().date()
-        month_start = today.replace(day=1)
-        prev_month_end = month_start - timedelta(days=1)
-        prev_month_start = prev_month_end.replace(day=1)
+        
+        start_date_str = request.query_params.get('start_date') if request else None
+        end_date_str = request.query_params.get('end_date') if request else None
+
+        if start_date_str and end_date_str:
+            try:
+                # Custom date range stats
+                from datetime import datetime
+                custom_start = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                custom_end = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+                
+                period_start = custom_start
+                period_end = custom_end
+                
+                # For custom range, we just use the same range for prev_month (could improve later)
+                prev_period_start = period_start - (period_end - period_start)
+                prev_period_end = period_start
+            except Exception:
+                period_start = today.replace(day=1)
+                period_end = today
+                prev_period_end = period_start - timedelta(days=1)
+                prev_period_start = prev_period_end.replace(day=1)
+        else:
+            # Default MTD
+            period_start = today.replace(day=1)
+            period_end = today
+            prev_period_end = period_start - timedelta(days=1)
+            prev_period_start = prev_period_end.replace(day=1)
         
         # Base filter for the user's gym
         base_payments = Payment.objects.filter(member__gym=user.gym, status='Completed')
@@ -114,37 +149,37 @@ class PaymentViewSet(viewsets.ModelViewSet):
              base_installments = base_installments.filter(subscription__member__branch=user.branch)
              base_subscriptions = base_subscriptions.filter(member__branch=user.branch)
 
-        # 1. Total Collected (MTD)
+        # 1. Total Collected (Period)
         total_mtd = base_payments.filter(
-            payment_date__gte=month_start, 
-            payment_date__lte=today
+            payment_date__date__gte=period_start, 
+            payment_date__date__lte=period_end
         ).aggregate(sum=Sum('amount'))['sum'] or Decimal('0.00')
 
-        # 2. Previous Month Collection
+        # 2. Previous Period Collection
         total_prev = base_payments.filter(
-            payment_date__gte=prev_month_start, 
-            payment_date__lte=prev_month_end
+            payment_date__date__gte=prev_period_start, 
+            payment_date__date__lte=prev_period_end
         ).aggregate(sum=Sum('amount'))['sum'] or Decimal('0.00')
 
-        # 3. Pending Due (Current Month)
+        # 3. Pending Due (Period)
         pending_mtd = base_installments.filter(
-            due_date__gte=month_start,
-            due_date__lte=today,
+            due_date__gte=period_start,
+            due_date__lte=period_end,
             status__in=['Pending', 'Partially Paid']
         )
         pending_due_sum = sum(inst.remaining_amount for inst in pending_mtd)
 
-        # 4. Overdue (MTD)
+        # 4. Overdue (Period)
         overdue_mtd = base_installments.filter(
-            due_date__lt=today,
+            due_date__lt=period_end,  # Use period end for overdue reference
             status__in=['Pending', 'Partially Paid', 'Overdue']
         )
         overdue_sum = sum(inst.remaining_amount for inst in overdue_mtd)
 
-        # 5. Discounts Given (MTD)
+        # 5. Discounts Given (Period)
         subscriptions_mtd = base_subscriptions.filter(
-            created_at__date__gte=month_start,
-            created_at__date__lte=today
+            created_at__date__gte=period_start,
+            created_at__date__lte=period_end
         )
         discounts_sum = sum((sub.base_amount - sub.final_amount) for sub in subscriptions_mtd)
 
