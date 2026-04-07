@@ -1,0 +1,144 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ gym.name }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Subscriptions</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block header_title %}Subscription Management{% endblock %}
+{% block header_subtitle %}Manage and track all member subscriptions{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="table-card">
+            <div class="table-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <h5 class="fw-bold fs-6 mb-0">Member Subscriptions</h5>
+                
+                <div class="d-flex flex-wrap gap-2">
+                    <!-- Branch Filter (Gym Admin Only) -->
+                    {% if branches %}
+                    <form method="GET" class="d-flex gap-2">
+                        <select name="branch" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">All Branches</option>
+                            {% for branch in branches %}
+                            <option value="{{ branch.id }}" {% if selected_branch == branch.id|stringformat:"s" %}selected{% endif %}>{{ branch.name }}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">All Statuses</option>
+                            <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
+                            <option value="Expired" {% if selected_status == 'Expired' %}selected{% endif %}>Expired</option>
+                            <option value="Frozen" {% if selected_status == 'Frozen' %}selected{% endif %}>Frozen</option>
+                            <option value="Cancelled" {% if selected_status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                        
+                        {% if selected_branch or selected_status %}
+                        <a href="{% url 'subscription-list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                        {% endif %}
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="table-responsive mt-3">
+                <table id="subscriptionsTable" class="table custom-table mb-0 table-hover">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Plan Type</th>
+                            <th>Duration</th>
+                            <th>Period</th>
+                            <th>Amount</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in subscriptions %}
+                        <tr style="cursor: pointer;" onclick="window.location='{% url 'subscription-detail' sub.pk %}'">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-3 bg-dark text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; min-width: 35px;">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ sub.member.full_name }}</div>
+                                        <small class="text-muted">{{ sub.member.member_id }} | {{ sub.member.branch.name|default:"HQ" }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ sub.subscription_type.name|default:"Custom" }}</span>
+                            </td>
+                            <td>{{ sub.duration_display }}</td>
+                            <td>
+                                <div class="small">{{ sub.start_date|date:"M d, Y" }}</div>
+                                <div class="small text-muted">to {{ sub.end_date|date:"M d, Y" }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">₹{{ sub.final_amount }}</div>
+                                <small class="text-muted">Bal: ₹{{ sub.balance_amount }}</small>
+                            </td>
+                            <td>
+                                {% if sub.is_fully_paid %}
+                                    <span class="badge badge-soft-success">Paid</span>
+                                {% elif sub.amount_paid > 0 %}
+                                    <span class="badge badge-soft-warning">Partial</span>
+                                {% else %}
+                                    <span class="badge badge-soft-danger">Unpaid</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if sub.status == 'Active' %}
+                                    <span class="badge bg-success">Active</span>
+                                {% elif sub.status == 'Expired' %}
+                                    <span class="badge bg-danger">Expired</span>
+                                {% elif sub.status == 'Frozen' %}
+                                    <span class="badge bg-info">Frozen</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ sub.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'subscription-detail' sub.pk %}" class="btn btn-sm btn-icon btn-light border">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#subscriptionsTable').DataTable({
+            "order": [[3, "desc"]], 
+            "pageLength": 10,
+            "language": {
+                "emptyTable": "<div class='py-5 text-muted'><i class='bi bi-inbox fs-1 d-block mb-2'></i>No subscriptions found matching your criteria.</div>",
+                "search": "",
+                "searchPlaceholder": "Search subscriptions..."
+            }
+        });
+        
+        // Style the search box
+        $('.dataTables_filter input').addClass('form-control form-control-sm border-0 bg-light px-3 py-2').css('width', '250px');
+    });
+</script>
+{% endblock %}

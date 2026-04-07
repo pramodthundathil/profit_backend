@@ -200,6 +200,73 @@ def member_delete_api(request, pk):
     member.save()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
+@swagger_auto_schema(
+    method='post',
+    operation_description="Manually block gym access for a member",
+    responses={200: "Success message"}
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def member_block_access_api(request, pk):
+    """API view to manually block access"""
+    member = get_object_or_404(Member, pk=pk, gym=request.user.gym)
+    member.is_access_blocked = True
+    member.save()
+    member.update_access_status()
+    return Response({"message": f"Access for {member.full_name} has been blocked."})
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Unblock gym access for a member",
+    responses={200: "Success message"}
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def member_unblock_access_api(request, pk):
+    """API view to unblock access"""
+    member = get_object_or_404(Member, pk=pk, gym=request.user.gym)
+    member.is_access_blocked = False
+    member.save()
+    member.update_access_status()
+    return Response({"message": f"Access for {member.full_name} has been unblocked."})
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Manually extend gym access date",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'expiry_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description="The new manually set expiry date."),
+        },
+        required=['expiry_date']
+    ),
+    responses={200: "Success message", 400: "Invalid date"}
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def member_extend_access_api(request, pk):
+    """API view to manually extend access"""
+    member = get_object_or_404(Member, pk=pk, gym=request.user.gym)
+    expiry_date = request.data.get('expiry_date')
+    
+    if not expiry_date:
+        return Response({"error": "Expiry date is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    try:
+        from datetime import datetime
+        date_obj = datetime.strptime(expiry_date, '%Y-%m-%d').date()
+        member.manual_access_expiry = date_obj
+        member.save()
+        member.update_access_status()
+    except ValueError:
+        return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({
+        "message": f"Access for {member.full_name} has been manually extended to {expiry_date}.",
+        "access_expiry_date": member.access_expiry_date,
+        "access_enabled": member.access_enabled
+    })
+
 # ============================================================================
 # SUBSCRIPTION API VIEWS
 # ============================================================================

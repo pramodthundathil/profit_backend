@@ -7,6 +7,7 @@ urlpatterns = [
     path('create/', views_user.payment_create, name='payment-create'),
     path('detail/<int:pk>/', views_user.payment_detail, name='payment-detail'),
     path('invoice/<int:pk>/', views_user.payment_invoice, name='payment-invoice'),
+    path('ajax/member-data/<int:member_id>/', views_user.ajax_member_data, name='ajax-member-data'),
 
     # REST API endpoints (For mobile app & integrations - Separated in api.py)
     path('api/list/', api.PaymentViewSet.as_view({'get': 'list', 'post': 'create'}), name='api-payment-list'),

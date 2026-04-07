@@ -200,10 +200,8 @@
             <a href="{% url 'member-list' %}" class="nav-link {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-person-vcard-fill"></i> Members
             </a>
-            <a href="{% url 'user-staff-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-staff-list' %}active{% endif %}">
-                <i class="bi bi-people-fill"></i> Staff
-            </a>
-            <a href="{% url 'user-dashboard' %}#subscriptions" class="nav-link">
+            
+            <a href="{% url 'subscription-list' %}" class="nav-link {% if 'subscription' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-credit-card-fill"></i> Subscriptions
             </a>
             <a href="{% url 'payment-list' %}" class="nav-link {% if 'payment' in request.resolver_match.url_name %}active{% endif %}">
@@ -236,6 +234,9 @@
                     <a href="{% url 'user-dashboard' %}#subscriptions" class="nav-link py-2 small" style="font-size: 0.9em;">
                         Subscription Settings
                     </a>
+                    <a href="{% url 'user-staff-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-staff-list' %}active{% endif %}">
+                <i class="bi bi-people-fill"></i> Staff Config
+            </a>
                 </div>
             </div>
             <div class="mt-auto border-top border-secondary pt-3 mt-4">

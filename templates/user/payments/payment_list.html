@@ -151,10 +151,6 @@
                             </div>
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">No payment records found.</td>
-                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -191,7 +187,7 @@
             "ordering": true,
             "order": [[4, "desc"]], // Default sort by date desc
             "language": {
-                "emptyTable": "No payments found for the selected filters.",
+                "emptyTable": "No records found matching your filters.",
                 "search": "Quick Search:"
             }
         });

@@ -120,13 +120,119 @@
 {% block scripts %}
 <script>
     $(document).ready(function() {
-        // Dynamic filtering of Subscriptions based on selected Member
+        const initialSubId = $('#id_subscription').val();
+        const initialInstId = $('#id_installment').val();
+        let maxAllowedAmount = Infinity;
+
+        function loadMemberData(memberId, selectedSub, selectedInst) {
+            const $subSelect = $('#id_subscription');
+            const $instSelect = $('#id_installment');
+            
+            $subSelect.empty().append('<option value="">---------</option>');
+            $instSelect.empty().append('<option value="">---------</option>');
+
+            if (!memberId) return;
+
+            $.ajax({
+                url: `/v2/payments/ajax/member-data/${memberId}/`,
+                method: 'GET',
+                success: function(data) {
+                    if (data.subscriptions && data.subscriptions.length > 0) {
+                        data.subscriptions.forEach(function(sub) {
+                            const subText = `${sub.subscription_type_name || 'Custom'} (${sub.start_date} to ${sub.end_date}) - Bal: ₹${sub.balance_amount}`;
+                            const isSelected = (selectedSub && parseInt(selectedSub) === sub.id) ? 'selected' : '';
+                            $subSelect.append(`<option value="${sub.id}" ${isSelected}>${subText}</option>`);
+                        });
+                        
+                        $subSelect.data('subscriptions', data.subscriptions);
+                        
+                        if (selectedSub) {
+                            $subSelect.trigger('change', [selectedInst]);
+                        }
+                    }
+                },
+                error: function(err) {
+                    console.error("Error fetching member details:", err);
+                }
+            });
+        }
+
         $('#id_member').change(function() {
             const memberId = $(this).val();
-            // In a real app, you'd fetch via AJAX. 
-            // For now, simple client-side hint if we had data, or just let server handle it.
-            // Requirement 10 says "payment details for serverside and api curd oprations".
+            loadMemberData(memberId, null, null);
+            $('#id_amount').val('');
+            maxAllowedAmount = Infinity;
         });
+
+        $('#id_subscription').change(function(e, selectedInst) {
+            const subId = $(this).val();
+            const $instSelect = $('#id_installment');
+            $instSelect.empty().append('<option value="">---------</option>');
+            
+            $('#id_amount').val('');
+            maxAllowedAmount = Infinity;
+
+            if (!subId) return;
+
+            const subs = $('#id_subscription').data('subscriptions');
+            if (subs) {
+                const sub = subs.find(s => s.id == parseInt(subId));
+                if (sub && sub.installments && sub.installments.length > 0) {
+                    sub.installments.forEach(function(inst) {
+                        if (inst.status !== 'Paid') {
+                            const instText = `Inst #${inst.installment_number} - Due: ${inst.due_date} - Bal: ₹${inst.remaining_amount}`;
+                            const isSelected = (selectedInst && parseInt(selectedInst) === inst.id) ? 'selected' : '';
+                            $instSelect.append(`<option value="${inst.id}" ${isSelected} data-remaining="${inst.remaining_amount}">${instText}</option>`);
+                        }
+                    });
+                }
+                
+                // If no installment is selected but sub is, maybe set amount to sub balance? 
+                // Let's stick to installment first as requested.
+                if (!selectedInst) {
+                    maxAllowedAmount = parseFloat(sub.balance_amount);
+                }
+            }
+        });
+
+        // Handle Installment Change
+        $('#id_installment').change(function() {
+            const instId = $(this).val();
+            const $selectedOption = $(this).find('option:selected');
+            
+            if (instId) {
+                const remaining = parseFloat($selectedOption.data('remaining'));
+                $('#id_amount').val(remaining.toFixed(2));
+                maxAllowedAmount = remaining;
+            } else {
+                // Fallback to subscription balance if installment is cleared
+                const subId = $('#id_subscription').val();
+                if (subId) {
+                    const subs = $('#id_subscription').data('subscriptions');
+                    const sub = subs.find(s => s.id == parseInt(subId));
+                    maxAllowedAmount = parseFloat(sub.balance_amount);
+                } else {
+                    maxAllowedAmount = Infinity;
+                }
+            }
+        });
+
+        // Enforce max amount constraint
+        $('#id_amount').on('input', function() {
+            const val = parseFloat($(this).val());
+            if (val > maxAllowedAmount) {
+                $(this).val(maxAllowedAmount.toFixed(2));
+                alert(`Amount cannot exceed the remaining balance of ₹${maxAllowedAmount.toFixed(2)}`);
+            }
+        });
+
+        const currentMember = $('#id_member').val();
+        if (currentMember) {
+            loadMemberData(currentMember, initialSubId, initialInstId);
+        } else {
+            $('#id_subscription').empty().append('<option value="">---------</option>');
+            $('#id_installment').empty().append('<option value="">---------</option>');
+        }
     });
 </script>
 {% endblock %}

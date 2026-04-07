@@ -124,6 +124,10 @@ class Payment(models.Model):
         
         super().save(*args, **kwargs)
         
+        # Update installment status if this payment is linked to one
+        if self.installment:
+            self.installment.update_payment_status()
+            
         # Update subscription payment status
         if self.status == 'Completed':
             self.subscription.update_payment_status()

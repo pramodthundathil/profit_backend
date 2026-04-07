@@ -17,8 +17,17 @@ def payment_list(request):
         messages.error(request, "No gym associated with your account.")
         return redirect('user-dashboard')
 
+    # Defaults for form if no GET params
+    initial_data = {}
+    is_filtered = bool(request.GET)
+    
+    if not request.GET.get('start_date') and not request.GET.get('search'):
+        today = timezone.now().date()
+        initial_data['start_date'] = today.replace(day=1)
+        initial_data['end_date'] = today
+
     # Initial Filter Form
-    form = PaymentFilterForm(request.GET, user=user)
+    form = PaymentFilterForm(request.GET if is_filtered else None, initial=initial_data, user=user)
     
     # Base QuerySet
     payments = Payment.objects.filter(member__gym=user.gym).select_related('member', 'subscription')
@@ -54,11 +63,12 @@ def payment_list(request):
             
         if end_date:
             payments = payments.filter(payment_date__lte=end_date)
-        else:
-            # Default to last 30 days if no date filter is applied
-            if not start_date and not search:
-                thirty_days_ago = timezone.now().date() - timedelta(days=30)
-                payments = payments.filter(payment_date__gte=thirty_days_ago)
+    else:
+        # Initial Form Fallback Logic
+        if not is_filtered:
+            today = timezone.now().date()
+            month_start = today.replace(day=1)
+            payments = payments.filter(payment_date__gte=month_start, payment_date__lte=today)
 
     # Calculate MTD Stats for Dashboard Header
     stats = _get_payment_stats(user)
@@ -172,3 +182,44 @@ def _get_payment_stats(user):
         'overdue_mtd': overdue_sum,
         'discounts_mtd': discounts_sum
     }
+
+from django.http import JsonResponse
+@login_required
+def ajax_member_data(request, member_id):
+    """
+    Session-authenticated AJAX endpoint to fetch member subscriptions and installments
+    for the payment creation form dropdowns.
+    """
+    user = request.user
+    if not user.gym:
+        return JsonResponse({"error": "No gym associated", "subscriptions": []}, status=400)
+    
+    member = get_object_or_404(Member, pk=member_id, gym=user.gym)
+    
+    if user.role == 'branch_admin' and member.branch != user.branch:
+        return JsonResponse({"error": "Access denied", "subscriptions": []}, status=403)
+        
+    subs = Subscription.objects.filter(member=member)
+    
+    data = []
+    for sub in subs:
+        installments = []
+        for inst in sub.installments.all():
+            installments.append({
+                "id": inst.id,
+                "installment_number": inst.installment_number,
+                "due_date": inst.due_date.strftime("%Y-%m-%d") if inst.due_date else None,
+                "remaining_amount": float(inst.remaining_amount),
+                "status": inst.status
+            })
+            
+        data.append({
+            "id": sub.id,
+            "subscription_type_name": sub.subscription_type.name if sub.subscription_type else "Custom",
+            "start_date": sub.start_date.strftime("%Y-%m-%d") if sub.start_date else None,
+            "end_date": sub.end_date.strftime("%Y-%m-%d") if sub.end_date else None,
+            "balance_amount": float(sub.balance_amount),
+            "installments": installments
+        })
+        
+    return JsonResponse({"subscriptions": data})

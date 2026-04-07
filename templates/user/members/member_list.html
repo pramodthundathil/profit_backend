@@ -101,7 +101,12 @@
                                 <div class="d-flex flex-column">
                                     <span class="badge bg-info bg-opacity-10 text-info mb-1">{{ sub.subscription_type.name|default:"Standard" }}</span>
                                     <div class="d-flex align-items-center gap-1 mt-1">
-                                        <small class="text-muted" style="font-size: 0.75rem;">Exp: {{ sub.end_date|date:"d M Y" }}</small>
+                                        {% if member.access_expiry_date %}
+                                            <small class="text-primary fw-bold" style="font-size: 0.75rem;">Access: {{ member.access_expiry_date|date:"d M Y" }}</small>
+                                        {% else %}
+                                            <small class="text-muted" style="font-size: 0.75rem;">No Access</small>
+                                        {% endif %}
+                                        
                                         {% if sub.payment_status_label == 'Paid' %}
                                         <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle" style="font-size: 0.65rem;">Paid</span>
                                         {% elif sub.payment_status_label == 'Partial' %}

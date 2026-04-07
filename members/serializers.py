@@ -95,7 +95,7 @@ class MemberMobileListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'member_id', 'full_name', 'mobile_number', 
             'photo', 'membership_status', 'is_active',
-            'active_subscription', 'branch', 'branch_name'
+            'active_subscription', 'branch', 'branch_name', 'access_expiry_date'
         ]
 
     def get_active_subscription(self, obj):
@@ -129,7 +129,8 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             'address', 'photo', 'id_proof', 'membership_status',
             'is_active', 'height', 'weight', 'bmi', 'blood_group',
             'medical_history', 'emergency_contact_name', 'emergency_contact_number',
-            'registration_date', 'branch', 'branch_name', 'subscriptions'
+            'registration_date', 'branch', 'branch_name', 'subscriptions',
+            'access_expiry_date', 'access_enabled'
         ]
 
 class MemberStatsSerializer(serializers.Serializer):

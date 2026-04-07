@@ -106,6 +106,23 @@ class Member(models.Model):
         help_text="RFID/Barcode/QR for gate access"
     )
     
+    access_expiry_date = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Highest access date across all active/paid subscriptions (or manual extension)"
+    )
+    
+    is_access_blocked = models.BooleanField(
+        default=False,
+        help_text="Manually block access regardless of subscription status"
+    )
+    
+    manual_access_expiry = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Manual access extension date"
+    )
+    
     # Notes
     notes = models.TextField(blank=True, null=True, help_text="Admin notes about member")
     
@@ -141,41 +158,72 @@ class Member(models.Model):
         """Update membership status based on active subscriptions"""
         today = timezone.now().date()
         
-        # Check for active subscriptions
-        active_subscription = self.subscriptions.filter(
-            status='Active',
-            end_date__gte=today
-        ).exists()
+        # Check for any subscriptions that are not cancelled
+        has_subscriptions = self.subscriptions.exclude(status='Cancelled').exists()
         
-        if active_subscription:
-            self.membership_status = 'Active'
-            self.update_access_status()
+        if not has_subscriptions:
+            self.membership_status = 'Active' # Default for new members without plans yet
+            self.access_enabled = False
+            self.access_expiry_date = None
         else:
-            # Check if expired
-            expired_subscription = self.subscriptions.filter(
-                end_date__lt=today
-            ).exclude(status='Cancelled').exists()
+            # Check for active subscriptions (based on date)
+            active_exists = self.subscriptions.filter(
+                status='Active',
+                end_date__gte=today
+            ).exists()
             
-            if expired_subscription:
+            if active_exists:
+                self.membership_status = 'Active'
+            else:
                 self.membership_status = 'Expired'
             
-            self.access_enabled = False
+            # Recalculate access
+            self.update_access_status()
         
         self.save()
     
     def update_access_status(self):
-        """Enable/disable gym access based on subscription and payment"""
+        """
+        Identify the highest access expiry date across all active 
+        and fully paid subscriptions, or manual extension.
+        """
+        if self.is_access_blocked:
+            self.access_enabled = False
+            self.save(update_fields=['access_enabled'])
+            return
+
         today = timezone.now().date()
         
-        has_valid_subscription = self.subscriptions.filter(
-            status='Active',
-            end_date__gte=today,
-            is_fully_paid=True
-        ).exists()
+        # 1. Start with manual extension if valid (Ensure it's a date object)
+        manual_expiry = self.manual_access_expiry
+        if isinstance(manual_expiry, str):
+            from datetime import datetime
+            try:
+                manual_expiry = datetime.strptime(manual_expiry, '%Y-%m-%d').date()
+            except ValueError:
+                manual_expiry = None
+                
+        max_expiry = manual_expiry if manual_expiry and manual_expiry >= today else None
         
-        # Access enabled only if: active account + valid paid subscription
-        self.access_enabled = has_valid_subscription and self.is_active
-        self.save()
+        # 2. Get all subscriptions that are Active (Paid or Partially Paid) and Not Expired
+        active_subs = self.subscriptions.filter(
+            status='Active',
+            end_date__gte=today
+        ).order_by('-end_date')
+        
+        if active_subs.exists():
+            sub_expiry = active_subs.first().end_date
+            if not max_expiry or sub_expiry > max_expiry:
+                max_expiry = sub_expiry
+
+        if max_expiry:
+            self.access_expiry_date = max_expiry
+            self.access_enabled = True
+        else:
+            self.access_expiry_date = None
+            self.access_enabled = False
+        
+        self.save(update_fields=['access_expiry_date', 'access_enabled'])
     
     @property
     def age(self):
@@ -229,6 +277,20 @@ class Subscription(models.Model):
         null=True,
         blank=True,
         help_text="Type of subscription (optional category)"
+    )
+
+    # Access Control
+    access_branch = models.ForeignKey(
+        GymBranch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='branch_subscriptions',
+        help_text="Branch where this subscription grants access (None for HQ/All)"
+    )
+    is_hq_access = models.BooleanField(
+        default=False,
+        help_text="Grants access to headquarters/all branches"
     )
     
     # Custom Period
@@ -448,6 +510,11 @@ class Subscription(models.Model):
         
         self.save(update_fields=['amount_paid', 'balance_amount', 'is_fully_paid', 'end_date'])
         
+        # When a payment is recorded, also unblock the member if they were restricted
+        if self.member.is_access_blocked:
+            self.member.is_access_blocked = False
+            self.member.save(update_fields=['is_access_blocked'])
+
         # Update member access
         self.member.update_access_status()
     
@@ -627,6 +694,28 @@ class SubscriptionInstallment(models.Model):
     def remaining_amount(self):
         """Amount remaining for this installment"""
         return max(0, self.amount - self.amount_paid)
+
+    def update_payment_status(self):
+        """Recalculate amount paid from linked payments and update status"""
+        total_paid = self.payments.filter(status='Completed').aggregate(
+            total=models.Sum('amount')
+        )['total'] or Decimal('0')
+        
+        self.amount_paid = total_paid
+        
+        if self.amount_paid >= self.amount:
+            self.status = 'Paid'
+            if not self.paid_date:
+                self.paid_date = timezone.now().date()
+        elif self.amount_paid > 0:
+            self.status = 'Partially Paid'
+        else:
+            if self.due_date and self.due_date < timezone.now().date():
+                self.status = 'Overdue'
+            else:
+                self.status = 'Pending'
+                
+        self.save(update_fields=['amount_paid', 'status', 'paid_date'])
 
     def __str__(self):
         return f"{self.subscription} - Installment {self.installment_number} ({self.amount})"
