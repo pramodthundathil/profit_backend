@@ -752,7 +752,7 @@ class DashboardStatsView(APIView):
         members_qs = Member.objects.filter(gym=gym, is_active=True)
         subscriptions_qs = Subscription.objects.filter(member__gym=gym)
         payments_qs = Payment.objects.filter(member__gym=gym)
-        installments_qs = SubscriptionInstallment.objects.filter(subscription__gym=gym)
+        installments_qs = SubscriptionInstallment.objects.filter(subscription__member__gym=gym)
 
         if is_restricted:
              members_qs = members_qs.filter(branch=user.branch)
