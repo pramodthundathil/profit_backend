@@ -528,6 +528,9 @@ class Subscription(models.Model):
         if self.status in ['Cancelled', 'Frozen']:
             return  # Don't auto-update these statuses
         
+        if not self.end_date:
+            return # Cannot auto-update status without end_date
+        
         if self.end_date < today:
             self.status = 'Expired'
             self.save(update_fields=['status'])
@@ -561,11 +564,13 @@ class Subscription(models.Model):
     
     @property
     def is_expired(self):
+        if not self.end_date:
+            return False
         return self.end_date < timezone.now().date()
     
     @property
     def days_remaining(self):
-        if self.is_expired:
+        if not self.end_date or self.is_expired:
             return 0
         return (self.end_date - timezone.now().date()).days
     
