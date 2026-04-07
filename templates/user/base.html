@@ -212,6 +212,9 @@
             <a href="{% url 'user-branch-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-branch-list' %}active{% endif %}">
                 <i class="bi bi-shop"></i> Branches
             </a>
+            <a href="{% url 'finance-dashboard' %}" class="nav-link {% if 'finance' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-wallet2"></i> Finance
+            </a>
             <!-- Settings Dropdown -->
             <a class="nav-link d-flex align-items-center justify-content-between {% if 'hik-config' in request.resolver_match.url_name or 'gym-config' in request.resolver_match.url_name %}active{% endif %}" 
                data-bs-toggle="collapse" 
