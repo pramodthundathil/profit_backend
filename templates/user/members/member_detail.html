@@ -110,7 +110,7 @@
                         <div class="p-2 bg-primary bg-opacity-10 border border-primary-subtle rounded text-center mb-2">
                             <small class="text-primary fw-bold d-block" style="font-size: 0.65rem;">VALID UNTIL</small>
                             <span class="fs-5 fw-bold text-primary">{{ member.access_expiry_date|date:"d M Y" }}</span>
-                            {% if member.manual_access_expiry %}
+                            {% if member.manual_access_expiry and member.access_expiry_date == member.manual_access_expiry %}
                                 <small class="text-muted d-block fw-normal" style="font-size: 0.6rem;">(Manual Extension)</small>
                             {% endif %}
                         </div>

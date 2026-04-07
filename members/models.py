@@ -303,7 +303,7 @@ class Subscription(models.Model):
             ("Months", "Months"),
             ("Years", "Years")
         ),
-        default="Months"
+        default="Days"
     )
     
     # Dates
