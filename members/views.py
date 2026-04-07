@@ -400,20 +400,10 @@ def installment_pay_api(request, pk):
     expiry_date = request.data.get('expiry_date')
 
     with transaction.atomic():
-        # 1. Update Installment
-        installment.amount_paid += amount
-        if installment.amount_paid >= installment.amount:
-            installment.status = 'Paid'
-        else:
-            installment.status = 'Partially Paid'
-        
-        installment.paid_date = timezone.now().date()
-        installment.save()
-        
-        # 2. Create Payment record
+        # Create Payment record - this will automatically trigger status updates via Payment.save()
         from payments.models import Payment
         sub = installment.subscription
-        Payment.objects.create(
+        payment = Payment.objects.create(
             subscription=sub,
             member=sub.member,
             installment=installment,
@@ -424,17 +414,20 @@ def installment_pay_api(request, pk):
             status='Completed',
             notes=f"API: {payment_type} payment for installment {installment.installment_number}"
         )
-        # Note: update_payment_status is called automatically by Payment.save()
         
-        # 3. Explicitly set expiry date if it's a partial payment and user provided a date
+        # Explicitly set expiry date if provided
         if payment_type == 'Partial' and expiry_date:
             sub.end_date = expiry_date
             sub.save(update_fields=['end_date'])
         
+        # Refresh installment from DB to get updated status/amounts
+        installment.refresh_from_db()
+        
         return Response({
-            "message": f"Payment of {amount} for installment {installment.installment_number} recorded successfully.",
+            "message": f"Payment of {amount} recorded successfully.",
             "status": installment.status,
-            "remaining_amount": float(installment.remaining_amount)
+            "remaining_amount": float(installment.remaining_amount),
+            "receipt_number": payment.receipt_number
         })
 
 @swagger_auto_schema(
