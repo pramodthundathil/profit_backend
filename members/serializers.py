@@ -95,7 +95,10 @@ class MemberMobileListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'member_id', 'full_name', 'mobile_number', 
             'photo', 'membership_status', 'is_active',
-            'active_subscription', 'branch', 'branch_name', 'access_expiry_date'
+            'active_subscription', 'branch', 'branch_name', 
+            'access_expiry_date', 'access_enabled', 
+            'is_access_blocked', 'manual_access_expiry',
+            'subscription_count'
         ]
 
     def get_active_subscription(self, obj):
@@ -106,9 +109,14 @@ class MemberMobileListSerializer(serializers.ModelSerializer):
                 'id': sub.id,
                 'end_date': sub.end_date,
                 'days_remaining': sub.days_remaining,
-                'plan_name': sub.subscription_type.name if sub.subscription_type else "Custom"
+                'subscription_type_name': sub.subscription_type.name if sub.subscription_type else "Custom"
             }
         return None
+
+    subscription_count = serializers.SerializerMethodField()
+
+    def get_subscription_count(self, obj):
+        return obj.subscriptions.count()
 
 class MemberDetailSerializer(serializers.ModelSerializer):
     """Full detail serializer for a member including all subscriptions"""
@@ -130,7 +138,8 @@ class MemberDetailSerializer(serializers.ModelSerializer):
             'is_active', 'height', 'weight', 'bmi', 'blood_group',
             'medical_history', 'emergency_contact_name', 'emergency_contact_number',
             'registration_date', 'branch', 'branch_name', 'subscriptions',
-            'access_expiry_date', 'access_enabled'
+            'access_expiry_date', 'access_enabled',
+            'is_access_blocked', 'manual_access_expiry'
         ]
 
 class MemberStatsSerializer(serializers.Serializer):

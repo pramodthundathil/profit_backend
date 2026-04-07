@@ -44,7 +44,8 @@ def mobile_member_list(request):
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
     
-    members = Member.objects.filter(gym=user.gym, is_active=True).select_related('branch')
+    # Base query - remove is_active=True to allow searching all members
+    members = Member.objects.filter(gym=user.gym).select_related('branch')
 
     # Apply scope permissions (Gym Admin vs Branch Admin)
     if user.role == 'branch_admin' and user.branch:
@@ -58,18 +59,19 @@ def mobile_member_list(request):
     
     # We use .distinct() for expiring to avoid duplicates from multiple subscriptions
     stats_data = {
-        "total": members.count(),
-        "active": members.filter(membership_status='Active').count(),
+        "total": members.filter(is_active=True).count(),
+        "active": members.filter(membership_status='Active', is_active=True).count(),
         "expiring": members.filter(
+            is_active=True,
             subscriptions__status='Active',
             subscriptions__end_date__gte=today,
             subscriptions__end_date__lte=expiring_soon
         ).distinct().count(),
-        "expired": members.filter(membership_status='Expired').count()
+        "expired": members.filter(membership_status='Expired', is_active=True).count()
     }
 
     # --- 2. Apply Result Filters (Status & Search) ---
-    result_members = members.all()
+    result_members = members.filter(is_active=True) # Default to active members for the list
     
     if status_filter == 'active':
         result_members = result_members.filter(membership_status='Active')
@@ -83,15 +85,16 @@ def mobile_member_list(request):
         result_members = result_members.filter(membership_status='Expired')
 
     if search_query:
-        result_members = result_members.filter(
+        # For searches, we allow searching even inactive (deleted) members
+        result_members = members.filter(
             Q(first_name__icontains=search_query) |
             Q(last_name__icontains=search_query) |
             Q(mobile_number__icontains=search_query) |
             Q(member_id__icontains=search_query)
         )
 
-    # Serialization (Increase limit to 500 for better visibility)
-    member_data = MemberMobileListSerializer(result_members[:500], many=True).data 
+    # Serialization (Increase limit to 2000 for better visibility)
+    member_data = MemberMobileListSerializer(result_members[:2000], many=True).data 
     
     return Response({
         "stats": stats_data,
