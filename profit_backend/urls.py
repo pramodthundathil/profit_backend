@@ -13,12 +13,12 @@ from home import views_admin
 # Swagger Configuration
 schema_view = get_schema_view(
     openapi.Info(
-        title="PRO_FIT GYM management",
+        title="PRO-FIT GYM management",
         default_version='v1',
         description="""
-        # PRO_FIT GYM management Platform API
+        # PRO-FIT GYM management Platform API
         
-        Complete API documentation for the PRO_FIT GYM management.
+        Complete API documentation for the PRO-FIT GYM management.
         
         ## Features
         - OTP-based authentication

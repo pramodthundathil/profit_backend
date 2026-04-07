@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 # External Apps
-from members.models import Member, Subscription
+from members.models import Member, Subscription, SubscriptionInstallment
 from payments.models import Payment
 
 from .models import (
@@ -738,8 +738,6 @@ class DashboardStatsView(APIView):
         if not user.gym and user.role != 'admin':
              return Response({'error': 'No gym office context found'}, status=status.HTTP_400_BAD_REQUEST)
              
-        # Super admin sees global totals across all gyms if no gym is linked
-        # But we mostly care about gym-level dashboard for mobile
         gym = user.gym
 
         # 3. Branch Isolation Logic
@@ -751,18 +749,21 @@ class DashboardStatsView(APIView):
         # 4. Filter Querysets
         members_qs = Member.objects.filter(gym=gym, is_active=True)
         subscriptions_qs = Subscription.objects.filter(member__gym=gym)
-        payments_qs = Payment.objects.filter(member__gym=gym, status='Completed')
+        payments_qs = Payment.objects.filter(member__gym=gym)
+        installments_qs = SubscriptionInstallment.objects.filter(subscription__gym=gym)
 
         if is_restricted:
              members_qs = members_qs.filter(branch=user.branch)
              subscriptions_qs = subscriptions_qs.filter(member__branch=user.branch)
              payments_qs = payments_qs.filter(member__branch=user.branch)
+             installments_qs = installments_qs.filter(subscription__member__branch=user.branch)
         elif selected_branch_id:
              members_qs = members_qs.filter(branch_id=selected_branch_id)
              subscriptions_qs = subscriptions_qs.filter(member__branch_id=selected_branch_id)
              payments_qs = payments_qs.filter(member__branch_id=selected_branch_id)
+             installments_qs = installments_qs.filter(subscription__member__branch_id=selected_branch_id)
 
-        # 5. Calculate Metrics
+        # 5. Calculate Operational Metrics
         active_members = members_qs.filter(membership_status='Active').count()
         expired_members = members_qs.filter(membership_status='Expired').count()
         
@@ -776,8 +777,8 @@ class DashboardStatsView(APIView):
 
         # Monthly Registrations
         new_registrations = members_qs.filter(
-            registration_date__month=month,
-            registration_date__year=year
+            date_added__month=month,
+            date_added__year=year
         ).count()
 
         stats = {
@@ -789,32 +790,82 @@ class DashboardStatsView(APIView):
             'year': year,
         }
 
-        # 6. Admin/HQ Financials
-        # Only show financials to gym_admin or staff without branch restriction (HQ)
-        if user.role == 'gym_admin' or (user.role in ['staff', 'trainer'] and not user.branch):
-            # Total Collected for the month
+        # 6. Financial Analytics (Authorized Roles Only)
+        show_financials = user.role in ['gym_admin', 'branch_admin'] or (user.role == 'staff' and not user.branch)
+        
+        if show_financials:
+            # Monthly Income (Completed payments in selected month)
             monthly_income = payments_qs.filter(
-                payment_date__month=month,
-                payment_date__year=year
+                payment_date__month=month, 
+                payment_date__year=year,
+                status='Completed'
             ).aggregate(total=Sum('amount'))['total'] or 0
-            
-            # Total Outstanding Dues
-            total_due = subscriptions_qs.filter(status='Active').aggregate(total=Sum('balance_amount'))['total'] or 0
-            
+
+            # Monthly Outstanding (Unpaid installments due this month)
+            monthly_outstanding = installments_qs.filter(
+                due_date__month=month,
+                due_date__year=year
+            ).exclude(status='Paid').aggregate(
+                total=Sum(models.F('amount') - models.F('amount_paid'))
+            )['total'] or 0
+
+            # Total Overdue (Past due today across all months)
+            total_overdue = installments_qs.filter(
+                due_date__lt=today
+            ).exclude(status='Paid').aggregate(
+                total=Sum(models.F('amount') - models.F('amount_paid'))
+            )['total'] or 0
+
             # Payment Method Breakdown
-            method_breakdown = list(payments_qs.filter(
-                payment_date__month=month,
-                payment_date__year=year
+            payment_methods = list(payments_qs.filter(
+                payment_date__month=month, 
+                payment_date__year=year,
+                status='Completed'
             ).values('payment_method').annotate(total=Sum('amount')).order_by('-total'))
 
             stats.update({
-                'monthly_income': monthly_income,
-                'total_due': total_due,
-                'payment_methods': method_breakdown,
+                'monthly_income': float(monthly_income),
+                'monthly_outstanding': float(monthly_outstanding),
+                'total_overdue': float(total_overdue),
+                'payment_methods': payment_methods,
                 'show_financials': True
             })
         else:
             stats['show_financials'] = False
+
+        # 7. Recent Activities
+        recent_activities = []
+        
+        # Latest 3 Member Registrations
+        latest_members = members_qs.order_by('-date_added')[:3]
+        for m in latest_members:
+            recent_activities.append({
+                'type': 'registration',
+                'title': f"New Member: {m.first_name} {m.last_name}",
+                'subtitle': f"Registered at {m.branch.name if m.branch else 'HQ'}",
+                'time': m.date_added
+            })
+            
+        # Latest 3 Payments
+        latest_payments = payments_qs.filter(status='Completed').order_by('-created_at')[:3]
+        for p in latest_payments:
+            member_name = f"{p.member.first_name} {p.member.last_name}" if p.member else "Member"
+            recent_activities.append({
+                'type': 'payment',
+                'title': f"Payment: ₹{p.amount}",
+                'subtitle': f"Member: {member_name} ({p.payment_method})",
+                'time': p.created_at
+            })
+
+        # Sort and limit 5
+        recent_activities.sort(key=lambda x: x['time'], reverse=True)
+        recent_activities = recent_activities[:5]
+        
+        for act in recent_activities:
+            act['time_display'] = act['time'].strftime("%d %b, %H:%M")
+            del act['time']
+
+        stats['recent_activities'] = recent_activities
 
         return Response(stats)
 
