@@ -2,9 +2,11 @@ from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Q, Sum, Count
+from django.db import models
+from django.db.models import Q, Sum, Count, F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+import datetime
 
 # External Apps
 from members.models import Member, Subscription, SubscriptionInstallment
@@ -768,7 +770,7 @@ class DashboardStatsView(APIView):
         expired_members = members_qs.filter(membership_status='Expired').count()
         
         # Expiring Soon (Next 7 days)
-        seven_days_later = today + timezone.timedelta(days=7)
+        seven_days_later = today + datetime.timedelta(days=7)
         expiring_soon = subscriptions_qs.filter(
             status='Active',
             end_date__gte=today,
@@ -806,14 +808,14 @@ class DashboardStatsView(APIView):
                 due_date__month=month,
                 due_date__year=year
             ).exclude(status='Paid').aggregate(
-                total=Sum(models.F('amount') - models.F('amount_paid'))
+                total=Sum(F('amount') - F('amount_paid'))
             )['total'] or 0
 
             # Total Overdue (Past due today across all months)
             total_overdue = installments_qs.filter(
                 due_date__lt=today
             ).exclude(status='Paid').aggregate(
-                total=Sum(models.F('amount') - models.F('amount_paid'))
+                total=Sum(F('amount') - F('amount_paid'))
             )['total'] or 0
 
             # Payment Method Breakdown
