@@ -56,7 +56,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         if start_date_str and end_date_str:
             try:
-                queryset = queryset.filter(payment_date__date__gte=start_date_str, payment_date__date__lte=end_date_str)
+                queryset = queryset.filter(payment_date__gte=start_date_str, payment_date__lte=end_date_str)
             except Exception:
                 pass
         else:
@@ -151,14 +151,14 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         # 1. Total Collected (Period)
         total_mtd = base_payments.filter(
-            payment_date__date__gte=period_start, 
-            payment_date__date__lte=period_end
+            payment_date__gte=period_start, 
+            payment_date__lte=period_end
         ).aggregate(sum=Sum('amount'))['sum'] or Decimal('0.00')
 
         # 2. Previous Period Collection
         total_prev = base_payments.filter(
-            payment_date__date__gte=prev_period_start, 
-            payment_date__date__lte=prev_period_end
+            payment_date__gte=prev_period_start, 
+            payment_date__lte=prev_period_end
         ).aggregate(sum=Sum('amount'))['sum'] or Decimal('0.00')
 
         # 3. Pending Due (Period)
