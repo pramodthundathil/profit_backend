@@ -73,7 +73,7 @@ class SubscriptionForm(forms.ModelForm):
     class Meta:
         model = Subscription
         fields = [
-            'subscription_type', 'subscription_period', 'start_date', 
+            'subscription_type', 'subscription_period', 'start_date', 'end_date', 'status',
             'batch', 'batch_flexible', 
             'base_amount', 'discount_percentage', 'discount_amount', 'final_amount',
             'payment_terms', 'installment_count', 'amount_paid'
@@ -81,6 +81,8 @@ class SubscriptionForm(forms.ModelForm):
         widgets = {
             'subscription_type': forms.Select(attrs={'class': 'form-select'}),
             'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
             'batch': forms.Select(attrs={'class': 'form-select'}),
             'batch_flexible': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'base_amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Base Amount'}),
@@ -95,6 +97,12 @@ class SubscriptionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super(SubscriptionForm, self).__init__(*args, **kwargs)
+        
+        # If editing, make period optional as we might manually update end_date
+        if self.instance.pk:
+            self.fields['subscription_period'].required = False
+            self.fields['amount_paid'].widget.attrs['readonly'] = True
+            self.fields['amount_paid'].help_text = "Amount paid is managed via payment records"
         
         if user and user.gym:
             self.fields['subscription_type'].queryset = TypeSubscription.objects.filter(gym=user.gym, is_active=True)

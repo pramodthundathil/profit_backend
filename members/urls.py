@@ -15,6 +15,7 @@ urlpatterns = [
     path('user/members/installment/<int:pk>/pay/', views_user.installment_pay, name='installment-pay'),
     path('user/subscriptions/', views_user.subscription_list, name='subscription-list'),
     path('user/subscriptions/<int:pk>/', views_user.subscription_detail, name='subscription-detail'),
+    path('user/subscriptions/<int:pk>/edit/', views_user.subscription_edit, name='subscription-edit'),
 
     # REST API endpoints (for mobile app & integrations)
     path('api/mobile/list/', views.mobile_member_list, name='api-mobile-member-list'),

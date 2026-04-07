@@ -1,235 +1,391 @@
 {% extends 'user/base.html' %}
 {% load static %}
 
-{% block title %}Gym Dashboard | {{ gym.name|default:"ProFit" }}{% endblock %}
+{% block title %}Analytical Dashboard | {{ gym.name|default:"ProFit" }}{% endblock %}
+
+{% block header_title %}Analytics Overview{% endblock %}
+{% block header_subtitle %}Insights for {{ current_month_name }} {{ current_year }}{% endblock %}
 
 {% block content %}
-    {% if gym %}
-    <!-- Stats Row -->
-    <div class="row g-4 mb-4">
-        <div class="col-12 col-md-4">
-            <div class="stat-card">
-                <div class="stat-icon icon-gold">
-                    <i class="bi bi-shop"></i>
-                </div>
-                <div class="stat-value">{{ branches.count }}</div>
-                <div class="stat-label">Active Branches</div>
-            </div>
-        </div>
-        <div class="col-12 col-md-4">
-            <div class="stat-card">
-                <div class="stat-icon icon-blue">
-                    <i class="bi bi-people"></i>
-                </div>
-                <div class="stat-value">{{ members.count }}</div>
-                <div class="stat-label">Total Staff</div>
-            </div>
-        </div>
-        <div class="col-12 col-md-4">
-            <div class="stat-card">
-                <div class="stat-icon icon-green">
-                    <i class="bi bi-calendar-check"></i>
-                </div>
-                <div class="stat-value">{{ gym.get_subscription_status.days_remaining|default:"-" }}</div>
-                <div class="stat-label">Days Remaining</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Branches Section -->
-    <div id="branches" class="row mb-4">
-        <div class="col-12">
-            <div class="table-card">
-                <div class="table-header d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold fs-6 mb-0">Gym Branches</h5>
-                </div>
-                <div class="table-responsive">
-                    <table id="branchesTable" class="table custom-table mb-0 table-striped">
-                        <thead>
-                            <tr>
-                                <th>Branch Name</th>
-                                <th>Manager</th>
-                                <th>Contact</th>
-                                <th>Staff Count</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for branch in branches %}
-                            <tr>
-                                <td>
-                                    <div class="fw-medium">{{ branch.name }}</div>
-                                    <small class="text-muted">{{ branch.address|truncatechars:30 }}</small>
-                                </td>
-                                <td>
-                                    {% if branch.created_by %}
-                                        {{ branch.created_by.get_full_name }}
-                                    {% else %}
-                                        <span class="text-muted">Not Assigned</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div>{{ branch.phone }}</div>
-                                    <small class="text-muted">{{ branch.email }}</small>
-                                </td>
-                                <td>{{ branch.get_staff_count }}</td>
-                                <td>
-                                    {% if branch.is_active %}
-                                        <span class="badge badge-soft-success">Active</span>
-                                    {% else %}
-                                        <span class="badge badge-soft-danger">Inactive</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Staff Members -->
-    <div id="members" class="row mb-4">
-        <div class="col-12">
-            <div class="table-card">
-                <div class="table-header d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold fs-6 mb-0">Staff Members</h5>
-                </div>
-                <div class="table-responsive">
-                    <table id="staffTable" class="table custom-table mb-0 table-striped">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Role</th>
-                                <th>Branch</th>
-                                <th>Contact</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for member in members %}
-                            <tr>
-                                <td>
-                                    <div class="fw-medium">{{ member.get_full_name }}</div>
-                                    <small class="text-muted">{{ member.email }}</small>
-                                </td>
-                                <td><span class="badge bg-light text-dark border">{{ member.get_role_display }}</span></td>
-                                <td>{{ member.branch.name|default:"Headquarters" }}</td>
-                                <td>{{ member.phone_number }}</td>
-                                <td>
-                                    {% if member.is_active %}
-                                        <span class="badge badge-soft-success">Active</span>
-                                    {% else %}
-                                        <span class="badge badge-soft-danger">Inactive</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Payments and Subscriptions Grid -->
-    <div class="row g-4">
-        <!-- Payments -->
-        <div class="col-12 col-lg-6">
-            <div id="payments" class="table-card h-100">
-                <div class="table-header">
-                    <h5 class="fw-bold fs-6 mb-0">Recent Payments</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table custom-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Plan</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for payment in payments|slice:":5" %}
-                            <tr>
-                                <td>{{ payment.plan_name }}</td>
-                                <td>₹{{ payment.amount }}</td>
-                                <td>
-                                    {% if payment.status == 'completed' %}
-                                        <span class="badge badge-soft-success">Success</span>
-                                    {% elif payment.status == 'pending' %}
-                                        <span class="badge badge-soft-warning">Pending</span>
-                                    {% else %}
-                                        <span class="badge badge-soft-danger">{{ payment.status }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ payment.created_at|date:"M d, Y" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="text-center py-4 text-muted">No transactions found.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Subscriptions -->
-        <div class="col-12 col-lg-6">
-            <div id="subscriptions" class="table-card h-100">
-                <div class="table-header">
-                    <h5 class="fw-bold fs-6 mb-0">Subscription History</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table custom-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Plan</th>
-                                <th>Started</th>
-                                <th>Expires</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for sub in subscriptions|slice:":5" %}
-                            <tr>
-                                <td>{{ sub.plan_name }}</td>
-                                <td>{{ sub.started_at|date:"M d, Y" }}</td>
-                                <td>{{ sub.expires_at|date:"M d, Y" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="3" class="text-center py-4 text-muted">No subscription history.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+<style>
+    /* Dashboard Specific Styles */
+    .dashboard-filter-bar {
+        background: #fff;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        margin-bottom: 25px;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
     
-    {% else %}
-    <div class="alert alert-warning">
-        Your account is not associated with any Gym Office. Please contact support.
+    .stats-card-premium {
+        background: #1a1a1a;
+        color: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+        border: none;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .stats-card-premium:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    
+    .stats-card-premium .bg-icon {
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        font-size: 80px;
+        opacity: 0.1;
+        transform: rotate(-15deg);
+        color: var(--accent-color);
+    }
+    
+    .stats-card-premium .label {
+        color: rgba(255,255,255,0.6);
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    
+    .stats-card-premium .value {
+        font-size: 32px;
+        font-weight: 800;
+        margin-bottom: 0;
+    }
+    
+    .stats-card-premium.accent-yellow { border-bottom: 4px solid #FFD700; }
+    .stats-card-premium.accent-orange { border-bottom: 4px solid #FF8C00; }
+    .stats-card-premium.accent-red { border-bottom: 4px solid #FF4500; }
+    .stats-card-premium.accent-green { border-bottom: 4px solid #32CD32; }
+
+    .financial-card {
+        background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+        color: #000;
+        border-radius: 16px;
+        padding: 30px;
+        border: none;
+        height: 100%;
+    }
+    
+    .financial-card .label {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 14px;
+        opacity: 0.8;
+    }
+    
+    .financial-card .value {
+        font-size: 42px;
+        font-weight: 900;
+    }
+    
+    .table-card-dense {
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .table-card-dense .card-header {
+        background: #000;
+        color: #FFD700;
+        padding: 12px 20px;
+        font-weight: 700;
+        border: none;
+    }
+    
+    .badge-expiring { background: rgba(255, 140, 0, 0.1); color: #FF8C00; border: 1px solid #FF8C00; }
+    .badge-active { background: rgba(50, 205, 50, 0.1); color: #32CD32; border: 1px solid #32CD32; }
+    
+    .quick-stat-pill {
+        background: #f8f9fa;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+        margin-right: 10px;
+    }
+</style>
+
+<div class="container-fluid px-0">
+    <!-- Filter Bar -->
+    <div class="dashboard-filter-bar">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold text-muted">Branch Selection</label>
+                <select name="branch" class="form-select border-0 bg-light" {% if is_restricted %}disabled{% endif %}>
+                    <option value="">All Branches</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if selected_branch == branch.id|stringformat:"s" %}selected{% endif %}>{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-muted">Month</label>
+                <select name="month" class="form-select border-0 bg-light">
+                    {% for m in months_list %}
+                    <option value="{{ m.value }}" {% if current_month == m.value %}selected{% endif %}>
+                        {{ m.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-muted">Year</label>
+                <select name="year" class="form-select border-0 bg-light">
+                    {% for y in year_range %}
+                    <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-dark w-100 fw-bold">
+                    <i class="bi bi-filter me-2"></i> Apply
+                </button>
+            </div>
+            {% if is_restricted %}
+            <div class="col-12 col-md-3">
+                <div class="alert alert-info py-2 px-3 mb-0 small">
+                    <i class="bi bi-info-circle me-2"></i> Viewing data for: <strong>{{ request.user.branch.name }}</strong>
+                </div>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stats-card-premium accent-green">
+                <div class="label">Active Members</div>
+                <div class="value">{{ active_count }}</div>
+                <i class="bi bi-people-fill bg-icon"></i>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stats-card-premium accent-yellow">
+                <div class="label">New Registrations</div>
+                <div class="value">{{ new_registrations }}</div>
+                <div class="small mt-1 text-white-50">In this period</div>
+                <i class="bi bi-person-plus-fill bg-icon"></i>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stats-card-premium accent-orange">
+                <div class="label">Expiring Soon</div>
+                <div class="value">{{ expiring_soon_count }}</div>
+                <div class="small mt-1 text-white-50">Next 7 days</div>
+                <i class="bi bi-clock-history bg-icon"></i>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stats-card-premium accent-red">
+                <div class="label">Expired Members</div>
+                <div class="value">{{ expired_count }}</div>
+                <i class="bi bi-exclamation-triangle-fill bg-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    {% if financials %}
+    <!-- Financial Overview (Admin Only) -->
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-lg-8">
+            <div class="row g-4 h-100">
+                <div class="col-12 col-md-6">
+                    <div class="financial-card shadow-sm">
+                        <div class="label mb-2">Total Collected (Cash Flow)</div>
+                        <div class="value">₹{{ financials.total_collected|floatformat:0 }}</div>
+                        <div class="mt-3 small fw-bold">
+                            <i class="bi bi-calendar-event me-1"></i> Period Selection
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="financial-card shadow-sm" style="background: linear-gradient(135deg, #222 0%, #444 100%); color: #FFD700;">
+                        <div class="label mb-2 text-white-50">Outstanding Receivables (Due)</div>
+                        <div class="value">₹{{ financials.total_due|floatformat:0 }}</div>
+                        <div class="mt-3 small text-white-50">
+                            <i class="bi bi-info-circle me-1"></i> Across all active plans
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="table-card-dense h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Payment Methods</span>
+                    <i class="bi bi-pie-chart-fill"></i>
+                </div>
+                <div class="p-3">
+                    {% for method in financials.payment_methods %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-warning rounded-circle me-2" style="width: 10px; height: 10px;"></div>
+                            <span class="fw-bold small">{{ method.payment_method }}</span>
+                        </div>
+                        <span class="fw-bold">₹{{ method.total|floatformat:0 }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4 text-muted small">No data for this period</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </div>
     {% endif %}
+
+    <!-- Data Tables Row -->
+    <div class="row g-4">
+        <!-- Expiring Soon Table -->
+        <div class="col-12 col-xl-4">
+            <div class="table-card-dense h-100">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-hourglass-split me-2"></i> Expiring Soon
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <tbody>
+                            {% for sub in expiring_soon_list %}
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold text-dark">{{ sub.member.full_name }}</div>
+                                    <div class="small text-muted">{{ sub.subscription_type.name|default:"General Plan" }}</div>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <span class="badge badge-expiring">{{ sub.end_date|date:"d M" }}</span>
+                                    <div class="small text-danger mt-1 fw-bold">{{ sub.days_remaining }} days left</div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center py-5 text-muted">No nearing expirations</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if expiring_soon_count > 5 %}
+                <div class="p-2 border-top text-center">
+                    <a href="{% url 'subscription-list' %}?status=Active" class="text-decoration-none small fw-bold text-dark">View All {{ expiring_soon_count }} <i class="bi bi-arrow-right"></i></a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Members -->
+        <div class="col-12 col-xl-4">
+            <div class="table-card-dense h-100">
+                <div class="card-header">
+                    <i class="bi bi-person-check-fill me-2"></i> Recent Registrations
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <tbody>
+                            {% for member in recent_members %}
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold text-dark">{{ member.full_name }}</div>
+                                    <div class="small text-muted">{{ member.branch.name|default:"Main" }}</div>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="small fw-bold">{{ member.registration_date|date:"d M, Y" }}</div>
+                                    <span class="badge badge-active small">New</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center py-5 text-muted">No recent members</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-2 border-top text-center">
+                    <a href="{% url 'member-list' %}" class="text-decoration-none small fw-bold text-dark">Member Directory <i class="bi bi-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Payments (Admin Only) -->
+        {% if recent_payments %}
+        <div class="col-12 col-xl-4">
+            <div class="table-card-dense h-100">
+                <div class="card-header bg-dark text-warning">
+                    <i class="bi bi-cash-stack me-2"></i> Recent Payments
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <tbody>
+                            {% for payment in recent_payments %}
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold text-dark">{{ payment.member.full_name }}</div>
+                                    <div class="small text-muted">{{ payment.payment_method }} • {{ payment.payment_date|date:"d M" }}</div>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="fw-bold text-success font-monospace">+₹{{ payment.amount|floatformat:0 }}</div>
+                                    <div class="small text-muted">{{ payment.receipt_number|truncatechars:12 }}</div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center py-5 text-muted">No transactions found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-2 border-top text-center">
+                    <a href="{% url 'payment-list' %}" class="text-decoration-none small fw-bold text-dark">Finance Logs <i class="bi bi-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- For non-admins, show Gym Status -->
+        <div class="col-12 col-xl-4">
+            <div class="table-card-dense h-100">
+                <div class="card-header bg-secondary text-white border-0">
+                    <i class="bi bi-activity me-2"></i> Gym Status
+                </div>
+                <div class="p-4 text-center">
+                    <div class="mb-4">
+                        <div class="small text-muted mb-1 text-uppercase fw-bold">Gym Subscription</div>
+                        <h4 class="fw-bold">{{ subscription_status.status_text }}</h4>
+                        {% if subscription_status.days_remaining %}
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width:{% widthratio subscription_status.days_remaining 365 100 %}%"></div>
+                        </div>
+                        <small class="text-muted">{{ subscription_status.days_remaining }} days left</small>
+                        {% endif %}
+                    </div>
+                    <hr>
+                    <div class="mt-4">
+                        <div class="small text-muted mb-1 text-uppercase fw-bold">Active Staff</div>
+                        <h3 class="fw-bold">{{ total_staff }}</h3>
+                        <a href="{% url 'user-staff-list' %}" class="btn btn-sm btn-outline-dark mt-2">Manage Staff</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     $(document).ready(function () {
-        $('#branchesTable').DataTable({
-            "pageLength": 5,
-            "lengthChange": false
-        });
-        $('#staffTable').DataTable({
-            "pageLength": 5,
-            "lengthChange": false
-        });
+        // Any specific dashboard JS can go here
     });
 </script>
 {% endblock %}

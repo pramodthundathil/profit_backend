@@ -25,8 +25,8 @@ class PaymentForm(forms.ModelForm):
             self.fields['subscription'].queryset = Subscription.objects.filter(member__gym=user.gym)
             self.fields['installment'].queryset = SubscriptionInstallment.objects.filter(subscription__member__gym=user.gym)
             
-            # If user is branch manager, filter further
-            if user.role == 'branch_admin' and user.branch:
+            # Role-based filtering for branch staff
+            if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
                 self.fields['member'].queryset = self.fields['member'].queryset.filter(branch=user.branch)
                 self.fields['subscription'].queryset = self.fields['subscription'].queryset.filter(member__branch=user.branch)
                 self.fields['installment'].queryset = self.fields['installment'].queryset.filter(subscription__member__branch=user.branch)

@@ -10,13 +10,13 @@
         <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
         <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
         <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.member_id }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Add Subscription</li>
+        <li class="breadcrumb-item active" aria-current="page">{% if is_edit %}Edit{% else %}Add{% endif %} Subscription</li>
     </ol>
 </nav>
 {% endblock %}
 
 {% block header_subtitle %}
-Create a new subscription plan for {{ member.full_name }}
+{% if is_edit %}Update subscription details for {{ member.full_name }}{% else %}Create a new subscription plan for {{ member.full_name }}{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -62,6 +62,18 @@ Create a new subscription plan for {{ member.full_name }}
                         </div>
                     </div>
                 </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <label class="form-label text-primary small fw-bold">Current Expiry Date (Optional)</label>
+                        {{ subscription_form.end_date }}
+                        <div class="form-text">Will be auto-calculated on payment if left blank.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-primary small fw-bold">Subscription Status</label>
+                        {{ subscription_form.status }}
+                    </div>
+                </div>
                 
                 <h6 class="mt-4 mb-2 text-muted">Payment Details</h6>
                  <div class="row g-3">
@@ -100,7 +112,7 @@ Create a new subscription plan for {{ member.full_name }}
 
             <div class="d-flex justify-content-end gap-2">
                 <a href="{% url 'member-detail' member.pk %}" class="btn btn-outline-secondary">Cancel</a>
-                <button type="submit" class="btn btn-dark px-4">Add Subscription</button>
+                <button type="submit" class="btn btn-dark px-4">{% if is_edit %}Update{% else %}Add{% endif %} Subscription</button>
             </div>
         </form>
     </div>

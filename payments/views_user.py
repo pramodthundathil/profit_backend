@@ -33,7 +33,7 @@ def payment_list(request):
     payments = Payment.objects.filter(member__gym=user.gym).select_related('member', 'subscription')
     
     # Role-based restriction
-    if user.role == 'branch_admin' and user.branch:
+    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
         payments = payments.filter(member__branch=user.branch)
     
     # Apply Filters from Form

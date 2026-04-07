@@ -1,27 +1,146 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum, Count, F
+from django.utils import timezone
+from datetime import datetime, date
 from .models import GymOffice, CustomUser, PaymentTransaction, SubscriptionHistory, HikConfigurationDb, GymBranch
+from members.models import Member, Subscription
+from payments.models import Payment
 
 from .forms import GymBranchForm, GymUserForm, HikConfigurationForm, GymUserEditForm
 
 
 @login_required
+@login_required
 def user_dashboard(request):
     user = request.user
+    if not user.gym:
+        return render(request, "user/dashboard.html", {})
+
+    gym = user.gym
     
-    context = {}
+    # --- Filter Handling ---
+    # Default to current month/year
+    today = timezone.now().date()
+    current_month = int(request.GET.get('month', today.month))
+    current_year = int(request.GET.get('year', today.year))
+    selected_branch_id = request.GET.get('branch', '')
+
+    # Permission-based Branch Isolation
+    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+        # Restricted to their specific branch
+        selected_branch_id = str(user.branch.id)
+        is_restricted = True
+    else:
+        # Gym Admin or HQ staff (no branch assigned) can see everything
+        is_restricted = False
+
+    # --- Base Querysets with Filters ---
+    members_qs = Member.objects.filter(gym=gym, is_active=True).prefetch_related('subscriptions__subscription_type')
+    subscriptions_qs = Subscription.objects.filter(member__gym=gym)
+    payments_qs = Payment.objects.filter(member__gym=gym, status='Completed')
+
+    if is_restricted:
+        # Strict filter for restricted roles (Branch)
+        members_qs = members_qs.filter(branch=user.branch)
+        subscriptions_qs = subscriptions_qs.filter(member__branch=user.branch)
+        payments_qs = payments_qs.filter(member__branch=user.branch)
+    elif selected_branch_id:
+        # Optional filter for Gym Admin or HQ staff
+        members_qs = members_qs.filter(branch_id=selected_branch_id)
+        subscriptions_qs = subscriptions_qs.filter(member__branch_id=selected_branch_id)
+        payments_qs = payments_qs.filter(member__branch_id=selected_branch_id)
+
+    # --- Analytical Data Calcs ---
     
-    if user.gym:
-        gym = user.gym
-        context['gym'] = gym
-        # Fetch data related to the gym
-        context['branches'] = gym.gym_branches.filter(is_deleted=False)
-        context['members'] = gym.users.filter(is_deleted=False).exclude(id=user.id) # Show other staff
-        context['subscriptions'] = gym.subscription_history.filter(is_deleted=False).order_by('-created_at')
-        context['payments'] = gym.payment_transactions.filter(is_deleted=False).order_by('-created_at')
+    # 1. Member Standings
+    active_count = members_qs.filter(membership_status='Active').count()
+    expired_count = members_qs.filter(membership_status='Expired').count()
+    
+    # 2. Expiring soon (Next 7 days)
+    seven_days_later = today + timezone.timedelta(days=7)
+    expiring_soon = subscriptions_qs.filter(
+        status='Active',
+        end_date__range=[today, seven_days_later]
+    ).select_related('member')
+
+    # 3. New Registrations for selected month/year
+    new_regs_this_month = members_qs.filter(
+        registration_date__month=current_month,
+        registration_date__year=current_year
+    ).count()
+
+    # 4. Financial Analytics (GYM ADMIN ONLY)
+    financials = None
+    if user.role == 'gym_admin':
+        # Total Collected in selected month
+        total_collected = payments_qs.filter(
+            payment_date__month=current_month,
+            payment_date__year=current_year
+        ).aggregate(total=Sum('amount'))['total'] or 0
         
+        # Total Due (Active Subscriptions with balance)
+        total_due = subscriptions_qs.filter(
+            status='Active',
+            balance_amount__gt=0
+        ).aggregate(total=Sum('balance_amount'))['total'] or 0
+
+        # Payment Methods breakdown
+        payment_methods = payments_qs.filter(
+            payment_date__month=current_month,
+            payment_date__year=current_year
+        ).values('payment_method').annotate(total=Sum('amount')).order_by('-total')
+
+        financials = {
+            'total_collected': total_collected,
+            'total_due': total_due,
+            'payment_methods': payment_methods
+        }
+
+    # 5. Lists for Tables
+    recent_members = members_qs.order_by('-date_added')[:5]
+    recent_payments = None
+    if user.role == 'gym_admin':
+         recent_payments = payments_qs.order_by('-payment_date', '-created_at')[:5]
+
+    # --- Context Preparation ---
+    # Prepare months for the filter dropdown
+    months_list = []
+    for m in range(1, 13):
+        months_list.append({
+            'name': datetime(2000, m, 1).strftime('%B'),
+            'value': m
+        })
+
+    context = {
+        'gym': gym,
+        'branches': gym.gym_branches.filter(is_deleted=False),
+        'selected_branch': selected_branch_id,
+        'current_month': current_month,
+        'current_month_name': datetime(2000, current_month, 1).strftime('%B'),
+        'current_year': current_year,
+        'months_list': months_list,
+        'year_range': range(today.year - 2, today.year + 2),
+        'is_restricted': is_restricted,
+        
+        # Stats
+        'active_count': active_count,
+        'expired_count': expired_count,
+        'expiring_soon_count': expiring_soon.count(),
+        'new_registrations': new_regs_this_month,
+        'expiring_soon_list': expiring_soon[:5],
+        
+        # Data
+        'financials': financials,
+        'recent_members': recent_members,
+        'recent_payments': recent_payments,
+        
+        # Original logic (for compatibility if needed, though we replaced most of it)
+        'total_staff': gym.users.filter(is_deleted=False).exclude(id=user.id).count(),
+        'subscription_status': gym.get_subscription_status(),
+    }
+    
     return render(request, "user/dashboard.html", context)
 
 @login_required
@@ -242,6 +361,11 @@ def delete_staff(request, pk):
 def hik_config_list(request):
     user = request.user
     
+    # Deny staff/trainers
+    if user.role not in ['gym_admin', 'branch_admin']:
+        messages.error(request, "Access denied. Only administrators can manage device configurations.")
+        return redirect('user-dashboard')
+
     configs = HikConfigurationDb.objects.none()
     
     # Gym Admin sees all configs for their gym and branches
@@ -255,7 +379,7 @@ def hik_config_list(request):
         
     context = {
         'configs': configs,
-        'gym': user.gym if user.role == 'gym_admin' else user.branch.gym
+        'gym': user.gym if user.role == 'gym_admin' else (user.branch.gym if user.branch else None)
     }
     return render(request, "user/hik_config_list.html", context)
 
@@ -291,7 +415,7 @@ def add_hik_config(request):
         
     context = {
         'form': form,
-        'gym': user.gym if user.role == 'gym_admin' else user.branch.gym
+        'gym': user.gym if user.role == 'gym_admin' else (user.branch.gym if user.branch else None)
     }
     return render(request, "user/add_hik_config.html", context)
 
@@ -328,7 +452,7 @@ def edit_hik_config(request, pk):
     context = {
         'form': form,
         'config': config,
-         'gym': user.gym if user.role == 'gym_admin' else getattr(user.branch, 'gym', None)
+         'gym': user.gym if user.role == 'gym_admin' else (user.branch.gym if user.branch else None)
     }
     return render(request, "user/add_hik_config.html", context)
 

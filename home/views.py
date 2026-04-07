@@ -2,8 +2,13 @@ from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Q
+from django.db.models import Q, Sum, Count
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+
+# External Apps
+from members.models import Member, Subscription
+from payments.models import Payment
 
 from .models import (
     CustomUser, GymOffice, GymBranch, LicenseKey,
@@ -704,49 +709,113 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
 
 class DashboardStatsView(APIView):
     """
-    Get dashboard statistics based on user role
+    Get dashboard statistics based on user role with filtering
     """
     permission_classes = [permissions.IsAuthenticated, HasActiveSubscription]
     
-    @swagger_auto_schema(tags=['Stats/Dashboard'])
+    @swagger_auto_schema(
+        tags=['Stats/Dashboard'],
+        manual_parameters=[
+            openapi.Parameter('month', openapi.IN_QUERY, description="Month (1-12)", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('year', openapi.IN_QUERY, description="Year (e.g. 2024)", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('branch', openapi.IN_QUERY, description="Branch ID (Admin only)", type=openapi.TYPE_INTEGER),
+        ]
+    )
     def get(self, request):
         user = request.user
-        stats = {}
         
-        if user.role == 'admin':
-            # Super admin dashboard
-            stats = {
-                'total_gyms': GymOffice.objects.count(),
-                'active_gyms': GymOffice.objects.filter(is_active=True).count(),
-                'total_branches': GymBranch.objects.count(),
-                'total_users': CustomUser.objects.count(),
-                'active_licenses': LicenseKey.objects.filter(is_used=True).count(),
-                'available_licenses': LicenseKey.objects.filter(is_used=False).count(),
-            }
+        # 1. Parse Filters
+        today = timezone.now().date()
+        try:
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+        except (ValueError, TypeError):
+            month, year = today.month, today.year
+            
+        selected_branch_id = request.query_params.get('branch', '')
+
+        # 2. Scope Logic
+        if not user.gym and user.role != 'admin':
+             return Response({'error': 'No gym office context found'}, status=status.HTTP_400_BAD_REQUEST)
+             
+        # Super admin sees global totals across all gyms if no gym is linked
+        # But we mostly care about gym-level dashboard for mobile
+        gym = user.gym
+
+        # 3. Branch Isolation Logic
+        is_restricted = False
+        if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+            selected_branch_id = str(user.branch.id)
+            is_restricted = True
         
-        elif user.role == 'gym_admin' and user.gym:
-            # Gym admin dashboard
-            gym = user.gym
-            stats = {
-                'gym_name': gym.name,
-                'subscription_status': gym.get_subscription_status(),
-                'total_branches': gym.gym_branches.filter(is_active=True).count(),
-                'total_users': gym.users.filter(is_active=True).count(),
-                'total_staff': gym.users.filter(role='staff', is_active=True).count(),
-                'total_trainers': gym.users.filter(role='trainer', is_active=True).count(),
-                'can_create_branch': gym.can_create_branch(),
-            }
+        # 4. Filter Querysets
+        members_qs = Member.objects.filter(gym=gym, is_active=True)
+        subscriptions_qs = Subscription.objects.filter(member__gym=gym)
+        payments_qs = Payment.objects.filter(member__gym=gym, status='Completed')
+
+        if is_restricted:
+             members_qs = members_qs.filter(branch=user.branch)
+             subscriptions_qs = subscriptions_qs.filter(member__branch=user.branch)
+             payments_qs = payments_qs.filter(member__branch=user.branch)
+        elif selected_branch_id:
+             members_qs = members_qs.filter(branch_id=selected_branch_id)
+             subscriptions_qs = subscriptions_qs.filter(member__branch_id=selected_branch_id)
+             payments_qs = payments_qs.filter(member__branch_id=selected_branch_id)
+
+        # 5. Calculate Metrics
+        active_members = members_qs.filter(membership_status='Active').count()
+        expired_members = members_qs.filter(membership_status='Expired').count()
         
-        elif user.role == 'branch_admin' and user.branch:
-            # Branch admin dashboard
-            branch = user.branch
-            stats = {
-                'branch_name': branch.name,
-                'gym_name': branch.gym.name,
-                'total_staff': branch.users.filter(role='staff', is_active=True).count(),
-                'total_trainers': branch.users.filter(role='trainer', is_active=True).count(),
-            }
-        
+        # Expiring Soon (Next 7 days)
+        seven_days_later = today + timezone.timedelta(days=7)
+        expiring_soon = subscriptions_qs.filter(
+            status='Active',
+            end_date__gte=today,
+            end_date__lte=seven_days_later
+        ).count()
+
+        # Monthly Registrations
+        new_registrations = members_qs.filter(
+            registration_date__month=month,
+            registration_date__year=year
+        ).count()
+
+        stats = {
+            'active_members': active_members,
+            'expired_members': expired_members,
+            'expiring_soon': expiring_soon,
+            'new_registrations': new_registrations,
+            'month': month,
+            'year': year,
+        }
+
+        # 6. Admin/HQ Financials
+        # Only show financials to gym_admin or staff without branch restriction (HQ)
+        if user.role == 'gym_admin' or (user.role in ['staff', 'trainer'] and not user.branch):
+            # Total Collected for the month
+            monthly_income = payments_qs.filter(
+                payment_date__month=month,
+                payment_date__year=year
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            # Total Outstanding Dues
+            total_due = subscriptions_qs.filter(status='Active').aggregate(total=Sum('balance_amount'))['total'] or 0
+            
+            # Payment Method Breakdown
+            method_breakdown = list(payments_qs.filter(
+                payment_date__month=month,
+                payment_date__year=year
+            ).values('payment_method').annotate(total=Sum('amount')).order_by('-total'))
+
+            stats.update({
+                'monthly_income': monthly_income,
+                'total_due': total_due,
+                'payment_methods': method_breakdown,
+                'show_financials': True
+            })
+        else:
+            stats['show_financials'] = False
+
         return Response(stats)
 
 

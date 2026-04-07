@@ -20,21 +20,21 @@ def member_list(request):
     branch_filter = request.GET.get('branch', '')
     
     # Base QuerySet: Members of the user's gym
-    members = Member.objects.filter(gym=user.gym, is_active=True).select_related('branch', 'gym')
+    members = Member.objects.filter(gym=user.gym, is_active=True).select_related('branch', 'gym').prefetch_related('subscriptions__subscription_type')
 
     # Role-based filtering
-    if user.role == 'branch_admin' and user.branch:
-        # Branch Manager sees only their branch members
+    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+        # Branch-specific staff/manager: Restricted to their branch only
         members = members.filter(branch=user.branch)
-    elif user.role in ['gym_admin', 'staff']:
-        # Admin/Staff can see all, but can filter by branch
+    elif user.role in ['gym_admin', 'branch_admin', 'staff', 'trainer']:
+        # HQ staff/admin (no branch assigned) or gym_admin: Can see everything
         if branch_filter:
             members = members.filter(branch_id=branch_filter)
     
     # Sorting (DataTables handles this, but good to have a default)
     members = members.order_by('-date_added')
-    # Branches for filter dropdown (Admin/Staff only)
-    branches = GymBranch.objects.filter(gym=user.gym, is_active=True, is_deleted=False) if user.role != 'branch_admin' else None
+    # Branches for filter dropdown (Admins and HQ Staff only)
+    branches = GymBranch.objects.filter(gym=user.gym, is_active=True, is_deleted=False) if (user.role == 'gym_admin' or not user.branch) else None
 
     context = {
         'members': members, # Pass full queryset
@@ -402,17 +402,13 @@ def subscription_list(request):
     subscriptions = Subscription.objects.filter(member__gym=user.gym).select_related('member', 'member__branch', 'subscription_type')
 
     # Role-based filtering
-    if user.role == 'gym_admin':
-        # Gym Admin sees all, but can filter by branch
+    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+        # Branch-specific: Restricted to their branch only
+        subscriptions = subscriptions.filter(member__branch=user.branch)
+    elif user.role in ['gym_admin', 'branch_admin', 'staff', 'trainer']:
+        # HQ staff (no branch) or gym_admin: Full access with optional branch filter
         if branch_filter:
             subscriptions = subscriptions.filter(member__branch_id=branch_filter)
-    elif user.role in ['branch_admin', 'staff']:
-        # Branch Manager and Staff see only their branch members' subscriptions
-        if user.branch:
-            subscriptions = subscriptions.filter(member__branch=user.branch)
-        else:
-            # If no branch assigned to staff, they might not see anything as per instruction
-            subscriptions = subscriptions.none()
 
     # Status filtering
     if status_filter:
@@ -421,8 +417,8 @@ def subscription_list(request):
     # Sorting
     subscriptions = subscriptions.order_by('-created_at')
 
-    # Branches for filter dropdown (Gym Admin only)
-    branches = GymBranch.objects.filter(gym=user.gym, is_active=True, is_deleted=False) if user.role == 'gym_admin' else None
+    # Branches for filter dropdown (Admins and HQ Staff only)
+    branches = GymBranch.objects.filter(gym=user.gym, is_active=True, is_deleted=False) if (user.role == 'gym_admin' or not user.branch) else None
 
     context = {
         'subscriptions': subscriptions,
@@ -432,6 +428,58 @@ def subscription_list(request):
         'title': 'Subscription Management'
     }
     return render(request, "user/members/subscription_list.html", context)
+
+@login_required
+def subscription_edit(request, pk):
+    user = request.user
+    subscription = get_object_or_404(Subscription, pk=pk, member__gym=user.gym)
+    
+    # Permission Check
+    has_permission = False
+    if user.role == 'gym_admin':
+        has_permission = True
+    elif user.role in ['branch_admin', 'staff']:
+        if subscription.member.branch == user.branch:
+            has_permission = True
+            
+    if not has_permission:
+        messages.error(request, "Access denied. You do not have permission to edit this subscription.")
+        return redirect('member-detail', pk=subscription.member.pk)
+
+    if request.method == 'POST':
+        form = SubscriptionForm(request.POST, request.FILES, instance=subscription, user=user)
+        if form.is_valid():
+            try:
+                subscription = form.save(commit=False)
+                # If period changed, we update duration
+                period = form.cleaned_data.get('subscription_period')
+                if period:
+                    subscription.duration = period.period
+                
+                subscription.save()
+                
+                # Update status
+                subscription.update_status()
+                subscription.member.update_membership_status()
+                
+                messages.success(request, "Subscription updated successfully.")
+                return redirect('member-detail', pk=subscription.member.pk)
+            except Exception as e:
+                messages.error(request, f"Error updating subscription: {e}")
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = SubscriptionForm(instance=subscription, user=user)
+    
+    context = {
+        'subscription_form': form,
+        'member': subscription.member,
+        'subscription': subscription,
+        'is_edit': True,
+        'title': f"Edit Subscription: {subscription.member.full_name}"
+    }
+    return render(request, "user/members/subscription_form.html", context)
+
 
 @login_required
 def subscription_detail(request, pk):

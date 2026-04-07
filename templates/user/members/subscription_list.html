@@ -110,9 +110,14 @@
                                 {% endif %}
                             </td>
                             <td class="text-end">
-                                <a href="{% url 'subscription-detail' sub.pk %}" class="btn btn-sm btn-icon btn-light border">
-                                    <i class="bi bi-eye-fill"></i>
-                                </a>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'subscription-detail' sub.pk %}" class="btn btn-outline-primary" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'subscription-edit' sub.pk %}" class="btn btn-outline-dark" title="Edit Plan">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
