@@ -308,7 +308,7 @@ class Subscription(models.Model):
     
     # Dates
     start_date = models.DateField()
-    end_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -439,10 +439,10 @@ class Subscription(models.Model):
         return "Unpaid"
 
     def save(self, *args, **kwargs):
-        # Auto-calculate end date if not provided
-        if not self.end_date and self.start_date:
-            days = self.get_total_days()
-            self.end_date = self.start_date + timedelta(days=days)
+        # Auto-calculate end date if not provided (DEACTIVATED: expiry now only on payment)
+        # if not self.end_date and self.start_date:
+        #     days = self.get_total_days()
+        #     self.end_date = self.start_date + timedelta(days=days)
         
         # Auto-calculate final amount
         if not self.final_amount or self.final_amount == 0:
@@ -507,6 +507,9 @@ class Subscription(models.Model):
             else:
                 # All paid, set to full term
                 self.end_date = self.start_date + timedelta(days=self.get_total_days())
+        elif self.payment_terms == 'Full' and self.is_fully_paid:
+            # Full Payment also sets end date based on duration
+            self.end_date = self.start_date + timedelta(days=self.get_total_days())
         
         self.save(update_fields=['amount_paid', 'balance_amount', 'is_fully_paid', 'end_date'])
         
