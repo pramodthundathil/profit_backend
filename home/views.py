@@ -739,6 +739,8 @@ class DashboardStatsView(APIView):
             if start_date_param and end_date_param:
                 start_date = datetime.datetime.strptime(start_date_param, '%Y-%m-%d').date()
                 end_date = datetime.datetime.strptime(end_date_param, '%Y-%m-%d').date()
+                month = start_date.month
+                year = start_date.year
             elif month_param and year_param:
                 month = int(month_param)
                 year = int(year_param)
@@ -848,15 +850,21 @@ class DashboardStatsView(APIView):
                 status='Completed'
             ).values('payment_method').annotate(total=Sum('amount')).order_by('-total'))
 
-            # Trend Analytics
+            # Trend Analytics - Group by Date field directly
             registration_trend = list(members_qs.filter(
                 registration_date__range=[start_date, end_date]
-            ).annotate(day=TruncDay('registration_date')).values('day').annotate(count=Count('id')).order_by('day'))
+            ).values('registration_date').annotate(
+                day=F('registration_date'), 
+                count=Count('id')
+            ).order_by('registration_date'))
             
             revenue_trend = list(payments_qs.filter(
                 payment_date__range=[start_date, end_date],
                 status='Completed'
-            ).annotate(day=TruncDay('payment_date')).values('day').annotate(total=Sum('amount')).order_by('day'))
+            ).values('payment_date').annotate(
+                day=F('payment_date'), 
+                total=Sum('amount')
+            ).order_by('payment_date'))
 
             stats.update({
                 'monthly_income': float(monthly_income),

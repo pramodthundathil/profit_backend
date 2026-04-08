@@ -166,11 +166,17 @@ def user_dashboard(request):
         # Trends
         'registration_trend': list(members_qs.filter(
             registration_date__range=[start_date, end_date]
-        ).annotate(day=TruncDay('registration_date')).values('day').annotate(count=Count('id')).order_by('day')),
+        ).values('registration_date').annotate(
+            day=F('registration_date'), 
+            count=Count('id')
+        ).order_by('registration_date')),
         
         'revenue_trend': list(payments_qs.filter(
             payment_date__range=[start_date, end_date]
-        ).annotate(day=TruncDay('payment_date')).values('day').annotate(total=Sum('amount')).order_by('day')),
+        ).values('payment_date').annotate(
+            day=F('payment_date'), 
+            total=Sum('amount')
+        ).order_by('payment_date')),
         'start_date': start_date.strftime('%Y-%m-%d'),
         'end_date': end_date.strftime('%Y-%m-%d'),
     }
