@@ -76,7 +76,9 @@ class SubscriptionForm(forms.ModelForm):
             'subscription_type', 'subscription_period', 'start_date', 'end_date', 'status',
             'batch', 'batch_flexible', 
             'base_amount', 'discount_percentage', 'discount_amount', 'final_amount',
-            'payment_terms', 'installment_count', 'amount_paid'
+            'payment_terms', 'installment_count', 
+            'installment_period', 'installment_period_unit',
+            'amount_paid'
         ]
         widgets = {
             'subscription_type': forms.Select(attrs={'class': 'form-select'}),
@@ -91,6 +93,8 @@ class SubscriptionForm(forms.ModelForm):
             'final_amount': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
             'payment_terms': forms.Select(attrs={'class': 'form-select'}),
             'installment_count': forms.NumberInput(attrs={'class': 'form-control'}),
+            'installment_period': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Interval (e.g. 1)'}),
+            'installment_period_unit': forms.Select(attrs={'class': 'form-select'}),
             'amount_paid': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Paid Amount'}),
         }
     

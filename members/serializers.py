@@ -49,7 +49,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'start_date', 'end_date', 'status', 
             'base_amount', 'discount_amount', 'final_amount', 
             'amount_paid', 'balance_amount',
-            'is_fully_paid', 'payment_terms', 'installment_count', 'installments',
+            'is_fully_paid', 'payment_terms', 'installment_count', 
+            'installment_period', 'installment_period_unit',
+            'installments',
             'member_name', 'member_id_code', 'member_mobile', 'member_photo',
             'days_remaining'
         ]

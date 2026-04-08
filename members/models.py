@@ -2,6 +2,8 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
+from dateutil.relativedelta import relativedelta
+
 from decimal import Decimal
 from utils.models import  Batch_DB, TypeSubscription, SubscriptionPeriod   
 from home.models  import GymOffice, GymBranch
@@ -405,6 +407,21 @@ class Subscription(models.Model):
         default=1,
         help_text="Number of installments if applicable"
     )
+    installment_period = models.PositiveIntegerField(
+        default=1,
+        help_text="Frequency of installments (e.g., 1, 2)"
+    )
+    installment_period_unit = models.CharField(
+        max_length=20,
+        choices=(
+            ("Days", "Days"),
+            ("Weeks", "Weeks"),
+            ("Months", "Months"),
+            ("Years", "Years")
+        ),
+        default="Months",
+        help_text="Unit for installment frequency"
+    )
     
     # Notes & Metadata
     custom_terms = models.TextField(
@@ -608,8 +625,18 @@ class Subscription(models.Model):
         # Create new installments for the remaining count
         start = self.start_date
         for i in range(current_count + 1, count + 1):
-             # 30 days gap for simplicity
-             due = start + timedelta(days=(i-1)*30)
+             # Calculate due date based on frequency
+             interval = (i - 1) * self.installment_period
+             if self.installment_period_unit == 'Days':
+                 due = start + timedelta(days=interval)
+             elif self.installment_period_unit == 'Weeks':
+                 due = start + timedelta(weeks=interval)
+             elif self.installment_period_unit == 'Months':
+                 due = start + relativedelta(months=interval)
+             elif self.installment_period_unit == 'Years':
+                 due = start + relativedelta(years=interval)
+             else:
+                 due = start + relativedelta(months=interval) # Default to months
              
              SubscriptionInstallment.objects.create(
                  subscription=self,

@@ -99,9 +99,15 @@
                          {{ subscription_form.payment_terms }}
                     </div>
                     <div class="col-md-4" id="installment_area">
-                        <label class="form-label">Installments</label>
-                         {{ subscription_form.installment_count }}
-                         <div id="installment_preview" class="form-text text-primary fw-bold mt-1"></div>
+                        <label class="form-label text-primary small fw-bold">Installment Settings</label>
+                        <div class="input-group">
+                            <span class="input-group-text small">Count</span>
+                            {{ subscription_form.installment_count }}
+                            <span class="input-group-text small">Every</span>
+                            {{ subscription_form.installment_period }}
+                            {{ subscription_form.installment_period_unit }}
+                        </div>
+                        <div id="installment_preview" class="form-text text-primary fw-bold mt-1"></div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Amount Paid *</label>
@@ -126,7 +132,10 @@
         const finalInput = document.getElementById('id_final_amount');
         const paymentTerms = document.getElementById('id_payment_terms');
         const installmentInput = document.getElementById('id_installment_count');
+        const periodInput = document.getElementById('id_installment_period');
+        const unitInput = document.getElementById('id_installment_period_unit');
         const installmentPreview = document.getElementById('installment_preview');
+        const installmentArea = document.getElementById('installment_area');
 
         function calculateTotal() {
             if (!baseInput || !finalInput) return;
@@ -151,9 +160,12 @@
             }
             
             const count = parseInt(installmentInput.value) || 1;
+            const period = parseInt(periodInput.value) || 1;
+            const unit = unitInput.value.toLowerCase().replace(/s$/, ''); // singularize
+            
             if (count > 1 && total > 0) {
                 const perInst = (total / count).toFixed(2);
-                if(installmentPreview) installmentPreview.textContent = `${count} x ${perInst} / month`;
+                if(installmentPreview) installmentPreview.textContent = `${count} payments of ₹${perInst} every ${period} ${unit}${period > 1 ? 's' : ''}`;
             } else {
                 if(installmentPreview) installmentPreview.textContent = '';
             }
@@ -161,15 +173,15 @@
         
         function toggleInstallments() {
             if (paymentTerms && installmentArea) {
+                const inputs = installmentArea.querySelectorAll('input, select');
                 if (paymentTerms.value === 'Installment') {
-                   // installmentArea.style.display = 'block'; 
-                   // Rely on CSS or keeping it visible but enabled
-                   installmentArea.querySelector('input').disabled = false;
-                   if(installmentArea.querySelector('input').value == "")  installmentArea.querySelector('input').value = 1;
+                   inputs.forEach(input => input.disabled = false);
+                   if(installmentInput.value == "") installmentInput.value = 1;
+                   if(periodInput.value == "") periodInput.value = 1;
                 } else {
-                   // installmentArea.style.display = 'none';
-                   installmentArea.querySelector('input').disabled = true;
-                   installmentArea.querySelector('input').value = 1;
+                   inputs.forEach(input => input.disabled = true);
+                   installmentInput.value = 1;
+                   periodInput.value = 1;
                 }
                 calculateTotal();
             }
@@ -183,6 +195,8 @@
         
         if (installmentInput) {
              installmentInput.addEventListener('input', () => calculateTotal());
+             periodInput.addEventListener('input', () => calculateTotal());
+             unitInput.addEventListener('change', () => calculateTotal());
         }
         
         if (paymentTerms) {

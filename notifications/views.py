@@ -12,20 +12,24 @@ class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
     
     def get_queryset(self):
-        # Allow filtering by member (logged in user)
-        # Note: We assume the user is linked to a Member profile.
-        # If the user is an admin, they might see all.
-        if self.request.user.is_staff:
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Notification.objects.none()
+            
+        if user.role == 'admin':
+            # Super Admin sees everything
             return Notification.objects.all()
-        
-        # Find the member associated with this user
-        # This depends on how the CustomUser is linked to Member.
-        # Based on home/models.py and members/models.py, usually there's a relationship.
-        # If CustomUser is Member, we use that.
-        try:
-            return Notification.objects.filter(member__email=self.request.user.email)
-        except:
-             return Notification.objects.none()
+        elif user.role == 'gym_admin' and user.gym:
+            # Gym Admin sees only their gym's notifications
+            return Notification.objects.filter(member__gym=user.gym)
+        elif user.role in ['branch_admin', 'staff', 'trainer'] and user.gym:
+             # Staff see their gym's notifications (or branch specific)
+             if user.branch:
+                 return Notification.objects.filter(member__branch=user.branch)
+             return Notification.objects.filter(member__gym=user.gym)
+        else:
+            # Regular members see only their own
+            return Notification.objects.filter(member_email=user.email)
 
     @action(detail=True, methods=['patch'])
     def read(self, request, pk=None):
