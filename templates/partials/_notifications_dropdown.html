@@ -1,0 +1,110 @@
+<div class="dropdown me-3">
+    <a class="nav-link position-relative dropdown-toggle no-caret" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-bell fs-5"></i>
+        {% if unread_notifications_count > 0 %}
+            <span class="position-absolute top-10 start-90 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; padding: 0.25em 0.4em;">
+                {{ unread_notifications_count }}
+                <span class="visually-hidden">unread notifications</span>
+            </span>
+        {% endif %}
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-0" aria-labelledby="notificationDropdown" style="width: 320px; max-height: 480px; overflow-y: auto; border-radius: 12px;">
+        <li class="p-3 border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold">Notifications</h6>
+            {% if unread_notifications_count > 0 %}
+                <span class="badge bg-warning text-dark">{{ unread_notifications_count }} New</span>
+            {% endif %}
+        </li>
+        
+        {% if notifications %}
+            {% for notification in notifications %}
+                <li id="dropdown-notification-{{ notification.id }}">
+                    <a class="dropdown-item p-3 border-bottom text-wrap {% if not notification.is_read %}bg-light{% endif %}" 
+                       href="{% url 'notification-list' %}"
+                       onclick="markAsReadDropdown(event, {{ notification.id }})">
+                        <div class="d-flex align-items-start">
+                            <div class="me-3">
+                                {% if notification.notification_type == 'EXPIRY_REMINDER' %}
+                                    <div class="bg-warning-subtle text-warning p-2 rounded-circle">
+                                        <i class="bi bi-clock"></i>
+                                    </div>
+                                {% elif notification.notification_type == 'OVERDUE_ALERT' %}
+                                    <div class="bg-danger-subtle text-danger p-2 rounded-circle">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                    </div>
+                                {% elif notification.notification_type == 'PAYMENT_CONFIRMATION' %}
+                                    <div class="bg-success-subtle text-success p-2 rounded-circle">
+                                        <i class="bi bi-check-circle"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="bg-info-subtle text-info p-2 rounded-circle">
+                                        <i class="bi bi-bell"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="mb-1 fw-semibold small">{{ notification.title }}</p>
+                                <p class="mb-1 text-muted smaller">{{ notification.message }}</p>
+                                <p class="mb-0 smaller text-secondary" style="font-size: 0.75rem;">
+                                    {{ notification.created_at|timesince }} ago
+                                </p>
+                            </div>
+                        </div>
+                    </a>
+                </li>
+            {% endfor %}
+            <li class="p-2 text-center">
+                <a href="{% url 'notification-list' %}" class="btn btn-link btn-sm text-warning fw-bold text-decoration-none">View All Notifications</a>
+            </li>
+        {% else %}
+            <li class="p-4 text-center text-muted">
+                <i class="bi bi-bell-slash fs-2 mb-2 d-block opacity-25"></i>
+                <p class="mb-0 small">No notifications at the moment</p>
+            </li>
+        {% endif %}
+    </ul>
+</div>
+
+<script>
+    function markAsReadDropdown(event, id) {
+        // Find the specific notification element in the dropdown
+        const item = document.getElementById(`dropdown-notification-${id}`);
+        const link = item.querySelector('.dropdown-item');
+        
+        if (link.classList.contains('bg-light')) {
+            // If it's unread, send the AJAX call
+            fetch(`/v4/notifications/mark-read/${id}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Instantly update UI: remove background and decrease unread count
+                    link.classList.remove('bg-light');
+                    
+                    const badge = document.querySelector('#notificationDropdown .badge');
+                    if (badge) {
+                        let count = parseInt(badge.innerText.trim());
+                        count -= 1;
+                        if (count <= 0) {
+                            badge.remove();
+                        } else {
+                            badge.innerText = count;
+                        }
+                    }
+                }
+            });
+        }
+    }
+</script>
+
+<style>
+    .smaller { font-size: 0.85rem; }
+    .no-caret::after { display: none !important; }
+    .nav-link.no-caret { color: #666; transition: color 0.2s; }
+    .nav-link.no-caret:hover { color: #FFD700; }
+</style>

@@ -8,6 +8,7 @@ from .models import FinanceTransaction
 from home.models import GymBranch
 from decimal import Decimal
 from datetime import datetime
+from notifications.models import Notification
 
 @login_required
 def finance_dashboard(request):
@@ -72,6 +73,13 @@ def finance_dashboard(request):
         transactions = transactions.none()
 
     context['transactions'] = transactions.order_by('-date', '-created_at')
+    
+    # Notifications for this gym's members
+    gym_notifications = Notification.objects.filter(member__gym=user.gym).order_by('-created_at')[:10]
+    unread_notifications_count = Notification.objects.filter(member__gym=user.gym, is_read=False).count()
+    
+    context['notifications'] = gym_notifications
+    context['unread_notifications_count'] = unread_notifications_count
     
     return render(request, "user/finance/dashboard.html", context)
 

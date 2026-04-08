@@ -15,6 +15,7 @@ from django.contrib.auth.decorators import login_required
 # self imports 
 
 from .decorators import is_authenticated_user, admin_only
+from notifications.models import Notification
 
 
 
@@ -55,11 +56,17 @@ def admin_dashboard(request):
     # Recent Gym Offices
     recent_gyms = GymOffice.objects.order_by('-created_at')[:5]
     
+    # Recent Notifications (Global for Super Admin)
+    recent_notifications = Notification.objects.order_by('-created_at')[:10]
+    unread_notifications_count = Notification.objects.filter(is_read=False).count()
+    
     context = {
         'gym_offices_count': gym_offices_count,
         'active_branches_count': active_branches_count,
         'users_count': users_count,
         'recent_gyms': recent_gyms,
+        'notifications': recent_notifications,
+        'unread_notifications_count': unread_notifications_count,
     }
     return render(request, "admin/dashboard.html", context)
 

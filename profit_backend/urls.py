@@ -70,6 +70,7 @@ urlpatterns = [
     path('v2/members/', include('members.urls')),
     path('v2/payments/', include('payments.urls')),
     path('v3/utils/', include('utils.urls')),
+    path('v4/notifications/', include('notifications.urls')),
     
     # path('api/v1/reports/', include('reports.urls')),
 

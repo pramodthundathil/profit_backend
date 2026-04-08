@@ -264,7 +264,8 @@
                 <h1 class="h2">{% block header_title %}Dashboard{% endblock %}</h1>
                 <p class="text-muted">{% block header_subtitle %}Welcome back, {{ request.user.first_name }}{% endblock %}</p>
             </div>
-            <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-toolbar mb-2 mb-md-0 d-flex align-items-center">
+                {% include "partials/_notifications_dropdown.html" %}
                 {% if gym.get_subscription_status.status_text == 'Active' %}
                     <span class="badge bg-success">{{ gym.get_subscription_status.status_text }}</span>
                 {% else %}
