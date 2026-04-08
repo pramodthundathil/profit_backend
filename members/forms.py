@@ -8,8 +8,10 @@ class MemberForm(forms.ModelForm):
     """Form for creating/editing member details"""
     class Meta:
         model = Member
-        exclude = ['gym', 'member_id', 'membership_status', 'access_enabled', 'date_added', 'registration_date', 'notes', 'is_active']
+        exclude = ['gym', 'member_id', 'access_enabled', 'date_added', 'registration_date', 'notes']
         widgets = {
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'membership_status': forms.Select(attrs={'class': 'form-select'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last Name'}),
             'date_of_birth': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),

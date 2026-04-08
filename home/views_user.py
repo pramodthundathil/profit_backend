@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, Count, F
+from django.db.models.functions import TruncDay
+
 from django.utils import timezone
 from datetime import datetime, date
 from .models import GymOffice, CustomUser, PaymentTransaction, SubscriptionHistory, HikConfigurationDb, GymBranch
@@ -20,11 +22,35 @@ def user_dashboard(request):
 
     gym = user.gym
     
-    # --- Filter Handling ---
-    # Default to current month/year
+    # Default to current month/year or explicit date range
     today = timezone.now().date()
-    current_month = int(request.GET.get('month', today.month))
-    current_year = int(request.GET.get('year', today.year))
+    
+    start_date_param = request.GET.get('start_date')
+    end_date_param = request.GET.get('end_date')
+    
+    if start_date_param and end_date_param:
+        try:
+            start_date = datetime.strptime(start_date_param, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_param, '%Y-%m-%d').date()
+            current_month = start_date.month
+            current_year = start_date.year
+        except ValueError:
+            current_month = int(request.GET.get('month', today.month))
+            current_year = int(request.GET.get('year', today.year))
+            start_date = date(current_year, current_month, 1)
+            if current_month == 12:
+                end_date = date(current_year + 1, 1, 1) - timezone.timedelta(days=1)
+            else:
+                end_date = date(current_year, current_month + 1, 1) - timezone.timedelta(days=1)
+    else:
+        current_month = int(request.GET.get('month', today.month))
+        current_year = int(request.GET.get('year', today.year))
+        start_date = date(current_year, current_month, 1)
+        if current_month == 12:
+            end_date = date(current_year + 1, 1, 1) - timezone.timedelta(days=1)
+        else:
+            end_date = date(current_year, current_month + 1, 1) - timezone.timedelta(days=1)
+
     selected_branch_id = request.GET.get('branch', '')
 
     # Permission-based Branch Isolation
@@ -65,10 +91,9 @@ def user_dashboard(request):
         end_date__range=[today, seven_days_later]
     ).select_related('member')
 
-    # 3. New Registrations for selected month/year
+    # 3. Registrations for selected period
     new_regs_this_month = members_qs.filter(
-        registration_date__month=current_month,
-        registration_date__year=current_year
+        registration_date__range=[start_date, end_date]
     ).count()
 
     # 4. Financial Analytics (GYM ADMIN ONLY)
@@ -76,8 +101,7 @@ def user_dashboard(request):
     if user.role == 'gym_admin':
         # Total Collected in selected month
         total_collected = payments_qs.filter(
-            payment_date__month=current_month,
-            payment_date__year=current_year
+            payment_date__range=[start_date, end_date]
         ).aggregate(total=Sum('amount'))['total'] or 0
         
         # Total Due (Active Subscriptions with balance)
@@ -88,8 +112,7 @@ def user_dashboard(request):
 
         # Payment Methods breakdown
         payment_methods = payments_qs.filter(
-            payment_date__month=current_month,
-            payment_date__year=current_year
+            payment_date__range=[start_date, end_date]
         ).values('payment_method').annotate(total=Sum('amount')).order_by('-total')
 
         financials = {
@@ -136,9 +159,20 @@ def user_dashboard(request):
         'recent_members': recent_members,
         'recent_payments': recent_payments,
         
-        # Original logic (for compatibility if needed, though we replaced most of it)
-        'total_staff': gym.users.filter(is_deleted=False).exclude(id=user.id).count(),
+        # original logic
+        'total_staff': gym.users.filter(is_deleted=False).exclude(id=request.user.id).count(),
         'subscription_status': gym.get_subscription_status(),
+
+        # Trends
+        'registration_trend': list(members_qs.filter(
+            registration_date__range=[start_date, end_date]
+        ).annotate(day=TruncDay('registration_date')).values('day').annotate(count=Count('id')).order_by('day')),
+        
+        'revenue_trend': list(payments_qs.filter(
+            payment_date__range=[start_date, end_date]
+        ).annotate(day=TruncDay('payment_date')).values('day').annotate(total=Sum('amount')).order_by('day')),
+        'start_date': start_date.strftime('%Y-%m-%d'),
+        'end_date': end_date.strftime('%Y-%m-%d'),
     }
     
     return render(request, "user/dashboard.html", context)

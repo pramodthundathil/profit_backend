@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import models
 from django.db.models import Q, Sum, Count, F
+from django.db.models.functions import TruncDay
+
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import datetime
@@ -729,10 +731,35 @@ class DashboardStatsView(APIView):
         # 1. Parse Filters
         today = timezone.now().date()
         try:
-            month = int(request.query_params.get('month', today.month))
-            year = int(request.query_params.get('year', today.year))
+            month_param = request.query_params.get('month')
+            year_param = request.query_params.get('year')
+            start_date_param = request.query_params.get('start_date')
+            end_date_param = request.query_params.get('end_date')
+
+            if start_date_param and end_date_param:
+                start_date = datetime.datetime.strptime(start_date_param, '%Y-%m-%d').date()
+                end_date = datetime.datetime.strptime(end_date_param, '%Y-%m-%d').date()
+            elif month_param and year_param:
+                month = int(month_param)
+                year = int(year_param)
+                start_date = datetime.date(year, month, 1)
+                if month == 12:
+                    end_date = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
+                else:
+                    end_date = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
+            else:
+                # Default to current month
+                month = today.month
+                year = today.year
+                start_date = datetime.date(year, month, 1)
+                if month == 12:
+                    end_date = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
+                else:
+                    end_date = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
         except (ValueError, TypeError):
             month, year = today.month, today.year
+            start_date = datetime.date(year, month, 1)
+            end_date = today # Or end of month
             
         selected_branch_id = request.query_params.get('branch', '')
 
@@ -777,10 +804,9 @@ class DashboardStatsView(APIView):
             end_date__lte=seven_days_later
         ).count()
 
-        # Monthly Registrations
+        # Registrations in period
         new_registrations = members_qs.filter(
-            date_added__month=month,
-            date_added__year=year
+            registration_date__range=[start_date, end_date]
         ).count()
 
         stats = {
@@ -798,15 +824,13 @@ class DashboardStatsView(APIView):
         if show_financials:
             # Monthly Income (Completed payments in selected month)
             monthly_income = payments_qs.filter(
-                payment_date__month=month, 
-                payment_date__year=year,
+                payment_date__range=[start_date, end_date],
                 status='Completed'
             ).aggregate(total=Sum('amount'))['total'] or 0
 
             # Monthly Outstanding (Unpaid installments due this month)
             monthly_outstanding = installments_qs.filter(
-                due_date__month=month,
-                due_date__year=year
+                due_date__range=[start_date, end_date]
             ).exclude(status='Paid').aggregate(
                 total=Sum(F('amount') - F('amount_paid'))
             )['total'] or 0
@@ -820,17 +844,30 @@ class DashboardStatsView(APIView):
 
             # Payment Method Breakdown
             payment_methods = list(payments_qs.filter(
-                payment_date__month=month, 
-                payment_date__year=year,
+                payment_date__range=[start_date, end_date],
                 status='Completed'
             ).values('payment_method').annotate(total=Sum('amount')).order_by('-total'))
+
+            # Trend Analytics
+            registration_trend = list(members_qs.filter(
+                registration_date__range=[start_date, end_date]
+            ).annotate(day=TruncDay('registration_date')).values('day').annotate(count=Count('id')).order_by('day'))
+            
+            revenue_trend = list(payments_qs.filter(
+                payment_date__range=[start_date, end_date],
+                status='Completed'
+            ).annotate(day=TruncDay('payment_date')).values('day').annotate(total=Sum('amount')).order_by('day'))
 
             stats.update({
                 'monthly_income': float(monthly_income),
                 'monthly_outstanding': float(monthly_outstanding),
                 'total_overdue': float(total_overdue),
                 'payment_methods': payment_methods,
-                'show_financials': True
+                'registration_trend': registration_trend,
+                'revenue_trend': revenue_trend,
+                'show_financials': True,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat()
             })
         else:
             stats['show_financials'] = False

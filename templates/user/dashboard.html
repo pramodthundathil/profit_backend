@@ -128,27 +128,17 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-6 col-md-2">
-                <label class="form-label small fw-bold text-muted">Month</label>
-                <select name="month" class="form-select border-0 bg-light">
-                    {% for m in months_list %}
-                    <option value="{{ m.value }}" {% if current_month == m.value %}selected{% endif %}>
-                        {{ m.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold text-muted">Start Date</label>
+                <input type="date" name="start_date" class="form-select border-0 bg-light" value="{{ start_date }}">
             </div>
-            <div class="col-6 col-md-2">
-                <label class="form-label small fw-bold text-muted">Year</label>
-                <select name="year" class="form-select border-0 bg-light">
-                    {% for y in year_range %}
-                    <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold text-muted">End Date</label>
+                <input type="date" name="end_date" class="form-select border-0 bg-light" value="{{ end_date }}">
             </div>
-            <div class="col-12 col-md-2">
+            <div class="col-12 col-md-1">
                 <button type="submit" class="btn btn-dark w-100 fw-bold">
-                    <i class="bi bi-filter me-2"></i> Apply
+                    <i class="bi bi-filter"></i>
                 </button>
             </div>
             {% if is_restricted %}
@@ -194,6 +184,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-lg-6">
+            <div class="table-card-dense shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Registration Trend</h5>
+                    <span class="badge bg-light text-dark border">Daily Members</span>
+                </div>
+                <div style="height: 300px;">
+                    <canvas id="registrationChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="table-card-dense shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Revenue Trend</h5>
+                    <span class="badge bg-light text-success border">Daily Income</span>
+                </div>
+                <div style="height: 300px;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     {% if financials %}
     <!-- Financial Overview (Admin Only) -->
@@ -383,9 +400,73 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     $(document).ready(function () {
-        // Any specific dashboard JS can go here
+        // Prepare Data
+        const registrationData = {
+            labels: [{% for item in registration_trend %}"{{ item.day|date:'d M' }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'New Registrations',
+                data: [{% for item in registration_trend %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                borderColor: '#FFD700',
+                backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#000',
+                pointBorderColor: '#FFD700',
+                pointRadius: 4
+            }]
+        };
+
+        const revenueData = {
+            labels: [{% for item in revenue_trend %}"{{ item.day|date:'d M' }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: [{% for item in revenue_trend %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                borderColor: '#1a1a1a',
+                backgroundColor: 'rgba(26, 26, 26, 0.05)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#FFD700',
+                pointBorderColor: '#000',
+                pointRadius: 4
+            }]
+        };
+
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: { font: { weight: '600' } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { weight: '600' } }
+                }
+            }
+        };
+
+        // Render Charts
+        new Chart(document.getElementById('registrationChart').getContext('2d'), {
+            type: 'line',
+            data: registrationData,
+            options: chartOptions
+        });
+
+        new Chart(document.getElementById('revenueChart').getContext('2d'), {
+            type: 'line',
+            data: revenueData,
+            options: chartOptions
+        });
     });
 </script>
 {% endblock %}

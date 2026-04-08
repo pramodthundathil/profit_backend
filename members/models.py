@@ -174,13 +174,18 @@ class Member(models.Model):
                 end_date__gte=today
             ).exists()
             
-            if active_exists:
+            if active_exists or self.access_enabled:
                 self.membership_status = 'Active'
             else:
                 self.membership_status = 'Expired'
             
-            # Recalculate access
+            # Recalculate access if needed (optional since access_enabled was already checked)
+            # but usually it's better to update access status first then status
             self.update_access_status()
+            
+            # Ensure status if access was just updated to enabled
+            if self.access_enabled:
+                self.membership_status = 'Active'
         
         self.save()
     
