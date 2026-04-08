@@ -270,5 +270,11 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+# email configuration 
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'profitgym.management@gmail.com'
+EMAIL_HOST_PASSWORD = 'psoovwzscskarabv'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
