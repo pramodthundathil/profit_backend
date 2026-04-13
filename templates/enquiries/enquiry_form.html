@@ -1,0 +1,80 @@
+{% extends 'user/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} | {{ gym.name }}{% endblock %}
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'enquiries:dashboard' %}" class="text-decoration-none text-muted">CRM</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'enquiries:enquiry_list' %}" class="text-decoration-none text-muted">Enquiries</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="table-card">
+            <h5 class="mb-4 text-center">{{ title }}</h5>
+            <form method="POST" class="needs-validation" novalidate>
+                {% csrf_token %}
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Name *</label>
+                        {{ form.name|add_class:"form-control"|attr:"required" }}
+                        {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Phone Number *</label>
+                        {{ form.phone_number|add_class:"form-control"|attr:"required" }}
+                        {% if form.phone_number.errors %}<div class="text-danger small mt-1">{{ form.phone_number.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Email</label>
+                        {{ form.email|add_class:"form-control" }}
+                        {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Age</label>
+                        {{ form.age|add_class:"form-control" }}
+                        {% if form.age.errors %}<div class="text-danger small mt-1">{{ form.age.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Last Follow-up</label>
+                        {{ form.last_follow_up_date|add_class:"form-control" }}
+                        {% if form.last_follow_up_date.errors %}<div class="text-danger small mt-1">{{ form.last_follow_up_date.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Next Follow-up Due</label>
+                        {{ form.next_follow_up_date|add_class:"form-control" }}
+                        {% if form.next_follow_up_date.errors %}<div class="text-danger small mt-1">{{ form.next_follow_up_date.errors }}</div>{% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Status</label>
+                        {{ form.status|add_class:"form-select" }}
+                        {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6 d-flex align-items-center mt-md-5">
+                        <div class="form-check form-switch">
+                            {{ form.conversion|add_class:"form-check-input"|attr:"role:switch" }}
+                            <label class="form-check-label fw-medium ms-2" for="{{ form.conversion.id_for_label }}">Mark as Converted</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 mt-4 text-end border-top pt-3">
+                    <a href="{% url 'enquiries:enquiry_list' %}" class="btn btn-light border me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary px-4">Save Enquiry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

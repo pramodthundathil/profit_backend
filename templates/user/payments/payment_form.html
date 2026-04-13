@@ -22,7 +22,7 @@
                 <h5 class="mb-0 fs-6">Payment Recording Form</h5>
             </div>
             <div class="card-body p-4">
-                <form method="post" class="needs-validation" novalidate>
+                <form method="post" class="needs-validation" onsubmit="disableSubmitButton(this)" novalidate>
                     {% csrf_token %}
                     
                     <div class="row g-3">
@@ -97,7 +97,7 @@
                     </div>
 
                     <div class="mt-4 pt-3 border-top d-flex gap-2">
-                        <button type="submit" class="btn btn-dark btn-sm px-4">
+                        <button type="submit" class="btn btn-dark btn-sm px-4 submit-btn">
                             Save Payment
                         </button>
                         <a href="{% url 'payment-list' %}" class="btn btn-light btn-sm px-4">Cancel</a>
@@ -119,6 +119,16 @@
 
 {% block scripts %}
 <script>
+    function disableSubmitButton(form) {
+        const btn = form.querySelector('.submit-btn');
+        if (btn) {
+            setTimeout(() => {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
+            }, 10);
+        }
+    }
+
     $(document).ready(function() {
         const initialSubId = $('#id_subscription').val();
         const initialInstId = $('#id_installment').val();

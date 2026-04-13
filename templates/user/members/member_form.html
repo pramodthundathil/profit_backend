@@ -96,7 +96,13 @@
                  <div class="col-md-6">
                     <label class="form-label">Mobile Number *</label>
                     {{ member_form.mobile_number }}
-                    {{ member_form.mobile_number.errors }}
+                    {% if member_form.mobile_number.errors %}
+                    <div class="text-danger small fw-bold mt-1">
+                        {% for error in member_form.mobile_number.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                  <div class="col-md-6">
                     <label class="form-label">Email</label>

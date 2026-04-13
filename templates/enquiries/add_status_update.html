@@ -1,0 +1,63 @@
+{% extends 'user/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Log Status Update | {{ gym.name }}{% endblock %}
+{% block header_title %}Log Follow-up{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'enquiries:dashboard' %}" class="text-decoration-none text-muted">CRM</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'enquiries:enquiry_detail' enquiry.pk %}" class="text-decoration-none text-muted">{{ enquiry.name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Add Update</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="table-card">
+            <h5 class="mb-4 text-center">Add Status Update for {{ enquiry.name }}</h5>
+            
+            <div class="bg-light p-3 rounded mb-4 text-center">
+                <p class="mb-1"><strong>Phone:</strong> {{ enquiry.phone_number }}</p>
+                {% if enquiry.email %}<p class="mb-0"><strong>Email:</strong> {{ enquiry.email }}</p>{% endif %}
+            </div>
+            
+            <form method="POST" class="needs-validation" novalidate>
+                {% csrf_token %}
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Call Status / Outcome *</label>
+                        {{ form.call_status|add_class:"form-select"|attr:"required" }}
+                        <div class="form-text">Choose 'Converted' to automatically generate a member profile!</div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small fw-semibold">Enquiry Status Level</label>
+                        {{ form.status|add_class:"form-select"|attr:"required" }}
+                        <div class="form-text">Current: {{ enquiry.get_status_display }}</div>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small fw-semibold">Next Follow up date (Optional, overrides default)</label>
+                        <input type="date" name="next_followup" class="form-control" min="{{ today|date:'Y-m-d' }}">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label text-muted small fw-semibold">Follow-up Notes / Remarks</label>
+                        {{ form.description|add_class:"form-control"|attr:"required" }}
+                    </div>
+                </div>
+                
+                <div class="col-12 mt-4 text-end border-top pt-3">
+                    <a href="{% url 'enquiries:enquiry_detail' enquiry.pk %}" class="btn btn-light border me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Save Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

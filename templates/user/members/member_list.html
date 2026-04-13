@@ -69,7 +69,14 @@
                                 </div>
                                 {% endif %}
                                 <div>
-                                    <div class="fw-bold text-dark">{{ member.full_name }}</div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="fw-bold text-dark">{{ member.full_name }}</div>
+                                        {% if member.risk_medical %}
+                                        <span class="badge bg-danger rounded-pill px-2 py-1" style="font-size: 0.65rem;" title="Medical Risk High">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Risk
+                                        </span>
+                                        {% endif %}
+                                    </div>
                                     <small class="text-muted" style="font-size: 0.8rem;">{{ member.gender|default:"-" }} | {{ member.age|default:"N/A" }} yrs</small>
                                 </div>
                             </div>

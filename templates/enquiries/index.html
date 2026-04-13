@@ -1,0 +1,152 @@
+{% extends 'user/base.html' %}
+
+{% block title %}CRM Dashboard | {{ gym.name }}{% endblock %}
+
+{% block header_title %}CRM Dashboard{% endblock %}
+{% block header_subtitle %}Overview of your leads and enquiries{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">CRM</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon icon-blue"><i class="bi bi-people"></i></div>
+            <div class="stat-value">{{ total_enquiries }}</div>
+            <div class="stat-label">Total Enquiries</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon icon-green"><i class="bi bi-check-circle"></i></div>
+            <div class="stat-value">{{ converted_enquiries }}</div>
+            <div class="stat-label">Converted</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon icon-warning" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-value">{{ pending_enquiries }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon icon-gold"><i class="bi bi-graph-up-arrow"></i></div>
+            <div class="stat-value">{{ conversion_rate }}%</div>
+            <div class="stat-label">Conversion Rate</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 d-flex gap-2">
+        <a href="{% url 'enquiries:todays_followups' %}" class="btn btn-warning position-relative px-4 py-2 fw-semibold">
+            <i class="bi bi-telephone-outbound me-2"></i>Today's Follow-ups
+            {% if today_followups > 0 %}
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                {{ today_followups }}
+            </span>
+            {% endif %}
+        </a>
+        <a href="{% url 'enquiries:enquiry_list' %}" class="btn btn-primary px-4 py-2 fw-semibold">
+            <i class="bi bi-list-ul me-2"></i>All Enquiries
+        </a>
+        <a href="{% url 'enquiries:enquiry_create' %}" class="btn btn-success px-4 py-2 fw-semibold ms-auto">
+            <i class="bi bi-plus-lg me-2"></i>New Enquiry
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 border-top pt-4">
+    <div class="col-md-6">
+        <div class="table-card">
+            <h5 class="mb-3">Recent Enquiries</h5>
+            <div class="table-responsive">
+                <table class="table custom-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for enquiry in recent_enquiries_list %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'enquiries:enquiry_detail' enquiry.pk %}" class="text-decoration-none fw-medium text-dark">
+                                    {{ enquiry.name }}
+                                </a>
+                            </td>
+                            <td>{{ enquiry.phone_number }}</td>
+                            <td>
+                                {% if enquiry.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                                {% elif enquiry.status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">{{ enquiry.status|title }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted">No recent enquiries.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="table-card h-100">
+            <h5 class="mb-3">Pending Action</h5>
+            <div class="table-responsive">
+                <table class="table custom-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Follow-up Due</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in todays_pending_followups %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>
+                                {% if item.next_follow_up_date < today %}
+                                <span class="text-danger fw-bold"><i class="bi bi-exclamation-circle me-1"></i>Overdue</span>
+                                {% elif item.next_follow_up_date == today %}
+                                <span class="text-warning fw-bold text-dark"><i class="bi bi-clock me-1"></i>Today</span>
+                                {% else %}
+                                {{ item.next_follow_up_date }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'enquiries:add_status_update' item.pk %}" class="btn btn-sm btn-outline-primary">
+                                    Update
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted">No pending follow-ups!</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

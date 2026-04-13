@@ -76,12 +76,16 @@
             font-size: 1.1rem;
         }
 
-        /* Main Content */
         .main-content {
             margin-left: var(--sidebar-width);
             padding: 20px;
             transition: all 0.3s ease;
         }
+
+        {% if is_public %}
+        .sidebar, .navbar { display: none !important; }
+        .main-content { margin-left: 0 !important; }
+        {% endif %}
 
         /* Stats Cards */
         .stat-card {
@@ -172,13 +176,16 @@
         }
     </style>
 </head>
-<body>
+<body class="{% if is_public %}public-page{% endif %}">
 
+    {% if not is_public %}
     <!-- Mobile Toggle -->
     <button class="btn btn-dark d-lg-none position-fixed top-0 start-0 m-3 z-3" onclick="document.getElementById('sidebar').classList.toggle('show')">
         <i class="bi bi-list"></i>
     </button>
+    {% endif %}
 
+    {% if not is_public %}
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -196,6 +203,9 @@
         <nav class="mt-4">
             <a href="{% url 'user-dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'user-dashboard' %}active{% endif %}">
                 <i class="bi bi-grid-fill"></i> Dashboard
+            </a>
+            <a href="{% url 'enquiries:dashboard' %}" class="nav-link {% if 'enquiries' in request.resolver_match.url_name or 'enquiry' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-person-lines-fill"></i> CRM / Enquiries
             </a>
             <a href="{% url 'member-list' %}" class="nav-link {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-person-vcard-fill"></i> Members
@@ -244,11 +254,14 @@
                     <i class="bi bi-box-arrow-right"></i> Sign Out
                 </a>
             </div>
+            </div>
         </nav>
     </div>
+    {% endif %}
 
     <!-- Main Content -->
     <div class="main-content">
+        {% if not is_public %}
         <!-- Header -->
         <header class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
             <div>
@@ -273,6 +286,7 @@
                 {% endif %}
             </div>
         </header>
+        {% endif %}
 
         {% block content %}
         {% endblock %}

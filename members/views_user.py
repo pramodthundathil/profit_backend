@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -6,8 +7,8 @@ from django.db import transaction
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
-from .models import Member, Subscription
-from .forms import MemberForm, SubscriptionForm
+from .models import Member, Subscription, HealthHistory, Medication, ParqForm
+from .forms import MemberForm, SubscriptionForm, HealthHistoryForm, MedicationFormSet, ParqFormModelForm, ParqUpdateForm
 from home.models import GymBranch
 
 @login_required
@@ -506,3 +507,217 @@ def subscription_detail(request, pk):
         'title': f"Subscription Details: {subscription.member.full_name}"
     }
     return render(request, "user/members/subscription_detail.html", context)
+
+# ============================================================================
+# HEALTH HISTORY VIEWS
+# ============================================================================
+
+@login_required
+def health_history_form_view(request, member_id):
+    member = get_object_or_404(Member, id=member_id, gym=request.user.gym)
+    
+    # Check if health history already exists
+    health_history = getattr(member, 'health_history', None)
+    
+    if request.method == 'POST':
+        form = HealthHistoryForm(request.POST, instance=health_history)
+        if form.is_valid():
+            with transaction.atomic():
+                health_history = form.save(commit=False)
+                health_history.member = member
+                health_history.save()
+                
+                # Handle medications formset
+                medication_formset = MedicationFormSet(request.POST, instance=health_history)
+                if medication_formset.is_valid():
+                    medication_formset.save()
+                
+                # Check for risky conditions and update member's risk_medical flag
+                has_risky = health_history.has_risky_heart_conditions or health_history.has_risky_health_conditions
+                member.risk_medical = has_risky
+                member.save(update_fields=['risk_medical'])
+                
+                messages.success(request, "Health History saved successfully.")
+                
+                if has_risky:
+                    # If risky, direct to PAR-Q form
+                    messages.info(request, "Higher medical risk detected. Member must complete the PAR-Q form.")
+                    return redirect('parq-create', member_id=member.id)
+                
+                return redirect(f"{reverse('member-detail', args=[member.id])}#health")
+        else:
+            messages.error(request, "Please correct the errors in the form.")
+            medication_formset = MedicationFormSet(request.POST, instance=health_history)
+    else:
+        form = HealthHistoryForm(instance=health_history)
+        medication_formset = MedicationFormSet(instance=health_history)
+    
+    context = {
+        'form': form,
+        'medication_formset': medication_formset,
+        'member': member,
+        'title': 'Health History Form'
+    }
+    return render(request, 'user/members/health_history/form.html', context)
+
+@login_required
+def health_history_detail_view(request, member_id):
+    member = get_object_or_404(Member, id=member_id, gym=request.user.gym)
+    health_history = get_object_or_404(HealthHistory, member=member)
+    
+    context = {
+        'health_history': health_history,
+        'member': member,
+        'medications': health_history.medications.all(),
+        'title': 'Health History Detail'
+    }
+    return render(request, 'user/members/health_history/detail.html', context)
+
+@login_required
+def success_on_health_history(request):
+    return render(request, 'user/members/health_history/success.html', {'title': 'Success'})
+
+# ============================================================================
+# PAR-Q FORM VIEWS
+# ============================================================================
+
+@login_required
+def parq_form_create(request, member_id):
+    member = get_object_or_404(Member, id=member_id, gym=request.user.gym)
+    
+    # Check if PAR-Q already exists
+    parq = getattr(member, 'health_history_parque', None)
+    if parq:
+        return redirect('parq-detail', pk=parq.id)
+        
+    if request.method == 'POST':
+        form = ParqFormModelForm(request.POST)
+        if form.is_valid():
+            parq = form.save(commit=False)
+            parq.member = member
+            parq.is_completed = True
+            parq.save()
+            messages.success(request, "PAR-Q form submitted successfully.")
+            return redirect(f"{reverse('member-detail', args=[member.id])}#health")
+        else:
+            messages.error(request, "Please correct the errors in the form.")
+    else:
+        form = ParqFormModelForm()
+        
+    context = {
+        'form': form,
+        'member': member,
+        'title': 'PAR-Q Form'
+    }
+    return render(request, 'user/members/parq/parq_form.html', context)
+
+@login_required
+def parq_form_detail(request, pk):
+    parq = get_object_or_404(ParqForm, pk=pk, member__gym=request.user.gym)
+    context = {
+        'parq': parq,
+        'member': parq.member,
+        'title': 'PAR-Q Form Detail'
+    }
+    return render(request, 'user/members/parq/parq_detail.html', context)
+
+@login_required
+def parq_form_update(request, pk):
+    parq = get_object_or_404(ParqForm, pk=pk, member__gym=request.user.gym)
+    
+    if request.method == 'POST':
+        form = ParqUpdateForm(request.POST, instance=parq)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "PAR-Q form updated successfully.")
+            return redirect(f"{reverse('member-detail', args=[parq.member.id])}#health")
+    else:
+        form = ParqUpdateForm(instance=parq)
+        
+    context = {
+        'form': form,
+        'member': parq.member,
+        'title': 'Update PAR-Q Form'
+    }
+    return render(request, 'user/members/parq/parq_update_form.html', context)
+
+# ============================================================================
+# PUBLIC FORM VIEWS (NO LOGIN REQUIRED)
+# ============================================================================
+
+def public_health_history_form(request, token):
+    member = get_object_or_404(Member, public_token=token)
+    
+    # Check if health history already exists
+    health_history = getattr(member, 'health_history', None)
+    
+    if request.method == 'POST':
+        form = HealthHistoryForm(request.POST, instance=health_history)
+        medication_formset = MedicationFormSet(request.POST, instance=health_history)
+        
+        if form.is_valid():
+            with transaction.atomic():
+                health_history = form.save(commit=False)
+                health_history.member = member
+                health_history.save()
+                
+                # Handle medications formset (which is already initialized above)
+                if medication_formset.is_valid():
+                    medication_formset.save()
+                
+                # Check for risky conditions and update member's risk_medical flag
+                has_risky = health_history.has_risky_heart_conditions or health_history.has_risky_health_conditions
+                member.risk_medical = has_risky
+                member.save(update_fields=['risk_medical'])
+                
+                if has_risky:
+                    # If risky, direct to public PAR-Q form
+                    return redirect('public-parq', token=member.public_token)
+                
+                return redirect('public-success')
+    else:
+        form = HealthHistoryForm(instance=health_history)
+        medication_formset = MedicationFormSet(instance=health_history)
+    
+    context = {
+        'form': form,
+        'medication_formset': medication_formset,
+        'member': member,
+        'title': 'Health History Form',
+        'is_public': True
+    }
+    return render(request, 'user/members/health_history/form.html', context)
+
+def public_parq_form(request, token):
+    member = get_object_or_404(Member, public_token=token)
+    
+    # Check if PAR-Q already exists
+    parq = getattr(member, 'health_history_parque', None)
+    if parq and parq.is_completed:
+        return redirect('public-success')
+        
+    if request.method == 'POST':
+        form = ParqFormModelForm(request.POST)
+        if form.is_valid():
+            parq = form.save(commit=False)
+            parq.member = member
+            parq.is_completed = True
+            parq.save()
+            return redirect('public-success')
+    else:
+        form = ParqFormModelForm()
+        
+    context = {
+        'form': form,
+        'member': member,
+        'title': 'PAR-Q Form',
+        'is_public': True
+    }
+    return render(request, 'user/members/parq/parq_form.html', context)
+
+def public_success(request):
+    return render(request, 'user/members/public/success.html', {
+        'title': 'Submission Successful',
+        'is_public': True
+    })
+

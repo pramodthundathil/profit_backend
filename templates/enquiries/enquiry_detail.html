@@ -1,0 +1,116 @@
+{% extends 'user/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Enquiry Details | {{ gym.name }}{% endblock %}
+{% block header_title %}Enquiry Details{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'enquiries:dashboard' %}" class="text-decoration-none text-muted">CRM</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'enquiries:enquiry_list' %}" class="text-decoration-none text-muted">Enquiries</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ enquiry.name }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 border-0 border-top border-primary border-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="card-title mb-0">{{ enquiry.name }}</h5>
+                    <a href="{% url 'enquiries:enquiry_update' enquiry.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Edit</a>
+                </div>
+                
+                <ul class="list-group list-group-flush mb-4">
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-telephone text-primary me-2"></i>Phone</span>
+                        <span class="fw-medium">{{ enquiry.phone_number }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-envelope text-primary me-2"></i>Email</span>
+                        <span class="fw-medium">{{ enquiry.email|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-person text-primary me-2"></i>Age</span>
+                        <span class="fw-medium">{{ enquiry.age|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                        <span class="text-muted"><i class="bi bi-calendar3 text-primary me-2"></i>Created</span>
+                        <span class="fw-medium">{{ enquiry.date_created }}</span>
+                    </li>
+                </ul>
+
+                <h6 class="text-muted mb-3 text-uppercase fs-7">Status Details</h6>
+                <div class="bg-light p-3 rounded">
+                    <div class="mb-2">
+                        <span class="text-muted d-block small">Status</span>
+                        {% if enquiry.conversion %}
+                            <span class="badge bg-success">Converted</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">{{ enquiry.status|title }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-muted d-block small">Last Follow-up</span>
+                        <span class="fw-semibold">{{ enquiry.last_follow_up_date|default:"None" }}</span>
+                    </div>
+                    <div>
+                        <span class="text-muted d-block small">Next Due</span>
+                        {% if enquiry.conversion %}
+                            <span class="fw-semibold">-</span>
+                        {% elif enquiry.next_follow_up_date %}
+                            <span class="fw-semibold text-danger">{{ enquiry.next_follow_up_date }}</span>
+                        {% else %}
+                            <span class="fw-semibold">None</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="table-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0">Follow-up History <span class="badge bg-secondary ms-2">{{ statuses.count }}</span></h5>
+                {% if not enquiry.conversion %}
+                <a href="{% url 'enquiries:add_status_update' enquiry.pk %}" class="btn btn-primary"><i class="bi bi-telephone-plus me-1"></i> Add Update</a>
+                {% endif %}
+            </div>
+
+            {% if statuses %}
+            <div class="timeline ps-3 pe-2 border-start border-2 border-light ms-2">
+                {% for status in statuses %}
+                <div class="position-relative mb-4 pb-2">
+                    <div class="position-absolute align-items-center justify-content-center d-flex bg-primary text-white rounded-circle z-2" style="width: 32px; height: 32px; left: -17px; top: 0;">
+                        <i class="bi bi-headset small"></i>
+                    </div>
+                    <div class="ps-4 ms-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">{{ status.get_call_status_display }}</h6>
+                            <small class="text-muted">{{ status.date_of_status|date:"M d, Y h:i A" }}</small>
+                        </div>
+                        <div class="bg-light p-3 rounded text-dark fs-7 mb-2">
+                            {{ status.description|default:"No notes provided." }}
+                        </div>
+                        <span class="badge bg-secondary">System Status: {{ status.get_status_display }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted bg-light rounded">
+                <i class="bi bi-journal-x fs-1 d-block mb-3"></i>
+                <p>No follow-up history available.</p>
+                {% if not enquiry.conversion %}
+                <a href="{% url 'enquiries:add_status_update' enquiry.pk %}" class="btn btn-sm btn-outline-primary mt-2">Log the first call</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

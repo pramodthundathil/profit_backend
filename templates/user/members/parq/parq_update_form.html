@@ -1,0 +1,60 @@
+{% extends 'user/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.full_name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Update PAR-Q Form</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white py-3">
+                <h4 class="mb-0 text-center">Update PAR-Q Form</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" id="parqUpdateForm" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <h5 class="section-title mb-3 text-primary border-bottom pb-2">
+                        <i class="bi bi-telephone-plus me-2"></i>Emergency Contact Details
+                    </h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Contact Name</label>
+                            {{ form.emergency_contact_name|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Telephone No</label>
+                            {{ form.emergency_contact_phone|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Mobile No</label>
+                            {{ form.emergency_contact_mobile|add_class:"form-control" }}
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info border-0 shadow-sm mb-4">
+                        <strong>Note:</strong> Responses to questionnaire items cannot be modified once submitted for safety records. If medical conditions have changed significantly, please consider completing a new Health History form.
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
+                        <a href="{% url 'parq-detail' form.instance.id %}" class="btn btn-outline-secondary btn-lg px-5">Cancel</a>
+                        <button type="submit" class="btn btn-dark btn-lg px-5">Update Emergency Contact</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

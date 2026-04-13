@@ -1,0 +1,22 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center pt-5">
+    <div class="col-md-6 text-center">
+        <div class="card border-0 shadow-sm p-5">
+            <div class="display-1 text-success mb-4">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <h2 class="fw-bold mb-3">Thank You!</h2>
+            <p class="text-muted mb-4 fs-5">Your health history information has been successfully submitted and stored in our system.</p>
+            <div class="d-grid gap-2">
+                <a href="{% url 'user-dashboard' %}" class="btn btn-dark btn-lg">Return to Dashboard</a>
+                <a href="{% url 'member-list' %}" class="btn btn-outline-secondary">Go to Members List</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

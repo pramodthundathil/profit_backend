@@ -1,0 +1,164 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.full_name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Health History Detail</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-4">
+        <!-- Profile Sidebar -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body text-center">
+                {% if member.photo %}
+                    <img src="{{ member.photo.url }}" class="rounded-circle img-thumbnail mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                {% else %}
+                    <div class="rounded-circle bg-dark text-warning d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 150px; height: 150px; font-size: 3rem;">
+                        <i class="bi bi-person"></i>
+                    </div>
+                {% endif %}
+                <h4 class="mb-1">{{ member.full_name }}</h4>
+                <p class="text-muted mb-3">{{ member.member_id }}</p>
+                <div class="d-flex justify-content-center gap-2 mb-3">
+                    <span class="badge {% if member.risk_medical %}bg-danger{% else %}bg-success{% endif %}">
+                        {% if member.risk_medical %}High Risk{% else %}Normal Risk{% endif %}
+                    </span>
+                    <span class="badge bg-primary">{{ member.branch.name|default:"General" }}</span>
+                </div>
+                <hr>
+                <div class="text-start">
+                    <p class="mb-2"><strong>Mobile:</strong> {{ member.mobile_number }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ member.email|default:"N/A" }}</p>
+                    <p class="mb-2"><strong>Gender:</strong> {{ member.get_gender_display|default:"N/A" }}</p>
+                    <p class="mb-0"><strong>Age:</strong> {{ member.age|default:"N/A" }} years</p>
+                </div>
+                <div class="d-grid gap-2 mt-4">
+                    <a href="{% url 'health-history-form' member.id %}" class="btn btn-dark">
+                        <i class="bi bi-pencil-square me-2"></i>Edit Health History
+                    </a>
+                    {% if member.risk_medical %}
+                        <a href="{% url 'parq-create' member.id %}" class="btn btn-outline-danger">
+                            <i class="bi bi-file-earmark-medical me-2"></i>PAR-Q Form
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <!-- Health History Details -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-bottom py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-clipboard-pulse me-2 text-primary"></i>Health History Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-muted text-uppercase small fw-bold">Emergency Contact</h6>
+                        <p class="mb-1"><strong>{{ health_history.emergency_contact_name }}</strong> ({{ health_history.emergency_contact_relationship }})</p>
+                        <p class="mb-0 text-primary">{{ health_history.emergency_contact_phone }}</p>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <h6 class="text-muted text-uppercase small fw-bold">Weight</h6>
+                        <p class="h5 mb-0">{{ health_history.current_weight }} kg</p>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <h6 class="text-muted text-uppercase small fw-bold">Height</h6>
+                        <p class="h5 mb-0">{{ health_history.current_height }} cm</p>
+                    </div>
+                </div>
+
+                <div class="row mb-4 bg-light p-3 rounded mx-0">
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-muted text-uppercase small fw-bold">Fitness Goal</h6>
+                        <p class="mb-1 fw-bold">{{ health_history.get_fitness_goal_display }}</p>
+                        <p class="small text-muted">{{ health_history.fitness_goal_details|default:"No specific details provided." }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-muted text-uppercase small fw-bold">PT Availability</h6>
+                        <p class="mb-1 fw-bold">{{ health_history.get_pt_availability_display }}</p>
+                        <p class="small text-muted">Days: {{ health_history.preferred_days }}</p>
+                    </div>
+                </div>
+
+                <!-- Medical Flags -->
+                <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">Medical Conditions & Screening</h6>
+                <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
+                    <div class="col">
+                        <div class="p-2 border rounded d-flex align-items-center">
+                            <i class="bi {% if health_history.under_medical_care %}bi-check-circle-fill text-danger{% else %}bi-dash-circle text-success{% endif %} me-2"></i>
+                            <span>Medical Care: <strong>{% if health_history.under_medical_care %}Yes{% else %}No{% endif %}</strong></span>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-2 border rounded d-flex align-items-center">
+                            <i class="bi {% if health_history.taking_medications %}bi-check-circle-fill text-danger{% else %}bi-dash-circle text-success{% endif %} me-2"></i>
+                            <span>Taking Medications: <strong>{% if health_history.taking_medications %}Yes{% else %}No{% endif %}</strong></span>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-2 border rounded d-flex align-items-center">
+                            <i class="bi {% if health_history.high_blood_pressure %}bi-check-circle-fill text-danger{% else %}bi-dash-circle text-success{% endif %} me-2"></i>
+                            <span>High Blood Pressure: <strong>{% if health_history.high_blood_pressure %}Yes{% else %}No{% endif %}</strong></span>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-2 border rounded d-flex align-items-center">
+                            <i class="bi {% if health_history.has_risky_heart_conditions %}bi-exclamation-triangle-fill text-danger{% else %}bi-check-circle text-success{% endif %} me-2"></i>
+                            <span>Heart Risk: <strong>{% if health_history.has_risky_heart_conditions %}YES{% else %}NO{% endif %}</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if medications %}
+                <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">Active Medications</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-bordered">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Medication</th>
+                                <th>Dosage</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for med in medications %}
+                            <tr>
+                                <td>{{ med.medication_type }}</td>
+                                <td>{{ med.dosage_frequency }}</td>
+                                <td>{{ med.reason_for_taking }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                {% if health_history.allergies %}
+                <div class="mb-4">
+                    <h6 class="text-muted text-uppercase small fw-bold">Allergies</h6>
+                    <div class="alert alert-warning py-2 mb-0">
+                        {{ health_history.allergies }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="bg-dark text-white p-3 rounded mb-0 text-center">
+                    <small>Form completed on: {{ health_history.date_completed|date:"F d, Y H:i" }} | Last updated: {{ health_history.last_updated|date:"F d, Y H:i" }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

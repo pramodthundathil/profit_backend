@@ -1,0 +1,399 @@
+{% extends 'user/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.full_name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Health History Form</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form method="post" id="healthHistoryForm" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <strong>Please correct the errors below:</strong>
+                        {{ form.non_field_errors }}
+                        <ul>
+                        {% for field in form %}
+                            {% if field.errors %}
+                                <li>{{ field.label }}: {{ field.errors|striptags }}</li>
+                            {% endif %}
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Section: Emergency Contact -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold">
+                            <i class="bi bi-telephone-outbound me-2"></i> EMERGENCY CONTACT INFORMATION
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.emergency_contact_name.label }} *</label>
+                                    {{ form.emergency_contact_name }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.emergency_contact_relationship.label }} *</label>
+                                    {{ form.emergency_contact_relationship }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.emergency_contact_phone.label }} *</label>
+                                    {{ form.emergency_contact_phone }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">{{ form.emergency_contact_address.label }}</label>
+                                    {{ form.emergency_contact_address }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: physical Info -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold">
+                            <i class="bi bi-person-bounding-box me-2"></i> CURRENT PHYSICAL INFORMATION
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.current_weight.label }} (kg) *</label>
+                                    {{ form.current_weight }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.current_height.label }} (cm) *</label>
+                                    {{ form.current_height }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Fitness Goals -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold">
+                            <i class="bi bi-trophy me-2"></i> FITNESS GOALS & AVAILABILITY
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.fitness_goal.label }} *</label>
+                                    {{ form.fitness_goal }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.pt_availability.label }} *</label>
+                                    {{ form.pt_availability }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">{{ form.preferred_days.label }} *</label>
+                                    {{ form.preferred_days }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">{{ form.fitness_goal_details.label }}</label>
+                                    {{ form.fitness_goal_details }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Medical History -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold">
+                            <i class="bi bi-heart-pulse me-2"></i> MEDICAL HISTORY & CONDITIONS
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.physician_name.label }}</label>
+                                    {{ form.physician_name }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">{{ form.physician_phone.label }}</label>
+                                    {{ form.physician_phone }}
+                                </div>
+                                
+                                <div class="col-md-6 mb-2">
+                                    <div class="form-check form-switch mt-4">
+                                        {{ form.under_medical_care }}
+                                        <label class="form-check-label fw-bold" for="{{ form.under_medical_care.id_for_label }}">Under medical care?</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 dependency-field d-none" id="medical_care_reason_div">
+                                    <label class="form-label fw-bold">{{ form.medical_care_reason.label }}</label>
+                                    {{ form.medical_care_reason }}
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">{{ form.allergies.label }}</label>
+                                    {{ form.allergies }}
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="row g-2">
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                {{ form.high_blood_pressure }}
+                                                <label class="form-check-label">{{ form.high_blood_pressure.label }}</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                {{ form.bone_joint_problems }}
+                                                <label class="form-check-label">{{ form.bone_joint_problems.label }}</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                {{ form.over_65 }}
+                                                <label class="form-check-label">{{ form.over_65.label }}</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                {{ form.unaccustomed_exercise }}
+                                                <label class="form-check-label">{{ form.unaccustomed_exercise.label }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            <h6 class="fw-bold mb-3">Specific Medical Conditions (Family/Personal)</h6>
+                            <div class="row g-3">
+                                <div class="col-md-2">
+                                    <div class="form-check mt-1">
+                                        {{ form.family_asthma }}
+                                        <label class="form-check-label small">Family Asthma</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-10">
+                                    {{ form.personal_asthma }}
+                                </div>
+
+                                <div class="col-md-2">
+                                    <div class="form-check mt-1">
+                                        {{ form.family_respiratory }}
+                                        <label class="form-check-label small">Family Respiratory</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-10">
+                                    {{ form.personal_respiratory }}
+                                </div>
+
+                                <div class="col-md-2">
+                                    <div class="form-check mt-1">
+                                        {{ form.family_diabetes }}
+                                        <label class="form-check-label small">Family Diabetes</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-10">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">{{ form.personal_diabetes_type1 }}</div>
+                                        <div class="col-md-4">{{ form.personal_diabetes_type2 }}</div>
+                                        <div class="col-md-4">{{ form.diabetes_duration }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medications Formset Section -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-capsule me-2"></i> MEDICATIONS</span>
+                            <div class="form-check form-switch mb-0">
+                                {{ form.taking_medications }}
+                                <label class="form-check-label text-white small" for="{{ form.taking_medications.id_for_label }}">Are you taking any medications?</label>
+                            </div>
+                        </div>
+                        <div class="card-body" id="medications-container">
+                            {{ medication_formset.management_form }}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle" id="medication-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Medication Type</th>
+                                            <th>Dosage/Frequency</th>
+                                            <th>Reason</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="formset-body">
+                                        {% for med_form in medication_formset %}
+                                        <tr class="med-form-row">
+                                            {% for hidden in med_form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                            <td>{{ med_form.medication_type }}</td>
+                                            <td>{{ med_form.dosage_frequency }}</td>
+                                            <td>{{ med_form.reason_for_taking }}</td>
+                                            <td>
+                                                {% if medication_formset.can_delete %}
+                                                    {{ med_form.DELETE|add_class:"form-check-input" }}
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Cardiovascular Risk Assessment -->
+                    <div class="card bg-light border-0 mb-4 border-start border-danger border-4">
+                        <div class="card-header bg-danger text-white fw-bold">
+                            <i class="bi bi-activity me-2"></i> CARDIOVASCULAR & RISKY CONDITIONS ASSESSMENT
+                        </div>
+                        <div class="card-body">
+                            <p class="text-danger small mb-3">
+                                <strong>Important:</strong> If you answer YES to any of the heart or respiratory risk questions below, 
+                                you will be required to complete a PAR-Q form and may need medical clearance.
+                            </p>
+                            
+                            <div class="row g-4">
+                                <div class="col-md-6 border-end">
+                                    <div class="form-check form-switch mb-2">
+                                        {{ form.has_risky_heart_conditions }}
+                                        <label class="form-check-label fw-bold text-danger">{{ form.has_risky_heart_conditions.label }}</label>
+                                    </div>
+                                    <div class="mt-2 risk-details {% if not form.has_risky_heart_conditions.value %}d-none{% endif %}" id="heart_risk_div">
+                                        {{ form.risky_heart_conditions_details }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-2">
+                                        {{ form.has_risky_health_conditions }}
+                                        <label class="form-check-label fw-bold text-danger">{{ form.has_risky_health_conditions.label }}</label>
+                                    </div>
+                                    <div class="mt-2 risk-details {% if not form.has_risky_health_conditions.value %}d-none{% endif %}" id="health_risk_div">
+                                        {{ form.risky_health_conditions_details }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-3 border-top pt-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">High Blood Pressure Details</label>
+                                    {{ form.high_bp_details }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Heart Disease Details</label>
+                                    {{ form.heart_disease }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Heart Attack History</label>
+                                    {{ form.heart_attack }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lifestyle Factors -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold">
+                            <i class="bi bi-lifestyle me-2"></i> LIFESTYLE & STRESS FACTORS
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Occupational Stress</label>
+                                    {{ form.occupational_stress }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Work Stress Level</label>
+                                    {{ form.work_stress_level }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Energy Level</label>
+                                    {{ form.energy_level }}
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold">Work/Exercise Habits</label>
+                                    {{ form.work_exercise_habits }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Musculoskeletal -->
+                    <div class="card bg-light border-0 mb-4">
+                        <div class="card-header bg-dark text-white fw-bold">
+                            <i class="bi bi-universal-access me-2"></i> MUSCULOSKELETAL INFORMATION
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                     <label class="form-label fw-bold">Lower Back Issues</label>
+                                     {{ form.lower_back_issues }}
+                                </div>
+                                <div class="col-md-6">
+                                     <label class="form-label fw-bold">Hip/Pelvis Issues</label>
+                                     {{ form.hip_pelvis_issues }}
+                                </div>
+                                <div class="col-md-6">
+                                     <label class="form-label fw-bold">Thigh/Knee Issues</label>
+                                     {{ form.thigh_knee_issues }}
+                                </div>
+                                <div class="col-md-6">
+                                     <label class="form-label fw-bold">Previous Surgeries</label>
+                                     {{ form.surgeries_details }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'member-detail' member.pk %}" class="btn btn-outline-secondary btn-lg px-5">Cancel</a>
+                        <button type="submit" class="btn btn-dark btn-lg px-5">Submit Health History</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Show/Hide dependency fields
+    function toggleDependency(triggerId, targetId) {
+        let trigger = $('#' + triggerId);
+        let target = $('#' + targetId);
+        
+        trigger.on('change', function() {
+            if (this.checked) {
+                target.removeClass('d-none');
+            } else {
+                target.addClass('d-none');
+            }
+        });
+        
+        // Initial state
+        if (trigger.prop('checked')) {
+            target.removeClass('d-none');
+        }
+    }
+
+    toggleDependency('{{ form.under_medical_care.id_for_label }}', 'medical_care_reason_div');
+    toggleDependency('{{ form.has_risky_heart_conditions.id_for_label }}', 'heart_risk_div');
+    toggleDependency('{{ form.has_risky_health_conditions.id_for_label }}', 'health_risk_div');
+});
+</script>
+{% endblock %}

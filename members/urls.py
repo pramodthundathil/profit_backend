@@ -17,6 +17,21 @@ urlpatterns = [
     path('user/subscriptions/<int:pk>/', views_user.subscription_detail, name='subscription-detail'),
     path('user/subscriptions/<int:pk>/edit/', views_user.subscription_edit, name='subscription-edit'),
 
+    # Health History
+    path('user/members/<int:member_id>/health-history/form/', views_user.health_history_form_view, name='health-history-form'),
+    path('user/members/<int:member_id>/health-history/detail/', views_user.health_history_detail_view, name='health-history-detail'),
+    path('user/health-history/success/', views_user.success_on_health_history, name='health-history-success'),
+
+    # PAR-Q Form
+    path('user/members/<int:member_id>/parq/create/', views_user.parq_form_create, name='parq-create'),
+    path('user/members/parq/<int:pk>/', views_user.parq_form_detail, name='parq-detail'),
+    path('user/members/parq/<int:pk>/edit/', views_user.parq_form_update, name='parq-update'),
+
+    # Public Form Links (No authentication required)
+    path('public/health-history/<uuid:token>/', views_user.public_health_history_form, name='public-health-history'),
+    path('public/parq/<uuid:token>/', views_user.public_parq_form, name='public-parq'),
+    path('public/success/', views_user.public_success, name='public-success'),
+
     # REST API endpoints (for mobile app & integrations)
     path('api/mobile/list/', views.mobile_member_list, name='api-mobile-member-list'),
     

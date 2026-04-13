@@ -1,0 +1,405 @@
+{% extends 'user/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.full_name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">PAR-Q Form</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white py-3">
+                <h4 class="mb-0 text-center">Physical Activity Readiness Questionnaire (PAR-Q)</h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <div class="d-flex">
+                        <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+                        <div>
+                            <strong>Important:</strong> Please answer the questions honestly. If you select any "YES" answers, you must have your doctor's consent before participating in any physical activity at the gym.
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" id="parqForm" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Emergency Contact Section -->
+                    <h5 class="section-title mb-3 text-primary border-bottom pb-2">
+                        <i class="bi bi-telephone-plus me-2"></i>Emergency Contact Details
+                    </h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Contact Name</label>
+                            {{ form.emergency_contact_name|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Telephone No</label>
+                            {{ form.emergency_contact_phone|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Mobile No</label>
+                            {{ form.emergency_contact_mobile|add_class:"form-control" }}
+                        </div>
+                    </div>
+
+                    <!-- Questionnaire Section -->
+                    <h5 class="section-title mb-3 text-primary border-bottom pb-2">
+                        <i class="bi bi-question-circle me-2"></i>Physical Activity Readiness Questions
+                    </h5>
+                    
+                    <div class="alert alert-warning border-0 shadow-sm mb-4">
+                        <strong>Please read carefully:</strong> If you select YES for any of the boxes below, you will be required to provide a doctor's consent letter before participating in physical activities.
+                    </div>
+
+
+                    <!-- Directly implementing instead of macro for simplicity in Django templates -->
+                    
+                    <!-- Q1 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">1. Has your doctor ever said that you have a heart condition and recommended only medically supervised activity?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="heart_condition" id="heart_condition_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="heart_condition_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="heart_condition" id="heart_condition_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="heart_condition_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q2 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">2. Do you have chest pain brought on by physical activity?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="chest_pain_activity" id="chest_pain_activity_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="chest_pain_activity_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="chest_pain_activity" id="chest_pain_activity_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="chest_pain_activity_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q3 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">3. Have you developed chest pain in the last month?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="chest_pain_last_month" id="chest_pain_last_month_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="chest_pain_last_month_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="chest_pain_last_month" id="chest_pain_last_month_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="chest_pain_last_month_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q4 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">4. Do you tend to lose consciousness or fall over as a result of dizziness?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="lose_consciousness" id="lose_consciousness_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="lose_consciousness_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="lose_consciousness" id="lose_consciousness_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="lose_consciousness_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q5 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">5. Do you have a bone or joint problem that could be aggravated by the proposed physical activity?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="bone_joint_problem" id="bone_joint_problem_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="bone_joint_problem_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="bone_joint_problem" id="bone_joint_problem_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="bone_joint_problem_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q6 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">6. Do you suffer from asthma, diabetes, high blood pressure, epilepsy or a heart condition?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="medical_conditions" id="medical_conditions_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="medical_conditions_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="medical_conditions" id="medical_conditions_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="medical_conditions_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-none" id="medical_conditions_specify_div">
+                                <label class="form-label fw-bold">Please specify medical conditions:</label>
+                                {{ form.medical_conditions_specify|add_class:"form-control" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q7 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">7. Do you have any current conditions or injuries that are being treated by a doctor, physiotherapist, or health professional?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="current_treatment" id="current_treatment_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="current_treatment_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="current_treatment" id="current_treatment_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="current_treatment_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-none" id="current_treatment_specify_div">
+                                <label class="form-label fw-bold">Please specify current treatment:</label>
+                                {{ form.current_treatment_specify|add_class:"form-control" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q8 -->
+                    <div class="card bg-light border-0 mb-3 question-box">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <p class="mb-0 fw-500">8. Do you know of any other reason why you should not take part in exercise?</p>
+                                </div>
+                                <div class="col-md-3 text-md-end mt-2 mt-md-0">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="other_reason" id="other_reason_yes" value="True">
+                                        <label class="btn btn-outline-danger" for="other_reason_yes">YES</label>
+                                        <input type="radio" class="btn-check" name="other_reason" id="other_reason_no" value="False" checked>
+                                        <label class="btn btn-outline-success" for="other_reason_no">NO</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-none" id="other_reason_specify_div">
+                                <label class="form-label fw-bold">Please specify other reasons:</label>
+                                {{ form.other_reason_specify|add_class:"form-control" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Signatures Section -->
+                    <h5 class="section-title mb-3 text-primary border-bottom pb-2 mt-5">
+                        <i class="bi bi-vector-pen me-2"></i>Signatures
+                    </h5>
+
+                    <div class="row">
+                        <!-- Participant Signature -->
+                        <div class="col-md-12 mb-4">
+                            <div class="card border shadow-sm">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0 fw-bold">Participant Signature</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <canvas id="participantSignaturePad" class="signature-canvas border rounded mb-2" style="max-width: 100%; height: 150px; cursor: crosshair;"></canvas>
+                                    <div class="d-flex justify-content-center gap-2 mb-3">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSignature('participantSignaturePad')">Clear</button>
+                                    </div>
+                                    <div class="row g-2 justify-content-center">
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-bold">Date</label>
+                                            {{ form.participant_signature_date|add_class:"form-control form-control-sm" }}
+                                        </div>
+                                    </div>
+                                    {{ form.participant_signature }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-dark border-0 shadow-sm mb-4 mt-4">
+                        <div class="d-flex">
+                            <i class="bi bi-shield-check fs-4 me-3"></i>
+                            <div>
+                                <strong>Declaration:</strong> I confirm that I have answered all questions accurately and honestly. I understand that I am responsible for monitoring my own physical condition and will stop exercising if I feel unwell.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
+                        <a href="{% url 'member-detail' member.pk %}" class="btn btn-outline-secondary btn-lg px-5">Cancel</a>
+                        <button type="submit" class="btn btn-dark btn-lg px-5" id="submitBtn">Submit PAR-Q</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .question-box { transition: all 0.2s; border: 1px solid transparent !important; }
+    .question-box:hover { border-color: #dee2e6 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .fw-500 { font-weight: 500; }
+    .signature-canvas { background-color: #f8f9fa; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function initializeSignaturePad(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        
+        // Resize canvas to its display size
+        function resizeCanvas() {
+            const ratio =  Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        let drawing = false;
+        let lastX = 0, lastY = 0;
+
+        function startDrawing(e) {
+            drawing = true;
+            [lastX, lastY] = getPos(e);
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            const [x, y] = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            [lastX, lastY] = [x, y];
+        }
+
+        function stopDrawing() {
+            drawing = false;
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let x, y;
+            if (e.touches) {
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+            return [x, y];
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+        canvas.addEventListener('touchend', stopDrawing);
+    }
+
+    function clearSignature(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Clear hidden field
+        const hiddenFieldId = "id_" + canvasId.replace("Pad", "");
+        const hiddenField = document.querySelector(`input[name='${canvasId.replace("Pad", "")}']`);
+        if (hiddenField) hiddenField.value = "";
+    }
+
+    $(document).ready(function() {
+        initializeSignaturePad('participantSignaturePad');
+        
+        // Conditional specify fields
+        $('input[name="medical_conditions"]').on('change', function() {
+            if ($(this).val() === 'True') $('#medical_conditions_specify_div').removeClass('d-none');
+            else $('#medical_conditions_specify_div').addClass('d-none');
+        });
+        
+        $('input[name="current_treatment"]').on('change', function() {
+            if ($(this).val() === 'True') $('#current_treatment_specify_div').removeClass('d-none');
+            else $('#current_treatment_specify_div').addClass('d-none');
+        });
+        
+        $('input[name="other_reason"]').on('change', function() {
+            if ($(this).val() === 'True') $('#other_reason_specify_div').removeClass('d-none');
+            else $('#other_reason_specify_div').addClass('d-none');
+        });
+
+        // Form submission - capture signatures
+        $('#parqForm').on('submit', function() {
+            const canvas = document.getElementById('participantSignaturePad');
+            // Check if user drew anything (naive check)
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width;
+            blank.height = canvas.height;
+            if (canvas.toDataURL() === blank.toDataURL()) {
+                // Not drawn
+            } else {
+                $('input[name="participant_signature"]').val(canvas.toDataURL());
+            }
+            return true;
+        });
+
+        // Auto-fill today's date
+        const today = new Date().toISOString().split('T')[0];
+        if (!$('#id_participant_signature_date').val()) $('#id_participant_signature_date').val(today);
+    });
+</script>
+{% endblock %}
