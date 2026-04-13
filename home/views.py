@@ -897,9 +897,10 @@ class DashboardStatsView(APIView):
         latest_payments = payments_qs.filter(status='Completed').order_by('-created_at')[:3]
         for p in latest_payments:
             member_name = f"{p.member.first_name} {p.member.last_name}" if p.member else "Member"
+            symbol = p.member.gym.currency_symbol if (p.member and p.member.gym) else '₹'
             recent_activities.append({
                 'type': 'payment',
-                'title': f"Payment: ₹{p.amount}",
+                'title': f"Payment: {symbol}{p.amount}",
                 'subtitle': f"Member: {member_name} ({p.payment_method})",
                 'time': p.created_at
             })

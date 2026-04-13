@@ -202,9 +202,9 @@
                                     </td>
                                     <td>
                                         <div class="fw-bold">
-                                            ₹{{ sub.final_amount }}
+                                            {{ currency_symbol }}{{ sub.final_amount }}
                                             {% if sub.balance_amount > 0 %}
-                                            <span class="text-danger small ms-1">(Bal: ₹{{ sub.balance_amount }})</span>
+                                            <span class="text-danger small ms-1">(Bal: {{ currency_symbol }}{{ sub.balance_amount }})</span>
                                             {% endif %}
                                         </div>
                                     </td>
@@ -243,7 +243,7 @@
                                                     <td>
                                                         {{ inst.amount }}
                                                         {% if inst.remaining_amount > 0 and inst.status == 'Partially Paid' %}
-                                                        <span class="text-danger small ms-1">(Bal: ₹{{ inst.remaining_amount }})</span>
+                                                        <span class="text-danger small ms-1">(Bal: {{ currency_symbol }}{{ inst.remaining_amount }})</span>
                                                         {% endif %}
                                                     </td>
                                                     <td>
@@ -306,7 +306,7 @@
                                     <td>{{ payment.payment_date|date:"d M Y" }}</td>
                                     <td><a href="{% url 'payment-receipt' payment.pk %}" target="_blank" class="btn btn-outline-primary btn-sm" title="Print Receipt">
                                             <i class="bi bi-printer"></i> <small class="font-monospace text-info">{{ payment.receipt_number }}</small></a></td>
-                                    <td class="fw-bold">₹{{ payment.amount }}</td>
+                                    <td class="fw-bold">{{ currency_symbol }}{{ payment.amount }}</td>
                                     <td>{{ payment.payment_method }}</td>
                                     <td>
                                         {% if payment.is_installment %}
@@ -531,7 +531,7 @@
                         <div class="col-md-6">
                             <label for="amountToPay" class="form-label text-muted small fw-bold text-uppercase">Amount</label>
                             <div class="input-group">
-                                <span class="input-group-text">₹</span>
+                                <span class="input-group-text">{{ currency_symbol }}</span>
                                 <input type="number" step="0.01" class="form-control" id="amountToPay" name="amount" required>
                             </div>
                         </div>

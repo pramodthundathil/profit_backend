@@ -115,25 +115,25 @@
                 <div class="col-md-6 border-end pe-md-4">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Base Amount</span>
-                        <span class="fw-medium">₹{{ subscription.base_amount }}</span>
+                        <span class="fw-medium">{{ currency_symbol }}{{ subscription.base_amount }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted text-danger">Total Discount</span>
-                        <span class="fw-medium text-danger">- ₹{{ subscription.discount_amount|default:"0" }}</span>
+                        <span class="fw-medium text-danger">- {{ currency_symbol }}{{ subscription.discount_amount|default:"0" }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2 pt-2 border-top">
                         <span class="fw-bold">Final Amount</span>
-                        <span class="fw-bold text-dark">₹{{ subscription.final_amount }}</span>
+                        <span class="fw-bold text-dark">{{ currency_symbol }}{{ subscription.final_amount }}</span>
                     </div>
                 </div>
                 <div class="col-md-6 ps-md-4">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Amount Paid</span>
-                        <span class="fw-bold text-success">₹{{ subscription.amount_paid }}</span>
+                        <span class="fw-bold text-success">{{ currency_symbol }}{{ subscription.amount_paid }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Balance Amount</span>
-                        <span class="fw-bold {% if subscription.balance_amount > 0 %}text-danger{% else %}text-success{% endif %}">₹{{ subscription.balance_amount }}</span>
+                        <span class="fw-bold {% if subscription.balance_amount > 0 %}text-danger{% else %}text-success{% endif %}">{{ currency_symbol }}{{ subscription.balance_amount }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2 pt-2 border-top">
                         <span class="text-muted">Payment Type</span>
@@ -221,8 +221,8 @@
                                 <tr>
                                     <td>{{ item.installment_number }}</td>
                                     <td>{{ item.due_date|date:"d M, Y" }}</td>
-                                    <td class="fw-bold">₹{{ item.amount }}</td>
-                                    <td class="text-success">₹{{ item.amount_paid }}</td>
+                                    <td class="fw-bold">{{ currency_symbol }}{{ item.amount }}</td>
+                                    <td class="text-success">{{ currency_symbol }}{{ item.amount_paid }}</td>
                                     <td>
                                         {% if item.status == 'Paid' %}
                                             <span class="badge badge-soft-success">Paid</span>
@@ -259,7 +259,7 @@
                                                     <div class="mb-4">
                                                         <div class="d-flex justify-content-between mb-2">
                                                             <span class="text-muted small">Current Balance:</span>
-                                                            <span class="fw-bold text-danger fs-5">₹{{ item.remaining_amount }}</span>
+                                                            <span class="fw-bold text-danger fs-5">{{ currency_symbol }}{{ item.remaining_amount }}</span>
                                                         </div>
                                                         <div class="progress" style="height: 4px;">
                                                             <div class="progress-bar bg-success" style="width: 50%"></div> <!-- Static for simplicity -->
@@ -281,7 +281,7 @@
                                                     </div>
 
                                                     <div class="mb-3">
-                                                        <label class="form-label small fw-bold">Amount to Pay (₹)</label>
+                                                        <label class="form-label small fw-bold">Amount to Pay ({{ currency_symbol }})</label>
                                                         <input type="number" step="0.01" name="amount" id="amountInput{{ item.pk }}" class="form-control bg-light border-0" value="{{ item.remaining_amount }}" readonly>
                                                     </div>
 
@@ -338,7 +338,7 @@
                                     <td>{{ pmt.created_at|date:"d M, Y H:i" }}</td>
                                     <td><span class="text-muted small">#{{ pmt.pk }}</span></td> <!-- Simplified ID -->
                                     <td><span class="badge bg-light text-dark border">#{{ pmt.installment_number }}</span></td>
-                                    <td class="fw-bold">₹{{ pmt.amount }}</td>
+                                    <td class="fw-bold">{{ currency_symbol }}{{ pmt.amount }}</td>
                                     <td>{{ pmt.payment_method }}</td>
                                     <td><span class="badge badge-soft-success">Success</span></td>
                                     <td class="text-end">

@@ -297,7 +297,7 @@
                                             <h5>{{ plan.name }}</h5>
                                         </div>
                                         <div class="plan-body">
-                                            <div class="plan-price">₹{{ plan.price }}</div>
+                                            <div class="plan-price">{{ currency_symbol }}{{ plan.price }}</div>
                                             <div class="plan-duration">{{ plan.duration }}</div>
                                             <button class="select-btn" onclick="alert('Payment integration pending for {{ plan.name }}')">
                                                 <i class="fas fa-check-circle me-2"></i>Select Plan

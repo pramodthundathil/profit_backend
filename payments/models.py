@@ -139,7 +139,8 @@ class Payment(models.Model):
     
     def __str__(self):
         installment_info = f" (Installment {self.installment_number})" if self.is_installment else ""
-        return f"{self.receipt_number} - {self.member.full_name} - ₹{self.amount}{installment_info}"
+        symbol = self.member.gym.currency_symbol if self.member.gym else '₹'
+        return f"{self.receipt_number} - {self.member.full_name} - {symbol}{self.amount}{installment_info}"
 
 
 # ============================================================================
@@ -210,7 +211,8 @@ class DiscountCoupon(models.Model):
         self.save()
     
     def __str__(self):
-        return f"{self.code} - {self.discount_value}{'%' if self.discount_type == 'Percentage' else '₹'}"
+        symbol = self.gym.currency_symbol if self.gym else '₹'
+        return f"{self.code} - {self.discount_value}{'%' if self.discount_type == 'Percentage' else symbol}"
 
 
 class CouponUsage(models.Model):

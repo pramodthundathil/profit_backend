@@ -20,9 +20,9 @@
         <div class="card border-0 shadow-sm bg-dark text-white">
             <div class="card-body p-3">
                 <small class="text-white-50 d-block mb-1">Collected (MTD)</small>
-                <h4 class="mb-0">₹{{ stats.total_collected_mtd|floatformat:2 }}</h4>
+                <h4 class="mb-0">{{ currency_symbol }}{{ stats.total_collected_mtd|floatformat:2 }}</h4>
                 <div class="mt-2 text-white-50 small">
-                    Prev: ₹{{ stats.total_collected_prev_month|floatformat:2 }}
+                    Prev: {{ currency_symbol }}{{ stats.total_collected_prev_month|floatformat:2 }}
                 </div>
             </div>
         </div>
@@ -31,7 +31,7 @@
         <div class="card border-0 shadow-sm" style="background-color: #fff3cd; border-left: 4px solid #ffc107 !important;">
             <div class="card-body p-3">
                 <small class="text-muted d-block mb-1">Pending Due (MTD)</small>
-                <h4 class="mb-0 text-warning">₹{{ stats.pending_due_mtd|floatformat:2 }}</h4>
+                <h4 class="mb-0 text-warning">{{ currency_symbol }}{{ stats.pending_due_mtd|floatformat:2 }}</h4>
                 <div class="mt-2 text-muted small">
                     This month's installments
                 </div>
@@ -42,7 +42,7 @@
         <div class="card border-0 shadow-sm" style="background-color: #f8d7da; border-left: 4px solid #dc3545 !important;">
             <div class="card-body p-3">
                 <small class="text-muted d-block mb-1">Overdue Total</small>
-                <h4 class="mb-0 text-danger">₹{{ stats.overdue_mtd|floatformat:2 }}</h4>
+                <h4 class="mb-0 text-danger">{{ currency_symbol }}{{ stats.overdue_mtd|floatformat:2 }}</h4>
                 <div class="mt-2 text-muted small">
                     Past due installments
                 </div>
@@ -53,7 +53,7 @@
         <div class="card border-0 shadow-sm" style="background-color: #d1ecf1; border-left: 4px solid #0dcaf0 !important;">
             <div class="card-body p-3">
                 <small class="text-muted d-block mb-1">Discounts (MTD)</small>
-                <h4 class="mb-0 text-info">₹{{ stats.discounts_mtd|floatformat:2 }}</h4>
+                <h4 class="mb-0 text-info">{{ currency_symbol }}{{ stats.discounts_mtd|floatformat:2 }}</h4>
                 <div class="mt-2 text-muted small">
                     Total value given
                 </div>
@@ -124,7 +124,7 @@
                             <div class="fw-bold text-dark">{{ payment.member.full_name }}</div>
                             <small class="text-muted">{{ payment.member.member_id }}</small>
                         </td>
-                        <td><span class="fw-bold">₹{{ payment.amount }}</span></td>
+                        <td><span class="fw-bold">{{ currency_symbol }}{{ payment.amount }}</span></td>
                         <td>
                             <span class="badge bg-light text-dark border">{{ payment.payment_method }}</span>
                         </td>

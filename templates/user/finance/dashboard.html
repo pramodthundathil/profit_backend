@@ -63,7 +63,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Income</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ total_income|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ currency_symbol }}{{ total_income|floatformat:2 }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-arrow-up-circle fs-2 text-success"></i>
@@ -81,7 +81,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                 Total Expense</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ total_expense|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ currency_symbol }}{{ total_expense|floatformat:2 }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-arrow-down-circle fs-2 text-danger"></i>
@@ -99,7 +99,7 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Balance Sheet</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ balance|floatformat:2 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ currency_symbol }}{{ balance|floatformat:2 }}</div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-wallet2 fs-2 text-primary"></i>
@@ -145,7 +145,7 @@
                                 {% endif %}
                             </td>
                             <td class="fw-bold {% if t.transaction_type == 'Income' %}text-success{% else %}text-danger{% endif %}">
-                                ₹{{ t.amount }}
+                                {{ currency_symbol }}{{ t.amount }}
                             </td>
                             <td>{{ t.category|default:"-" }}</td>
                             <td>{{ t.description }}</td>
@@ -177,7 +177,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Amount (₹)*</label>
+                        <label class="form-label">Amount ({{ currency_symbol }})*</label>
                         <input type="number" step="0.01" class="form-control" name="amount" required>
                     </div>
                     <div class="mb-3">
@@ -229,7 +229,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Amount (₹)*</label>
+                        <label class="form-label">Amount ({{ currency_symbol }})*</label>
                         <input type="number" step="0.01" class="form-control" name="amount" required>
                     </div>
                     <div class="mb-3">

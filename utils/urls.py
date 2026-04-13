@@ -23,6 +23,7 @@ urlpatterns = [
     
     # Gym Configuration (HTML)
     path('user/configuration/', views_user.gym_config_list, name='gym-config-list'),
+    path('user/configuration/settings/update/', views_user.update_gym_settings, name='update-gym-settings'),
     
     # Batches
     path('user/configuration/batch/add/', views_user.batch_create, name='batch-create'),

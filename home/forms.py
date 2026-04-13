@@ -15,6 +15,52 @@ class GymOfficeForm(forms.ModelForm):
             'license_key': forms.Select(attrs={'class': 'form-select'}),
         }
 
+class GymOfficeSettingsForm(forms.ModelForm):
+    CURRENCY_CHOICES = [
+        ('INR', 'Indian Rupee (₹)'),
+        ('USD', 'US Dollar ($)'),
+        ('AED', 'UAE Dirham (AED)'),
+        ('EUR', 'Euro (€)'),
+        ('GBP', 'British Pound (£)'),
+        ('SAR', 'Saudi Riyal (SR)'),
+        ('QAR', 'Qatari Rial (QR)'),
+        ('KWD', 'Kuwaiti Dinar (KD)'),
+        ('BHD', 'Bahraini Dinar (BD)'),
+        ('OMR', 'Omani Rial (RO)'),
+    ]
+    
+    currency_code = forms.ChoiceField(choices=CURRENCY_CHOICES, widget=forms.Select(attrs={'class': 'form-select'}))
+    
+    class Meta:
+        model = GymOffice
+        fields = ['currency_code', 'currency_symbol']
+        widgets = {
+            'currency_symbol': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        currency_code = cleaned_data.get('currency_code')
+        
+        # Map symbols to codes
+        symbol_map = {
+            'INR': '₹',
+            'USD': '$',
+            'AED': 'AED',
+            'EUR': '€',
+            'GBP': '£',
+            'SAR': 'SR',
+            'QAR': 'QR',
+            'KWD': 'KD',
+            'BHD': 'BD',
+            'OMR': 'RO',
+        }
+        
+        if currency_code in symbol_map:
+            cleaned_data['currency_symbol'] = symbol_map[currency_code]
+        
+        return cleaned_data
+
 class GymBranchForm(forms.ModelForm):
     class Meta:
         model = GymBranch

@@ -165,7 +165,7 @@
             
             if (count > 1 && total > 0) {
                 const perInst = (total / count).toFixed(2);
-                if(installmentPreview) installmentPreview.textContent = `${count} payments of ₹${perInst} every ${period} ${unit}${period > 1 ? 's' : ''}`;
+                if(installmentPreview) installmentPreview.textContent = `${count} payments of {{ currency_symbol }}${perInst} every ${period} ${unit}${period > 1 ? 's' : ''}`;
             } else {
                 if(installmentPreview) installmentPreview.textContent = '';
             }

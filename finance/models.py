@@ -60,4 +60,5 @@ class FinanceTransaction(models.Model):
         ]
         
     def __str__(self):
-        return f"{self.transaction_type} - ₹{self.amount} - {self.description[:30]}"
+        symbol = self.gym.currency_symbol if self.gym else '₹'
+        return f"{self.transaction_type} - {symbol}{self.amount} - {self.description[:30]}"

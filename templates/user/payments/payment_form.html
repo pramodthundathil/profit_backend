@@ -52,7 +52,7 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted mb-1">Amount (₹)</label>
+                            <label class="form-label small fw-bold text-muted mb-1">Amount ({{ currency_symbol }})</label>
                             {% render_field form.amount class="form-control form-control-sm" placeholder="0.00" %}
                             {% if form.amount.errors %}
                                 <div class="text-danger small mt-1">{{ form.amount.errors }}</div>
@@ -149,7 +149,7 @@
                 success: function(data) {
                     if (data.subscriptions && data.subscriptions.length > 0) {
                         data.subscriptions.forEach(function(sub) {
-                            const subText = `${sub.subscription_type_name || 'Custom'} (${sub.start_date} to ${sub.end_date}) - Bal: ₹${sub.balance_amount}`;
+                            const subText = `${sub.subscription_type_name || 'Custom'} (${sub.start_date} to ${sub.end_date}) - Bal: {{ currency_symbol }}${sub.balance_amount}`;
                             const isSelected = (selectedSub && parseInt(selectedSub) === sub.id) ? 'selected' : '';
                             $subSelect.append(`<option value="${sub.id}" ${isSelected}>${subText}</option>`);
                         });
@@ -190,7 +190,7 @@
                 if (sub && sub.installments && sub.installments.length > 0) {
                     sub.installments.forEach(function(inst) {
                         if (inst.status !== 'Paid') {
-                            const instText = `Inst #${inst.installment_number} - Due: ${inst.due_date} - Bal: ₹${inst.remaining_amount}`;
+                            const instText = `Inst #${inst.installment_number} - Due: ${inst.due_date} - Bal: {{ currency_symbol }}${inst.remaining_amount}`;
                             const isSelected = (selectedInst && parseInt(selectedInst) === inst.id) ? 'selected' : '';
                             $instSelect.append(`<option value="${inst.id}" ${isSelected} data-remaining="${inst.remaining_amount}">${instText}</option>`);
                         }
@@ -232,7 +232,7 @@
             const val = parseFloat($(this).val());
             if (val > maxAllowedAmount) {
                 $(this).val(maxAllowedAmount.toFixed(2));
-                alert(`Amount cannot exceed the remaining balance of ₹${maxAllowedAmount.toFixed(2)}`);
+                alert(`Amount cannot exceed the remaining balance of {{ currency_symbol }}${maxAllowedAmount.toFixed(2)}`);
             }
         });
 

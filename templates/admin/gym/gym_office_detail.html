@@ -255,7 +255,7 @@
                                     <td class="ps-4 fw-medium">{{ sub.plan_name }}</td>
                                     <td>{{ sub.started_at|date:"M d, Y" }}</td>
                                     <td>{{ sub.expires_at|date:"M d, Y" }}</td>
-                                    <td>₹{{ sub.amount_paid }}</td>
+                                    <td>{{ gym.currency_symbol|default:"₹" }}{{ sub.amount_paid }}</td>
                                     <td>
                                         {% if sub.is_extension %}
                                             <span class="badge bg-primary-subtle text-primary">Extension</span>
@@ -295,7 +295,7 @@
                                 <tr>
                                     <td class="ps-4 text-muted small">#{{ pay.id }}</td>
                                     <td>{{ pay.created_at|date:"M d, Y H:i" }}</td>
-                                    <td class="fw-bold">₹{{ pay.amount }}</td>
+                                    <td class="fw-bold">{{ gym.currency_symbol|default:"₹" }}{{ pay.amount }}</td>
                                     <td>
                                         {% if pay.status == 'completed' %}
                                             <span class="badge bg-success-subtle text-success">Completed</span>

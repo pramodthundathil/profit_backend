@@ -113,6 +113,39 @@
         display: inline-block;
         margin-right: 10px;
     }
+
+    .quick-action-btn {
+        background: #1a1a1a;
+        color: #FFD700;
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        height: 100%;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .quick-action-btn:hover {
+        background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+        color: #000;
+        border-color: #FFD700;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(255, 215, 0, 0.2);
+    }
+    
+    .quick-action-btn i {
+        font-size: 2rem;
+        margin-right: 15px;
+        transition: all 0.3s ease;
+    }
+
+    .quick-action-btn:hover i {
+        transform: scale(1.1);
+    }
+
 </style>
 
 <div class="container-fluid px-0">
@@ -150,6 +183,44 @@
             {% endif %}
         </form>
     </div>
+
+    <!-- Quick Actions -->
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-md-4">
+            <a href="{% url 'member-create' %}" class="quick-action-btn">
+                <div class="text-center me-3">
+                    <i class="bi bi-person-plus"></i>
+                </div>
+                <div>
+                    <div class="small text-uppercase opacity-75 fw-bold text-white-50" style="font-size: 10px; letter-spacing: 1px;">Member Management</div>
+                    <div class="h5 mb-0 fw-bold">Add New Member</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-4">
+            <a href="{% url 'payment-create' %}" class="quick-action-btn">
+                <div class="text-center me-3">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div>
+                    <div class="small text-uppercase opacity-75 fw-bold text-white-50" style="font-size: 10px; letter-spacing: 1px;">Finance</div>
+                    <div class="h5 mb-0 fw-bold">Record Payment</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-4">
+            <a href="{% url 'enquiries:enquiry_create' %}" class="quick-action-btn">
+                <div class="text-center me-3">
+                    <i class="bi bi-chat-left-text"></i>
+                </div>
+                <div>
+                    <div class="small text-uppercase opacity-75 fw-bold text-white-50" style="font-size: 10px; letter-spacing: 1px;">Leads & CRM</div>
+                    <div class="h5 mb-0 fw-bold">New Enquiry</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
 
     <!-- KPI Row -->
     <div class="row g-4 mb-5">
@@ -220,7 +291,7 @@
                 <div class="col-12 col-md-6">
                     <div class="financial-card shadow-sm">
                         <div class="label mb-2">Total Collected (Cash Flow)</div>
-                        <div class="value">₹{{ financials.total_collected|floatformat:0 }}</div>
+                        <div class="value">{{ currency_symbol }}{{ financials.total_collected|floatformat:0 }}</div>
                         <div class="mt-3 small fw-bold">
                             <i class="bi bi-calendar-event me-1"></i> Period Selection
                         </div>
@@ -229,7 +300,7 @@
                 <div class="col-12 col-md-6">
                     <div class="financial-card shadow-sm" style="background: linear-gradient(135deg, #222 0%, #444 100%); color: #FFD700;">
                         <div class="label mb-2 text-white-50">Outstanding Receivables (Due)</div>
-                        <div class="value">₹{{ financials.total_due|floatformat:0 }}</div>
+                        <div class="value">{{ currency_symbol }}{{ financials.total_due|floatformat:0 }}</div>
                         <div class="mt-3 small text-white-50">
                             <i class="bi bi-info-circle me-1"></i> Across all active plans
                         </div>
@@ -250,7 +321,7 @@
                             <div class="bg-warning rounded-circle me-2" style="width: 10px; height: 10px;"></div>
                             <span class="fw-bold small">{{ method.payment_method }}</span>
                         </div>
-                        <span class="fw-bold">₹{{ method.total|floatformat:0 }}</span>
+                        <span class="fw-bold">{{ currency_symbol }}{{ method.total|floatformat:0 }}</span>
                     </div>
                     {% empty %}
                     <div class="text-center py-4 text-muted small">No data for this period</div>
@@ -350,7 +421,7 @@
                                     <div class="small text-muted">{{ payment.payment_method }} • {{ payment.payment_date|date:"d M" }}</div>
                                 </td>
                                 <td class="text-end pe-3">
-                                    <div class="fw-bold text-success font-monospace">+₹{{ payment.amount|floatformat:0 }}</div>
+                                    <div class="fw-bold text-success font-monospace">+{{ currency_symbol }}{{ payment.amount|floatformat:0 }}</div>
                                     <div class="small text-muted">{{ payment.receipt_number|truncatechars:12 }}</div>
                                 </td>
                             </tr>
@@ -423,7 +494,7 @@
         const revenueData = {
             labels: [{% for item in revenue_trend %}"{{ item.day|date:'d M' }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
             datasets: [{
-                label: 'Revenue (₹)',
+                label: 'Revenue ({{ currency_symbol }})',
                 data: [{% for item in revenue_trend %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}],
                 borderColor: '#1a1a1a',
                 backgroundColor: 'rgba(26, 26, 26, 0.05)',

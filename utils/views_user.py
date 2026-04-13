@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from utils.models import Batch_DB, TypeSubscription, SubscriptionPeriod
 from utils.forms import BatchForm, TypeSubscriptionForm, SubscriptionPeriodForm
+from home.forms import GymOfficeSettingsForm
 
 @login_required
 def gym_config_list(request):
@@ -22,6 +23,7 @@ def gym_config_list(request):
         'batches': batches,
         'sub_types': sub_types,
         'sub_periods': sub_periods,
+        'settings_form': GymOfficeSettingsForm(instance=gym),
     }
     return render(request, "user/configuration/gym_config_list.html", context)
 
@@ -203,4 +205,22 @@ def subperiod_delete(request, pk):
         subperiod.delete()
         messages.success(request, "Subscription Period deleted successfully.")
         
+    return redirect('gym-config-list')
+
+@login_required
+def update_gym_settings(request):
+    user = request.user
+    if user.role != 'gym_admin' or not user.gym:
+        messages.error(request, "Access denied.")
+        return redirect('user-dashboard')
+        
+    gym = user.gym
+    if request.method == 'POST':
+        form = GymOfficeSettingsForm(request.POST, instance=gym)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Gym settings updated successfully.")
+        else:
+            messages.error(request, "Error updating settings. Please check the form.")
+            
     return redirect('gym-config-list')

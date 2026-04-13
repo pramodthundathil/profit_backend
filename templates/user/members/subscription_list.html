@@ -86,8 +86,8 @@
                                 <div class="small text-muted">to {{ sub.end_date|date:"M d, Y" }}</div>
                             </td>
                             <td>
-                                <div class="fw-bold">₹{{ sub.final_amount }}</div>
-                                <small class="text-muted">Bal: ₹{{ sub.balance_amount }}</small>
+                                <div class="fw-bold">{{ currency_symbol }}{{ sub.final_amount }}</div>
+                                <small class="text-muted">Bal: {{ currency_symbol }}{{ sub.balance_amount }}</small>
                             </td>
                             <td>
                                 {% if sub.is_fully_paid %}

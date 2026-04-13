@@ -148,6 +148,10 @@ class GymOffice(SoftDeleteMixin, models.Model):
     razorpay_customer_id = models.CharField(max_length=100, blank=True, null=True)
     razorpay_subscription_id = models.CharField(max_length=100, blank=True, null=True)
     
+    # Currency Settings
+    currency_code = models.CharField(max_length=10, default='INR', help_text="e.g. INR, USD, AED, EUR")
+    currency_symbol = models.CharField(max_length=10, default='₹', help_text="e.g. ₹, $, AED, €")
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -290,6 +294,11 @@ class GymOffice(SoftDeleteMixin, models.Model):
         if user.role == 'gym_admin' and user.gym == self:
             return True
         return False
+
+    @property
+    def currency_display(self):
+        """Return human readable currency string"""
+        return f"{self.currency_code} ({self.currency_symbol})"
 
     def __str__(self):
         return self.name
@@ -494,6 +503,13 @@ class CustomUser(SoftDeleteMixin, AbstractBaseUser, PermissionsMixin):
             return GymBranch.objects.filter(id=self.branch.id, is_deleted=False)
         return GymBranch.objects.none()
 
+    @property
+    def currency_symbol(self):
+        """Return the currency symbol of the associated gym"""
+        if self.gym and self.gym.currency_symbol:
+            return self.gym.currency_symbol
+        return '₹' # Default fallback
+
     def __str__(self):
         return f"{self.get_full_name()} ({self.get_role_display()})"
 
@@ -567,7 +583,8 @@ class PaymentTransaction(SoftDeleteMixin, models.Model):
         ]
 
     def __str__(self):
-        return f"{self.gym.name} - ₹{self.amount} ({self.get_status_display()})"
+        symbol = self.gym.currency_symbol if self.gym else '₹'
+        return f"{self.gym.name} - {symbol}{self.amount} ({self.get_status_display()})"
 
 
 

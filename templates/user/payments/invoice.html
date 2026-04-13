@@ -141,21 +141,21 @@
                         <small class="text-muted">Membership validation: {{ subscription.start_date|date:"d M Y" }} to {{ subscription.end_date|date:"d M Y" }}</small>
                     </td>
                     <td class="text-center">{{ subscription.duration }} {{ subscription.duration_unit }}</td>
-                    <td class="text-end">₹{{ subscription.base_amount }}</td>
+                    <td class="text-end">{{ currency_symbol }}{{ subscription.base_amount }}</td>
                 </tr>
                 {% if total_discount > 0 %}
                 <tr>
                     <td colspan="2" class="text-end">Discounts</td>
-                    <td class="text-end">-₹{{ total_discount }}</td>
+                    <td class="text-end">-{{ currency_symbol }}{{ total_discount }}</td>
                 </tr>
                 {% endif %}
                 <tr class="total-row">
                     <td colspan="2" class="text-end">Amount Due</td>
-                    <td class="text-end">₹{{ subscription.final_amount }}</td>
+                    <td class="text-end">{{ currency_symbol }}{{ subscription.final_amount }}</td>
                 </tr>
                 <tr class="total-row theme-dark">
                     <td colspan="2" class="text-end">Amount Paid (This Transaction)</td>
-                    <td class="text-end">₹{{ payment.amount }}</td>
+                    <td class="text-end">{{ currency_symbol }}{{ payment.amount }}</td>
                 </tr>
             </tbody>
         </table>
@@ -168,7 +168,7 @@
         </div>
         <div class="col-6 text-end">
             <div class="section-title">Balance Remaining</div>
-            <h4 class="fw-bold theme-accent">₹{{ subscription.balance_amount }}</h4>
+            <h4 class="fw-bold theme-accent">{{ currency_symbol }}{{ subscription.balance_amount }}</h4>
         </div>
     </div>
 

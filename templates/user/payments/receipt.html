@@ -100,7 +100,7 @@
                         </div>
                         <div class="text-muted extra-small italic">Valid Term: {{ payment.subscription.start_date|date:"d M Y" }} — {{ payment.subscription.end_date|date:"d M Y" }}</div>
                     </td>
-                    <td class="text-end fs-5 fw-bold text-dark">₹{{ payment.amount }}</td>
+                    <td class="text-end fs-5 fw-bold text-dark">{{ currency_symbol }}{{ payment.amount }}</td>
                 </tr>
                 {% if payment.notes %}
                 <tr>
@@ -113,14 +113,14 @@
             <tfoot>
                 <tr class="table-light">
                     <th class="text-end py-3">Total Amount Paid</th>
-                    <th class="text-end text-primary py-3 fw-bold h5">₹{{ payment.amount }}</th>
+                    <th class="text-end text-primary py-3 fw-bold h5">{{ currency_symbol }}{{ payment.amount }}</th>
                 </tr>
             </tfoot>
         </table>
     </div>
 
     <div class="text-center my-5 py-2">
-        <div class="amount-highlight">₹{{ payment.amount }}</div>
+        <div class="amount-highlight">{{ currency_symbol }}{{ payment.amount }}</div>
         <p class="text-uppercase fw-bold text-muted small mb-0">Total amount received in full</p>
     </div>
 

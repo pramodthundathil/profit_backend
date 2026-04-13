@@ -40,7 +40,8 @@ class GymOfficeSerializer(serializers.ModelSerializer):
             'is_active', 'trial_started_at', 'trial_ends_at',
             'subscription_started_at', 'subscription_valid_until',
             'created_at', 'updated_at', 'subscription_status',
-            'active_branches_count', 'license_details'
+            'active_branches_count', 'license_details',
+            'currency_code', 'currency_symbol', 'currency_display'
         ]
         read_only_fields = [
             'trial_started_at', 'trial_ends_at', 'created_at',
@@ -528,6 +529,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if self.user.gym:
             data['gym_id'] = self.user.gym.id
             data['gym_name'] = self.user.gym.name
+            data['currency_symbol'] = self.user.gym.currency_symbol
+            data['currency_code'] = self.user.gym.currency_code
         
         if self.user.branch:
             data['branch_id'] = self.user.branch.id
