@@ -12,10 +12,14 @@ urlpatterns = [
     path('user/members/<int:pk>/unblock/', views_user.member_unblock_access, name='member-unblock-access'),
     path('user/members/<int:pk>/extend/', views_user.member_extend_access, name='member-extend-access'),
     path('user/members/<int:pk>/subscription/add/', views_user.member_add_subscription, name='member-subscription-add'),
+    path('user/payments/<int:pk>/receipt/', views_user.payment_receipt, name='payment-receipt'),
     path('user/members/installment/<int:pk>/pay/', views_user.installment_pay, name='installment-pay'),
+
     path('user/subscriptions/', views_user.subscription_list, name='subscription-list'),
     path('user/subscriptions/<int:pk>/', views_user.subscription_detail, name='subscription-detail'),
     path('user/subscriptions/<int:pk>/edit/', views_user.subscription_edit, name='subscription-edit'),
+    path('user/subscriptions/<int:pk>/delete/', views_user.subscription_delete, name='subscription-delete'),
+
 
     # Health History
     path('user/members/<int:member_id>/health-history/form/', views_user.health_history_form_view, name='health-history-form'),

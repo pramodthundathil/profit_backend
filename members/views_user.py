@@ -10,6 +10,22 @@ from django.utils import timezone
 from .models import Member, Subscription, HealthHistory, Medication, ParqForm
 from .forms import MemberForm, SubscriptionForm, HealthHistoryForm, MedicationFormSet, ParqFormModelForm, ParqUpdateForm
 from home.models import GymBranch
+from payments.models import Payment
+
+@login_required
+def payment_receipt(request, pk):
+    user = request.user
+    # Ensure the payment belongs to the current gym
+    payment = get_object_or_404(Payment, pk=pk, member__gym=user.gym)
+    
+    context = {
+        'payment': payment,
+        'member': payment.member,
+        'gym': payment.member.gym,
+        'title': f"Receipt: {payment.receipt_number}"
+    }
+    return render(request, 'user/payments/receipt.html', context)
+
 
 @login_required
 def member_list(request):
@@ -480,6 +496,40 @@ def subscription_edit(request, pk):
         'title': f"Edit Subscription: {subscription.member.full_name}"
     }
     return render(request, "user/members/subscription_form.html", context)
+
+@login_required
+def subscription_delete(request, pk):
+    user = request.user
+    subscription = get_object_or_404(Subscription, pk=pk, member__gym=user.gym)
+    member = subscription.member
+    
+    # Permission Check
+    has_permission = False
+    if user.role == 'gym_admin':
+        has_permission = True
+    elif user.role in ['branch_admin', 'staff']:
+        if member.branch == user.branch:
+            has_permission = True
+            
+    if not has_permission:
+        messages.error(request, "Access denied. You do not have permission to delete this subscription.")
+        return redirect('member-detail', pk=member.pk)
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                subscription.delete()
+                
+                # Update member access and status after deletion
+                member.update_membership_status()
+                member.update_access_status()
+                
+                messages.success(request, "Subscription deleted successfully.")
+        except Exception as e:
+            messages.error(request, f"Error deleting subscription: {e}")
+        
+    return redirect('member-detail', pk=member.pk)
+
 
 
 @login_required
