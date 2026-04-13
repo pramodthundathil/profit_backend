@@ -186,13 +186,15 @@ class CustomUserSerializer(serializers.ModelSerializer):
     gym_name = serializers.CharField(source='gym.name', read_only=True)
     branch_name = serializers.CharField(source='branch.name', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
+    currency_symbol = serializers.CharField(source='gym.currency_symbol', read_only=True)
+    currency_code = serializers.CharField(source='gym.currency_code', read_only=True)
     
     class Meta:
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'phone_number', 'role', 'role_display',
             'gym', 'gym_name', 'branch', 'branch_name', 'is_active',
-            'date_joined', 'last_login'
+            'date_joined', 'last_login', 'currency_symbol', 'currency_code'
         ]
         read_only_fields = ['date_joined', 'last_login']
 
