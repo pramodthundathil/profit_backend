@@ -7,7 +7,7 @@ from django.db.models.functions import TruncDay
 from django.utils import timezone
 from datetime import datetime, date
 from .models import GymOffice, CustomUser, PaymentTransaction, SubscriptionHistory, HikConfigurationDb, GymBranch
-from members.models import Member, Subscription
+from members.models import Member, Subscription, SubscriptionInstallment
 from payments.models import Payment
 
 from .forms import GymBranchForm, GymUserForm, HikConfigurationForm, GymUserEditForm
@@ -84,6 +84,18 @@ def user_dashboard(request):
     active_count = members_qs.filter(membership_status='Active').count()
     expired_count = members_qs.filter(membership_status='Expired').count()
     
+    # Overdue Installments
+    overdue_count = SubscriptionInstallment.objects.filter(
+        subscription__member__gym=gym
+    ).exclude(status='Paid').filter(
+        Q(status='Overdue') | Q(due_date__lt=today)
+    )
+    if is_restricted:
+        overdue_count = overdue_count.filter(subscription__member__branch=user.branch)
+    elif selected_branch_id:
+        overdue_count = overdue_count.filter(subscription__member__branch_id=selected_branch_id)
+    overdue_count = overdue_count.count()
+    
     # 2. Expiring soon (Next 7 days)
     seven_days_later = today + timezone.timedelta(days=7)
     expiring_soon = subscriptions_qs.filter(
@@ -152,6 +164,7 @@ def user_dashboard(request):
         'expired_count': expired_count,
         'expiring_soon_count': expiring_soon.count(),
         'new_registrations': new_regs_this_month,
+        'overdue_count': overdue_count,
         'expiring_soon_list': expiring_soon[:5],
         
         # Data

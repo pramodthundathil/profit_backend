@@ -1,0 +1,274 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}Subscription Settings{% endblock %}
+{% block header_subtitle %}Manage batches, membership types, and payment periods{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Subscription Settings</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm overflow-hidden mb-4">
+            <div class="card-body p-0">
+                <div class="d-flex flex-wrap bg-dark nav" id="subscriptionConfigTabs" role="tablist">
+                    <button class="flex-fill text-center p-3 border-0 bg-transparent text-white-50 active-tab-gold" 
+                            id="batches-tab" data-bs-toggle="tab" data-bs-target="#batches" type="button" role="tab">
+                        <i class="bi bi-clock-history me-2"></i> Managed Batches
+                    </button>
+                    <button class="flex-fill text-center p-3 border-0 bg-transparent text-white-50" 
+                            id="types-tab" data-bs-toggle="tab" data-bs-target="#types" type="button" role="tab">
+                        <i class="bi bi-card-checklist me-2"></i> Membership Types
+                    </button>
+                    <button class="flex-fill text-center p-3 border-0 bg-transparent text-white-50" 
+                            id="periods-tab" data-bs-toggle="tab" data-bs-target="#periods" type="button" role="tab">
+                        <i class="bi bi-calendar3 me-2"></i> Payment Periods
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tab-content" id="subscriptionConfigTabsContent">
+    <!-- Batches Tab -->
+    <div class="tab-pane fade show active" id="batches" role="tabpanel" aria-labelledby="batches-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
+                        <i class="bi bi-clock text-warning"></i>
+                    </div>
+                    <h5 class="mb-0 text-dark">Gym Batches</h5>
+                </div>
+                <a href="{% url 'batch-create' %}" class="btn btn-dark btn-sm d-flex align-items-center">
+                    <i class="bi bi-plus-lg me-1 text-warning"></i> Add New Batch
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Batch Name</th>
+                                <th>Schedule Time</th>
+                                <th>Current Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for batch in batches %}
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold text-dark">{{ batch.batch_name }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border"><i class="bi bi-clock me-1"></i> {{ batch.batch_time }}</span>
+                                </td>
+                                <td>
+                                    {% if batch.batch_status %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-3">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group">
+                                        <a href="{% url 'batch-edit' batch.id %}" class="btn btn-outline-dark btn-sm" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form action="{% url 'batch-delete' batch.id %}" method="post" class="d-inline" onsubmit="return confirm('Ensure no active members are linked to this batch before deleting. Continue?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="bi bi-info-circle fs-2 d-block mb-2"></i>
+                                    No batches configured yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Types Tab -->
+    <div class="tab-pane fade" id="types" role="tabpanel" aria-labelledby="types-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
+                        <i class="bi bi-card-list text-warning"></i>
+                    </div>
+                    <h5 class="mb-0 text-dark">Membership Types</h5>
+                </div>
+                <a href="{% url 'subtype-create' %}" class="btn btn-dark btn-sm d-flex align-items-center">
+                    <i class="bi bi-plus-lg me-1 text-warning"></i> Create Type
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Type Name</th>
+                                <th>Availability</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for subtype in sub_types %}
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold text-dark">{{ subtype.name }}</span>
+                                </td>
+                                <td>
+                                    {% if subtype.is_active %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">Available</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-3">Archived</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group">
+                                        <a href="{% url 'subtype-edit' subtype.id %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
+                                        <form action="{% url 'subtype-delete' subtype.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this subscription type?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-5 text-muted">
+                                    <i class="bi bi-info-circle fs-2 d-block mb-2"></i>
+                                    No subscription types defined.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Periods Tab -->
+    <div class="tab-pane fade" id="periods" role="tabpanel" aria-labelledby="periods-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
+                        <i class="bi bi-calendar-check text-warning"></i>
+                    </div>
+                    <h5 class="mb-0 text-dark">Payment Intervals</h5>
+                </div>
+                <a href="{% url 'subperiod-create' %}" class="btn btn-dark btn-sm d-flex align-items-center">
+                    <i class="bi bi-plus-lg me-1 text-warning"></i> Add Period
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Duration</th>
+                                <th>Category</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for period in sub_periods %}
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold text-dark fs-5">{{ period.period }}</span> <small class="text-muted">Days</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">
+                                        {% if period.period == 30 %}Monthly{% elif period.period == 90 %}Quarterly{% elif period.period == 365 %}Annual{% else %}Custom Interval{% endif %}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group">
+                                        <a href="{% url 'subperiod-edit' period.id %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
+                                        <form action="{% url 'subperiod-delete' period.id %}" method="post" class="d-inline" onsubmit="return confirm('Delete this payment period?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-5 text-muted">
+                                    <i class="bi bi-info-circle fs-2 d-block mb-2"></i>
+                                    No payment periods configured.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .active-tab-gold {
+        color: #FFD700 !important;
+        border-bottom: 3px solid #FFD700 !important;
+        background: rgba(255, 215, 0, 0.05) !important;
+    }
+    
+    #subscriptionConfigTabs .flex-fill:hover {
+        color: #fff !important;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(255, 215, 0, 0.02);
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var triggerTabList = [].slice.call(document.querySelectorAll('#subscriptionConfigTabs button'))
+        triggerTabList.forEach(function (triggerEl) {
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault()
+                
+                // 1. Update button styling
+                triggerTabList.forEach(function(btn) {
+                    btn.classList.remove('active-tab-gold');
+                    btn.classList.add('text-white-50');
+                });
+                this.classList.add('active-tab-gold');
+                this.classList.remove('text-white-50');
+                
+                // 2. Handle pane switching manually for maximum reliability with custom layout
+                var targetId = this.getAttribute('data-bs-target');
+                document.querySelectorAll('#subscriptionConfigTabsContent .tab-pane').forEach(function(pane) {
+                    pane.classList.remove('show', 'active');
+                });
+                document.querySelector(targetId).classList.add('show', 'active');
+            })
+        })
+    });
+</script>
+{% endblock %}

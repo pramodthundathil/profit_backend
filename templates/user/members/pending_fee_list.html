@@ -1,0 +1,155 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}Fee Pending Management{% endblock %}
+{% block header_subtitle %}Track and manage outstanding installments and payments{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Fee Pending</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm overflow-hidden">
+            <div class="card-body p-0">
+                <div class="d-flex flex-wrap">
+                    <a href="?type=overdue{% if selected_branch %}&branch={{ selected_branch }}{% endif %}" 
+                       class="flex-fill text-center p-3 text-decoration-none border-end {% if filter_type == 'overdue' %}bg-danger text-white fw-bold{% else %}bg-white text-muted{% endif %}">
+                        <i class="bi bi-exclamation-octagon-fill me-2"></i> Overdue
+                    </a>
+                    <a href="?type=this_month{% if selected_branch %}&branch={{ selected_branch }}{% endif %}" 
+                       class="flex-fill text-center p-3 text-decoration-none border-end {% if filter_type == 'this_month' %}bg-warning text-dark fw-bold{% else %}bg-white text-muted{% endif %}">
+                        <i class="bi bi-calendar-event me-2"></i> This Month
+                    </a>
+                    <a href="?type=all{% if selected_branch %}&branch={{ selected_branch }}{% endif %}" 
+                       class="flex-fill text-center p-3 text-decoration-none {% if filter_type == 'all' %}bg-dark text-warning fw-bold{% else %}bg-white text-muted{% endif %}">
+                        <i class="bi bi-list-task me-2"></i> All Receivables
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0 text-dark">
+            {% if filter_type == 'overdue' %}Overdue Installments{% elif filter_type == 'this_month' %}Upcoming This Month{% else %}All Outstanding Receivables{% endif %}
+        </h5>
+        
+        <div class="d-flex gap-2">
+            {% if branches %}
+            <form method="get" class="d-flex">
+                <input type="hidden" name="type" value="{{ filter_type }}">
+                <select name="branch" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Branches</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if selected_branch == branch.id|stringformat:"s" %}selected{% endif %}>{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="pendingFeesTable" class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Member</th>
+                        <th>Mobile</th>
+                        <th>Subscription</th>
+                        <th>Inst #</th>
+                        <th>Due Date</th>
+                        <th>Amt</th>
+                        <th class="text-success">Paid</th>
+                        <th class="text-danger">Balance</th>
+                        <th>Status</th>
+                        <th data-orderable="false">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in installments %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if item.subscription.member.photo %}
+                                <img src="{{ item.subscription.member.photo.url }}" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                {% else %}
+                                <div class="rounded-circle bg-light text-primary fw-bold d-flex align-items-center justify-content-center me-2 border" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                    {{ item.subscription.member.first_name|first|upper }}
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <div class="fw-bold text-dark">{{ item.subscription.member.full_name }}</div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ item.subscription.member.member_id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ item.subscription.member.mobile_number }}</td>
+                        <td>
+                            <div class="small fw-bold">{{ item.subscription.subscription_type.name|default:"General Plan" }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Exp: {{ item.subscription.end_date|date:"M d, Y" }}</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ item.installment_number }}</span></td>
+                        <td>
+                            <div class="{% if item.status == 'Overdue' or item.due_date < today %}text-danger fw-bold{% else %}text-dark{% endif %}">
+                                {{ item.due_date|date:"M d, Y" }}
+                            </div>
+                        </td>
+                        <td class="fw-bold">{{ currency_symbol }}{{ item.amount }}</td>
+                        <td class="text-success">{{ currency_symbol }}{{ item.amount_paid }}</td>
+                        <td class="text-danger fw-bold">{{ currency_symbol }}{{ item.remaining_amount }}</td>
+                        <td>
+                            {% if item.status == 'Overdue' %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-2 py-1">Overdue</span>
+                            {% elif item.status == 'Partially Paid' %}
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning-subtle px-2 py-1">Partial</span>
+                            {% else %}
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle px-2 py-1">{{ item.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'subscription-detail' item.subscription.id %}" class="btn btn-sm btn-outline-dark" title="Pay / Take Action">
+                                    <i class="bi bi-cash-coin me-1"></i> Pay
+                                </a>
+                                <a href="{% url 'member-detail' item.subscription.member.id %}" class="btn btn-sm btn-outline-secondary" title="View Member Profile">
+                                    <i class="bi bi-person"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        $('#pendingFeesTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "info": true,
+            "ordering": true,
+            "order": [[4, "asc"]], // Sort by Due Date ascending
+            "language": {
+                "emptyTable": "No pending fees found.",
+                "search": "Search Member/Mobile:"
+            },
+            "pageLength": 25
+        });
+    });
+</script>
+{% endblock %}

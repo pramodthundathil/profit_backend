@@ -248,11 +248,14 @@
             </div>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="stats-card-premium accent-red">
-                <div class="label">Expired Members</div>
-                <div class="value">{{ expired_count }}</div>
-                <i class="bi bi-exclamation-triangle-fill bg-icon"></i>
-            </div>
+            <a href="{% url 'pending-fee-list' %}?type=overdue" class="text-decoration-none">
+                <div class="stats-card-premium accent-red">
+                    <div class="label">Overdue Payments</div>
+                    <div class="value">{{ overdue_count }}</div>
+                    <div class="small mt-1 text-white-50">Pending installments</div>
+                    <i class="bi bi-exclamation-triangle-fill bg-icon"></i>
+                </div>
+            </a>
         </div>
     </div>
 
@@ -298,13 +301,15 @@
                     </div>
                 </div>
                 <div class="col-12 col-md-6">
-                    <div class="financial-card shadow-sm" style="background: linear-gradient(135deg, #222 0%, #444 100%); color: #FFD700;">
-                        <div class="label mb-2 text-white-50">Outstanding Receivables (Due)</div>
-                        <div class="value">{{ currency_symbol }}{{ financials.total_due|floatformat:0 }}</div>
-                        <div class="mt-3 small text-white-50">
-                            <i class="bi bi-info-circle me-1"></i> Across all active plans
+                    <a href="{% url 'pending-fee-list' %}" class="text-decoration-none">
+                        <div class="financial-card shadow-sm" style="background: linear-gradient(135deg, #222 0%, #444 100%); color: #FFD700;">
+                            <div class="label mb-2 text-white-50">Outstanding Receivables (Due)</div>
+                            <div class="value">{{ currency_symbol }}{{ financials.total_due|floatformat:0 }}</div>
+                            <div class="mt-3 small text-white-50">
+                                <i class="bi bi-info-circle me-1"></i> Across all active plans
+                            </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
         </div>

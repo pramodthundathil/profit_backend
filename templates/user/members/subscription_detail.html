@@ -50,7 +50,7 @@
                 </div>
                 <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                     <span class="text-muted">Membership</span>
-                    <span class="badge badge-soft-success">{{ member.membership_status }}</span>
+                    <span class="badge bg-success">{{ member.membership_status }}</span>
                 </div>
             </div>
             
@@ -225,13 +225,13 @@
                                     <td class="text-success">{{ currency_symbol }}{{ item.amount_paid }}</td>
                                     <td>
                                         {% if item.status == 'Paid' %}
-                                            <span class="badge badge-soft-success">Paid</span>
+                                            <span class="badge bg-success">Paid</span>
                                         {% elif item.status == 'Partially Paid' %}
-                                            <span class="badge badge-soft-warning">Partial</span>
+                                            <span class="badge bg-warning">Partial</span>
                                         {% elif item.status == 'Overdue' %}
-                                            <span class="badge badge-soft-danger">Overdue</span>
+                                            <span class="badge bg-danger">Overdue</span>
                                         {% else %}
-                                            <span class="badge badge-soft-secondary">Pending</span>
+                                            <span class="badge bg-secondary">Pending</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
@@ -342,7 +342,9 @@
                                     <td>{{ pmt.payment_method }}</td>
                                     <td><span class="badge badge-soft-success">Success</span></td>
                                     <td class="text-end">
-                                        <button class="btn btn-sm btn-icon btn-light border" title="Print Receipt"><i class="bi bi-printer"></i></button>
+                                        <a href="{% url 'payment-receipt' pmt.id %}" class="btn btn-sm btn-icon btn-light border" title="Print Receipt" target="_blank">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 {% empty %}

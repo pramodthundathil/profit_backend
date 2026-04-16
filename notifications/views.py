@@ -87,3 +87,27 @@ def mark_all_notifications_as_read(request):
         Notification.objects.filter(member__gym=user.gym, is_read=False).update(is_read=True)
     
     return JsonResponse({'status': 'success'})
+
+@login_required
+@require_POST
+def delete_notification(request, pk):
+    notification = get_object_or_404(Notification, pk=pk)
+    
+    # Permission check
+    if not request.user.is_staff:
+        if not notification.member.gym == request.user.gym:
+            return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+            
+    notification.delete()
+    return JsonResponse({'status': 'success'})
+
+@login_required
+@require_POST
+def clear_all_notifications(request):
+    user = request.user
+    if user.is_staff:
+        Notification.objects.all().delete()
+    elif user.gym:
+        Notification.objects.filter(member__gym=user.gym).delete()
+    
+    return JsonResponse({'status': 'success'})

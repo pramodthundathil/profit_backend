@@ -14,6 +14,7 @@ urlpatterns = [
     path('user/members/<int:pk>/subscription/add/', views_user.member_add_subscription, name='member-subscription-add'),
     path('user/payments/<int:pk>/receipt/', views_user.payment_receipt, name='payment-receipt'),
     path('user/members/installment/<int:pk>/pay/', views_user.installment_pay, name='installment-pay'),
+    path('user/members/pending-fees/', views_user.pending_fee_list, name='pending-fee-list'),
 
     path('user/subscriptions/', views_user.subscription_list, name='subscription-list'),
     path('user/subscriptions/<int:pk>/', views_user.subscription_detail, name='subscription-detail'),

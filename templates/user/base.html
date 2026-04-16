@@ -207,8 +207,11 @@
             <a href="{% url 'enquiries:dashboard' %}" class="nav-link {% if 'enquiries' in request.resolver_match.url_name or 'enquiry' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-person-lines-fill"></i> CRM / Enquiries
             </a>
-            <a href="{% url 'member-list' %}" class="nav-link {% if 'member' in request.resolver_match.url_name %}active{% endif %}">
+            <a href="{% url 'member-list' %}" class="nav-link {% if 'member' in request.resolver_match.url_name and 'pending-fee' not in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-person-vcard-fill"></i> Members
+            </a>
+            <a href="{% url 'pending-fee-list' %}" class="nav-link {% if 'pending-fee' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-exclamation-square-fill text-danger"></i> Fee Pending
             </a>
             
             <a href="{% url 'subscription-list' %}" class="nav-link {% if 'subscription' in request.resolver_match.url_name %}active{% endif %}">
@@ -233,20 +236,20 @@
                 <span><i class="bi bi-gear-fill"></i> Settings</span>
                 <i class="bi bi-chevron-down small"></i>
             </a>
-            <div class="collapse {% if 'hik-config' in request.resolver_match.url_name or 'gym-config' in request.resolver_match.url_name %}show{% endif %}" id="settingsCollapse">
+            <div class="collapse {% if 'hik-config' in request.resolver_match.url_name or 'config' in request.resolver_match.url_name or 'staff' in request.resolver_match.url_name %}show{% endif %}" id="settingsCollapse">
                 <div class="ms-3 border-start border-secondary ps-2">
-                    <a href="{% url 'user-hik-config-list' %}" class="nav-link py-2 small {% if 'hik-config' in request.resolver_match.url_name %}text-warning{% endif %}" style="font-size: 0.9em;">
-                        Device Settings
+                    <a href="{% url 'user-hik-config-list' %}" class="nav-link py-2 small {% if 'hik-config' in request.resolver_match.url_name %}active text-warning{% endif %}" style="font-size: 0.9em;">
+                        <i class="bi bi-cpu me-2"></i> Device Settings
                     </a>
-                    <a href="{% url 'gym-config-list' %}" class="nav-link py-2 small {% if 'gym-config' in request.resolver_match.url_name %}text-warning{% endif %}" style="font-size: 0.9em;">
-                        Gym Configuration
+                    <a href="{% url 'gym-config-list' %}" class="nav-link py-2 small {% if 'gym-config' in request.resolver_match.url_name %}active text-warning{% endif %}" style="font-size: 0.9em;">
+                        <i class="bi bi-sliders2 me-2"></i> Gym Configuration
                     </a>
-                    <a href="{% url 'user-dashboard' %}#subscriptions" class="nav-link py-2 small" style="font-size: 0.9em;">
-                        Subscription Settings
+                    <a href="{% url 'subscription-config-list' %}" class="nav-link py-2 small {% if 'subscription-config' in request.resolver_match.url_name %}active text-warning{% endif %}" style="font-size: 0.9em;">
+                        <i class="bi bi-calendar-event me-2"></i> Subscription Settings
                     </a>
-                    <a href="{% url 'user-staff-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-staff-list' %}active{% endif %}">
-                <i class="bi bi-people-fill"></i> Staff Config
-            </a>
+                    <a href="{% url 'user-staff-list' %}" class="nav-link py-2 small {% if 'staff' in request.resolver_match.url_name %}active text-warning{% endif %}" style="font-size: 0.9em;">
+                        <i class="bi bi-people-fill me-2"></i> Staff Config
+                    </a>
                 </div>
             </div>
             <div class="mt-auto border-top border-secondary pt-3 mt-4">

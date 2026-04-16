@@ -14,6 +14,21 @@ def gym_config_list(request):
 
     gym = user.gym
     
+    context = {
+        'gym': gym,
+        'settings_form': GymOfficeSettingsForm(instance=gym),
+    }
+    return render(request, "user/configuration/gym_config_list.html", context)
+
+@login_required
+def subscription_config_list(request):
+    user = request.user
+    if not user.gym:
+        messages.error(request, "Access denied. No gym associated.")
+        return redirect('user-dashboard')
+
+    gym = user.gym
+    
     batches = Batch_DB.objects.filter(gym=gym)
     sub_types = TypeSubscription.objects.filter(gym=gym)
     sub_periods = SubscriptionPeriod.objects.filter(gym=gym)
@@ -23,9 +38,8 @@ def gym_config_list(request):
         'batches': batches,
         'sub_types': sub_types,
         'sub_periods': sub_periods,
-        'settings_form': GymOfficeSettingsForm(instance=gym),
     }
-    return render(request, "user/configuration/gym_config_list.html", context)
+    return render(request, "user/configuration/subscription_config_list.html", context)
 
 # --- Batches ---
 
@@ -44,7 +58,7 @@ def batch_create(request):
             try:
                 batch.save()
                 messages.success(request, f"Batch '{batch.batch_name}' created successfully.")
-                return redirect('gym-config-list')
+                return redirect('subscription-config-list')
             except Exception as e:
                 messages.error(request, f"Error creating batch: {e}")
     else:
@@ -66,7 +80,7 @@ def batch_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Batch updated successfully.")
-            return redirect('gym-config-list')
+            return redirect('subscription-config-list')
     else:
         form = BatchForm(instance=batch)
         
@@ -104,7 +118,7 @@ def subtype_create(request):
             try:
                 subtype.save()
                 messages.success(request, f"Subscription Type '{subtype.name}' created successfully.")
-                return redirect('gym-config-list')
+                return redirect('subscription-config-list')
             except Exception as e:
                  messages.error(request, f"Error: {e}")
     else:
@@ -126,7 +140,7 @@ def subtype_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Subscription Type updated successfully.")
-            return redirect('gym-config-list')
+            return redirect('subscription-config-list')
     else:
         form = TypeSubscriptionForm(instance=subtype)
         
@@ -164,7 +178,7 @@ def subperiod_create(request):
             try:
                 subperiod.save()
                 messages.success(request, f"Subscription Period '{subperiod.period} days' created successfully.")
-                return redirect('gym-config-list')
+                return redirect('subscription-config-list')
             except Exception as e:
                 messages.error(request, f"Error: {e}")
     else:
@@ -186,7 +200,7 @@ def subperiod_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Subscription Period updated successfully.")
-            return redirect('gym-config-list')
+            return redirect('subscription-config-list')
     else:
         form = SubscriptionPeriodForm(instance=subperiod)
         

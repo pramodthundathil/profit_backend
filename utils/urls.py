@@ -24,6 +24,7 @@ urlpatterns = [
     # Gym Configuration (HTML)
     path('user/configuration/', views_user.gym_config_list, name='gym-config-list'),
     path('user/configuration/settings/update/', views_user.update_gym_settings, name='update-gym-settings'),
+    path('user/subscription-configuration/', views_user.subscription_config_list, name='subscription-config-list'),
     
     # Batches
     path('user/configuration/batch/add/', views_user.batch_create, name='batch-create'),

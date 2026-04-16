@@ -143,6 +143,13 @@ class SubscriptionForm(forms.ModelForm):
         self.fields['start_date'].initial = timezone.now().date()
         self.fields['installment_count'].initial = 1
         self.fields['installment_count'].required = False
+        self.fields['installment_period'].initial = 1
+        self.fields['installment_period'].required = False
+        self.fields['installment_period_unit'].initial = 'Months'
+        self.fields['installment_period_unit'].required = False
+        
+        self.fields['status'].initial = 'Active'
+        self.fields['status'].required = False
     
     def clean_installment_count(self):
         data = self.cleaned_data['installment_count']

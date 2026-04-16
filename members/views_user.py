@@ -7,7 +7,9 @@ from django.db import transaction
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
-from .models import Member, Subscription, HealthHistory, Medication, ParqForm
+from datetime import timedelta
+from dateutil.relativedelta import relativedelta
+from .models import Member, Subscription, HealthHistory, Medication, ParqForm, SubscriptionInstallment
 from .forms import MemberForm, SubscriptionForm, HealthHistoryForm, MedicationFormSet, ParqFormModelForm, ParqUpdateForm
 from home.models import GymBranch
 from payments.models import Payment
@@ -771,3 +773,68 @@ def public_success(request):
         'is_public': True
     })
 
+@login_required
+def pending_fee_list(request):
+    user = request.user
+    if not user.gym:
+        messages.error(request, "Access denied. No gym associated.")
+        return redirect('user-dashboard')
+
+    today = timezone.now().date()
+    
+    # Base filter: Installments belonging to the user's gym
+    installments = SubscriptionInstallment.objects.filter(
+        subscription__member__gym=user.gym
+    ).select_related(
+        'subscription', 
+        'subscription__member', 
+        'subscription__member__branch', 
+        'subscription__subscription_type'
+    )
+
+    # Branch filter (for non-gym_admin roles)
+    if user.role != 'gym_admin' and user.branch:
+        installments = installments.filter(subscription__member__branch=user.branch)
+    
+    # Role-based branch filter from query params (for gym_admin)
+    branch_filter = request.GET.get('branch', '')
+    if user.role == 'gym_admin' and branch_filter:
+        installments = installments.filter(subscription__member__branch_id=branch_filter)
+
+    # Filter type
+    filter_type = request.GET.get('type', 'overdue')
+    if filter_type == 'overdue':
+        # Overdue: due date in the past and not Paid
+        installments = installments.filter(
+            Q(status='Overdue') | Q(due_date__lt=today)
+        ).exclude(status='Paid')
+    elif filter_type == 'this_month':
+        # This month: due date within current month and not Paid
+        start_of_month = today.replace(day=1)
+        next_month = start_of_month + relativedelta(months=1)
+        end_of_month = next_month - timedelta(days=1)
+        installments = installments.filter(
+            due_date__range=[start_of_month, end_of_month]
+        ).exclude(status='Paid')
+    else:
+        # pending/all non-paid
+        installments = installments.exclude(status='Paid')
+
+    # Sorting
+    installments = installments.order_by('due_date')
+
+    # Support for gym admin to see branch list for filtering
+    branches = None
+    if user.role == 'gym_admin':
+        from home.models import GymBranch
+        branches = GymBranch.objects.filter(gym=user.gym, is_active=True, is_deleted=False)
+
+    context = {
+        'installments': installments,
+        'filter_type': filter_type,
+        'branches': branches,
+        'selected_branch': branch_filter,
+        'title': 'Fee Pending & Overdue Payments',
+        'currency_symbol': user.gym.currency_symbol if hasattr(user.gym, 'currency_symbol') else '₹'
+    }
+    return render(request, 'user/members/pending_fee_list.html', context)

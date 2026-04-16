@@ -24,11 +24,34 @@
         <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
             {% csrf_token %}
             
-            {% if form.errors or subscription_form.errors %}
-                <div class="alert alert-danger">
-                    Please correct the errors below.
-                    {{ form.errors }}
-                    {{ subscription_form.errors }}
+            {% if member_form.errors or subscription_form.errors %}
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                        <h6 class="mb-0 fw-bold">Please correct the following errors:</h6>
+                    </div>
+                    <ul class="mb-0 small ps-3">
+                        {% for field in member_form %}
+                            {% for error in field.errors %}
+                                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in member_form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+
+                        {% if subscription_form %}
+                            {% for field in subscription_form %}
+                                {% for error in field.errors %}
+                                    <li><strong>Subscription {{ field.label }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in subscription_form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        {% endif %}
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             {% endif %}
 
@@ -230,10 +253,16 @@
                         <label class="form-label">Payment Terms</label>
                          {{ subscription_form.payment_terms }}
                     </div>
-                    <div class="col-md-4" id="installment_area" style="display:none;">
-                        <label class="form-label">Installments</label>
-                         {{ subscription_form.installment_count }}
-                         <div id="installment_preview" class="form-text text-primary fw-bold mt-1"></div>
+                    <div class="col-md-4" id="installment_area">
+                        <label class="form-label text-primary small fw-bold">Installment Settings</label>
+                        <div class="input-group">
+                            <span class="input-group-text small">Count</span>
+                            {{ subscription_form.installment_count }}
+                            <span class="input-group-text small">Every</span>
+                            {{ subscription_form.installment_period }}
+                            {{ subscription_form.installment_period_unit }}
+                        </div>
+                        <div id="installment_preview" class="form-text text-primary fw-bold mt-1"></div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Amount Paid *</label>
@@ -254,29 +283,69 @@
 <script>
     // Simple script to auto-calculate final amount
     document.addEventListener('DOMContentLoaded', function() {
+        // Form Validation Enhancement
+        const form = document.querySelector('.needs-validation');
+        const validationToast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true
+        });
+
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Find the first invalid element
+                    const firstInvalid = form.querySelector(':invalid');
+                    if (firstInvalid) {
+                        // Attempt to find a label or context for the field name
+                        let fieldName = "A required field";
+                        const label = document.querySelector(`label[for="${firstInvalid.id}"]`);
+                        
+                        if (label) {
+                            fieldName = label.textContent.replace('*', '').trim();
+                        } else {
+                            // Try to find the closest label in the grid system
+                            const container = firstInvalid.closest('.col-md-3, .col-md-4, .col-md-6, .col-12');
+                            if (container) {
+                                const containerLabel = container.querySelector('.form-label');
+                                if (containerLabel) {
+                                    fieldName = containerLabel.textContent.replace('*', '').trim();
+                                }
+                            }
+                        }
+
+                        validationToast.fire({
+                            icon: 'error',
+                            title: `${fieldName} is required`,
+                            text: 'Please fill in all mandatory fields.'
+                        });
+
+                        // Special handling for hidden but mapped inputs (like search/selects)
+                        firstInvalid.focus();
+                        
+                        // Scroll into view if not visible
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+                form.classList.add('was-validated');
+            }, false);
+        }
+
         const baseInput = document.getElementById('id_base_amount');
         const discPercInput = document.getElementById('id_discount_percentage');
         const discAmtInput = document.getElementById('id_discount_amount');
         const finalInput = document.getElementById('id_final_amount');
-        
-        function calculateTotal() {
-            if (!baseInput || !finalInput) return;
-            
-            const base = parseFloat(baseInput.value) || 0;
-            const perc = parseFloat(discPercInput.value) || 0;
-            const fix = parseFloat(discAmtInput.value) || 0;
-            
-            const percValid = Math.min(Math.max(perc, 0), 100);
-            const discountFromPerc = (base * percValid) / 100;
-            
-            const total = Math.max(0, base - discountFromPerc - fix);
-            finalInput.value = total.toFixed(2);
-        }
-        
         const paymentTerms = document.getElementById('id_payment_terms');
-        const installmentArea = document.getElementById('installment_area');
         const installmentInput = document.getElementById('id_installment_count');
+        const periodInput = document.getElementById('id_installment_period');
+        const unitInput = document.getElementById('id_installment_period_unit');
         const installmentPreview = document.getElementById('installment_preview');
+        const installmentArea = document.getElementById('installment_area');
 
         function calculateTotal() {
             if (!baseInput || !finalInput) return;
@@ -295,29 +364,36 @@
         }
         
         function calculateInstallments(total) {
-            if (!installmentInput || !paymentTerms || paymentTerms.value !== 'Installment') {
+             if (!installmentInput || !paymentTerms || paymentTerms.value !== 'Installment') {
                 if(installmentPreview) installmentPreview.textContent = '';
                 return;
             }
             
             const count = parseInt(installmentInput.value) || 1;
+            const period = parseInt(periodInput.value) || 1;
+            const unit = unitInput.value ? unitInput.value.toLowerCase().replace(/s$/, '') : 'month'; // singularize
+            
             if (count > 1 && total > 0) {
                 const perInst = (total / count).toFixed(2);
-                if(installmentPreview) installmentPreview.textContent = `${count} x ${perInst} / month`;
+                if(installmentPreview) installmentPreview.textContent = `${count} payments of {{ currency_symbol }}${perInst} every ${period} ${unit}${period > 1 ? 's' : ''}`;
             } else {
                 if(installmentPreview) installmentPreview.textContent = '';
             }
         }
         
         function toggleInstallments() {
-             if (paymentTerms && installmentArea) {
+            if (paymentTerms && installmentArea) {
+                const inputs = installmentArea.querySelectorAll('input, select');
                 if (paymentTerms.value === 'Installment') {
-                   installmentArea.style.display = 'block'; 
+                   inputs.forEach(input => input.disabled = false);
+                   if(installmentInput.value == "") installmentInput.value = 1;
+                   if(periodInput.value == "") periodInput.value = 1;
                 } else {
-                   installmentArea.style.display = 'none';
-                   if(installmentInput) installmentInput.value = 1;
+                   inputs.forEach(input => input.disabled = true);
+                   installmentInput.value = 1;
+                   periodInput.value = 1;
                 }
-                calculateTotal(); // Re-calc preview
+                calculateTotal();
             }
         }
         
@@ -327,17 +403,16 @@
             discAmtInput.addEventListener('input', calculateTotal);
         }
         
+        if (installmentInput) {
+             installmentInput.addEventListener('input', () => calculateTotal());
+             if (periodInput) periodInput.addEventListener('input', () => calculateTotal());
+             if (unitInput) unitInput.addEventListener('change', () => calculateTotal());
+        }
+        
         if (paymentTerms) {
             paymentTerms.addEventListener('change', toggleInstallments);
+            toggleInstallments(); // Initial check
         }
-        
-        if (installmentInput) {
-            installmentInput.addEventListener('input', () => calculateTotal());
-        }
-        
-        // Initial run
-        toggleInstallments();
-        calculateTotal();
     });
     // Camera Capture Logic
     const startCameraBtn = document.getElementById('startCameraBtn');
