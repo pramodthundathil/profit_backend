@@ -610,43 +610,70 @@ class Subscription(models.Model):
         else:
             return
 
-        # Calculate installment amount
-        total_amount = Decimal(str(self.final_amount))
-        amount_per_installment = total_amount / count
-        
-        # Check if existing installments need to be regenerated?
-        current_installments = self.installments.all()
+        # Calculate installment amount based on remaining balance
+        current_installments = self.installments.all().order_by('installment_number')
         current_count = current_installments.count()
+        
+        # We calculate the amount for "not-yet-paid" portions
+        remaining_to_split = Decimal(str(self.final_amount)) - Decimal(str(self.amount_paid))
+        
+        if current_count == 0:
+            # First time: divide everything (minus any current payment) by requested count
+            amount_per_installment = remaining_to_split / count
+        else:
+            # Existing: divide current balance by pending installments
+            pending_installments = self.installments.exclude(status='Paid')
+            pending_count = pending_installments.count()
+            if pending_count > 0:
+                amount_per_installment = remaining_to_split / pending_count
+            else:
+                amount_per_installment = Decimal('0')
 
-        # If count matches, just update amounts if they differ
+        # Logic for date calculation
+        # If an advance was paid today, the installments start from the next period (offset +1)
+        # Otherwise, the first installment is due on the start date (offset 0)
+        has_advance = (self.amount_paid > 0)
+        
+        def calculate_due_date(num, start_date):
+            offset = num if has_advance else (num - 1)
+            interval = offset * self.installment_period
+            
+            if self.installment_period_unit == 'Days':
+                return start_date + timedelta(days=interval)
+            elif self.installment_period_unit == 'Weeks':
+                return start_date + timedelta(weeks=interval)
+            elif self.installment_period_unit == 'Months':
+                return start_date + relativedelta(months=interval)
+            elif self.installment_period_unit == 'Years':
+                return start_date + relativedelta(years=interval)
+            else:
+                return start_date + relativedelta(months=interval)
+
+        # If count matches, update amounts AND due dates if they differ
         if current_count == count:
              for inst in current_installments:
-                 if inst.amount != amount_per_installment and inst.status == 'Pending':
-                     inst.amount = amount_per_installment
-                     inst.save(update_fields=['amount'])
+                 if inst.status in ['Pending', 'Overdue']:
+                     new_due_date = calculate_due_date(inst.installment_number, self.start_date)
+                     updated = False
+                     if inst.amount != amount_per_installment:
+                         inst.amount = amount_per_installment
+                         updated = True
+                     if inst.due_date != new_due_date:
+                         inst.due_date = new_due_date
+                         updated = True
+                     if updated:
+                         inst.save(update_fields=['amount', 'due_date'])
              return
 
         # Clear existing pending installments if re-generating
         self.installments.filter(status='Pending').delete()
         
         # Re-fetch count after deletion
-        current_count = self.installments.count()
+        existing_paid_count = self.installments.count()
         
         # Create new installments for the remaining count
-        start = self.start_date
-        for i in range(current_count + 1, count + 1):
-             # Calculate due date based on frequency
-             interval = (i - 1) * self.installment_period
-             if self.installment_period_unit == 'Days':
-                 due = start + timedelta(days=interval)
-             elif self.installment_period_unit == 'Weeks':
-                 due = start + timedelta(weeks=interval)
-             elif self.installment_period_unit == 'Months':
-                 due = start + relativedelta(months=interval)
-             elif self.installment_period_unit == 'Years':
-                 due = start + relativedelta(years=interval)
-             else:
-                 due = start + relativedelta(months=interval) # Default to months
+        for i in range(existing_paid_count + 1, count + 1):
+             due = calculate_due_date(i, self.start_date)
              
              SubscriptionInstallment.objects.create(
                  subscription=self,

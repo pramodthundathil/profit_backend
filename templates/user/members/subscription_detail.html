@@ -337,7 +337,13 @@
                                 <tr>
                                     <td>{{ pmt.created_at|date:"d M, Y H:i" }}</td>
                                     <td><span class="text-muted small">#{{ pmt.pk }}</span></td> <!-- Simplified ID -->
-                                    <td><span class="badge bg-light text-dark border">#{{ pmt.installment_number }}</span></td>
+                                    <td>
+                                        {% if pmt.installment_number %}
+                                            <span class="badge bg-light text-dark border">#{{ pmt.installment_number }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Advance</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="fw-bold">{{ currency_symbol }}{{ pmt.amount }}</td>
                                     <td>{{ pmt.payment_method }}</td>
                                     <td><span class="badge badge-soft-success">Success</span></td>

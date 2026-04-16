@@ -195,6 +195,7 @@
         const installmentInput = document.getElementById('id_installment_count');
         const periodInput = document.getElementById('id_installment_period');
         const unitInput = document.getElementById('id_installment_period_unit');
+        const amountPaidInput = document.getElementById('id_amount_paid');
         const installmentPreview = document.getElementById('installment_preview');
         const installmentArea = document.getElementById('installment_area');
 
@@ -223,10 +224,17 @@
             const count = parseInt(installmentInput.value) || 1;
             const period = parseInt(periodInput.value) || 1;
             const unit = unitInput.value.toLowerCase().replace(/s$/, ''); // singularize
+            const paid = parseFloat(amountPaidInput.value) || 0;
             
-            if (count > 1 && total > 0) {
-                const perInst = (total / count).toFixed(2);
-                if(installmentPreview) installmentPreview.textContent = `${count} payments of {{ currency_symbol }}${perInst} every ${period} ${unit}${period > 1 ? 's' : ''}`;
+            if (count > 0 && total >= 0) {
+                const remaining = Math.max(0, total - paid);
+                const perInst = (remaining / count).toFixed(2);
+                
+                let message = `${count} payments of {{ currency_symbol }}${perInst} every ${period} ${unit}${period > 1 ? 's' : ''}`;
+                if (paid > 0) {
+                    message = `Advance of {{ currency_symbol }}${paid} + ` + message;
+                }
+                if(installmentPreview) installmentPreview.textContent = message;
             } else {
                 if(installmentPreview) installmentPreview.textContent = '';
             }
@@ -252,6 +260,9 @@
             baseInput.addEventListener('input', calculateTotal);
             discPercInput.addEventListener('input', calculateTotal);
             discAmtInput.addEventListener('input', calculateTotal);
+            if (amountPaidInput) {
+                amountPaidInput.addEventListener('input', calculateTotal);
+            }
         }
         
         if (installmentInput) {
