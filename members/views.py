@@ -289,26 +289,36 @@ def subscription_create_api(request, member_id):
             subscription = serializer.save(member=member)
             
             # If amount_paid is provided, create a Payment record
-            amount_paid = request.data.get('amount_paid', 0)
-            if float(amount_paid) > 0:
-                from payments.models import Payment
+            amount_paid = Decimal(str(request.data.get('amount_paid', 0)))
+            offer_id = request.data.get('offer')
+            discount_amount = Decimal(str(request.data.get('discount_amount', 0)))
+
+            if amount_paid > 0 or discount_amount > 0:
+                from payments.models import Payment, GymOffer
+                
+                offer = None
+                if offer_id:
+                    try:
+                        offer = GymOffer.objects.get(id=offer_id, gym=request.user.gym)
+                    except GymOffer.DoesNotExist:
+                        pass
+
                 # Get the first installment (it was created in subscription.save())
                 installment = subscription.installments.order_by('installment_number').first()
                 if installment:
-                    amt = Decimal(str(amount_paid))
-                    installment.amount_paid += amt
-                    if installment.amount_paid >= installment.amount:
-                        installment.status = 'Paid'
-                    else:
-                        installment.status = 'Partially Paid'
-                    installment.paid_date = timezone.now().date()
-                    installment.save()
+                    installment.amount_paid += amount_paid
+                    installment.discount_amount = (installment.discount_amount or Decimal('0')) + discount_amount
+                    
+                    # Update status using total credit (paid + discount)
+                    installment.update_payment_status()
                 
                 Payment.objects.create(
                     subscription=subscription,
                     member=member,
                     installment=installment,
                     amount=amount_paid,
+                    offer=offer,
+                    discount_amount=discount_amount,
                     payment_method=request.data.get('payment_method', 'Cash'),
                     is_installment=True if installment else False,
                     installment_number=installment.installment_number if installment else None,
@@ -395,16 +405,28 @@ def installment_pay_api(request, pk):
     amount = Decimal(str(request.data.get('amount', installment.remaining_amount)))
     payment_method = request.data.get('payment_method', 'Cash')
     expiry_date = request.data.get('expiry_date')
+    offer_id = request.data.get('offer')
+    discount_amount = Decimal(str(request.data.get('discount_amount', 0)))
 
     with transaction.atomic():
         # Create Payment record - this will automatically trigger status updates via Payment.save()
-        from payments.models import Payment
+        from payments.models import Payment, GymOffer
         sub = installment.subscription
+        
+        offer = None
+        if offer_id:
+            try:
+                offer = GymOffer.objects.get(id=offer_id, gym=request.user.gym)
+            except GymOffer.DoesNotExist:
+                pass
+
         payment = Payment.objects.create(
             subscription=sub,
             member=sub.member,
             installment=installment,
             amount=amount,
+            offer=offer,
+            discount_amount=discount_amount,
             payment_method=payment_method,
             is_installment=True,
             installment_number=installment.installment_number,
