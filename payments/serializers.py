@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Payment, DiscountCoupon
+from .models import Payment, DiscountCoupon, GymOffer
 from members.models import Member, Subscription, SubscriptionInstallment
 
 class MemberShortSerializer(serializers.ModelSerializer):
@@ -12,9 +12,20 @@ class SubscriptionShortSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = ['id', 'subscription_type', 'start_date', 'end_date', 'final_amount', 'amount_paid', 'balance_amount']
 
+class GymOfferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GymOffer
+        fields = [
+            'id', 'gym', 'name', 'description', 
+            'discount_percentage', 'start_date', 
+            'end_date', 'is_active', 'created_at'
+        ]
+        read_only_fields = ['created_at']
+
 class PaymentSerializer(serializers.ModelSerializer):
     member_details = MemberShortSerializer(source='member', read_only=True)
     subscription_details = SubscriptionShortSerializer(source='subscription', read_only=True)
+    offer_details = GymOfferSerializer(source='offer', read_only=True)
     
     class Meta:
         model = Payment
@@ -24,7 +35,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'installment_number', 'payment_date', 'created_at', 
             'status', 'transaction_id', 'receipt_number', 
             'notes', 'collected_by', 'offer', 'discount_amount',
-            'member_details', 'subscription_details'
+            'member_details', 'subscription_details', 'offer_details'
         ]
         read_only_fields = ['receipt_number', 'created_at']
 

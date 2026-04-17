@@ -9,8 +9,8 @@ from drf_yasg.utils import swagger_auto_schema
 from django.utils.decorators import method_decorator
 
 from .models import Payment, GymOffer
-from .serializers import PaymentSerializer, PaymentSummarySerializer
-from members.models import Subscription, SubscriptionInstallment
+from .serializers import PaymentSerializer, PaymentSummarySerializer, GymOfferSerializer
+from members.models import Subscription, SubscriptionInstallment, Member
 
 from drf_yasg import openapi
 
@@ -93,7 +93,32 @@ class PaymentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         payment = serializer.save()
         
-        # Automatic Offer Application for API (Priority: Specific > Global)
+        # 1. Manual Offer Application (If ID provided in request)
+        offer_id = self.request.data.get('offer')
+        if offer_id:
+            try:
+                manual_offer = GymOffer.objects.get(id=offer_id, gym=user.gym)
+                # Check if amount matches the expected discounted price (or just apply it if admin)
+                # For simplicity, we apply it and calculate discount_amount
+                balance_before = Decimal('0.00')
+                if payment.installment:
+                    balance_before = payment.installment.remaining_amount + payment.amount
+                else:
+                    balance_before = payment.subscription.balance_amount + payment.amount
+                
+                payment.offer = manual_offer
+                payment.discount_amount = balance_before - payment.amount
+                payment.save()
+                
+                # Refresh statuses
+                if payment.installment:
+                    payment.installment.update_payment_status()
+                payment.subscription.update_payment_status()
+                return # Skip automatic logic
+            except GymOffer.DoesNotExist:
+                pass
+
+        # 2. Automatic Offer Application for API (Priority: Specific > Global)
         if user and user.gym:
              active_offer = GymOffer.get_active_offer(user.gym, payment.member)
              
@@ -223,3 +248,38 @@ class PaymentViewSet(viewsets.ModelViewSet):
             'overdue_mtd': overdue_sum,
             'discounts_mtd': discounts_sum
         }
+
+@method_decorator(name='list', decorator=swagger_auto_schema(tags=['Offers'], operation_description="List active gym offers"))
+@method_decorator(name='create', decorator=swagger_auto_schema(tags=['Offers'], operation_description="Create a new gym offer"))
+@method_decorator(name='retrieve', decorator=swagger_auto_schema(tags=['Offers'], operation_description="Get offer details"))
+@method_decorator(name='update', decorator=swagger_auto_schema(tags=['Offers'], operation_description="Update offer"))
+@method_decorator(name='destroy', decorator=swagger_auto_schema(tags=['Offers'], operation_description="Delete offer"))
+class GymOfferViewSet(viewsets.ModelViewSet):
+    """API for gym-wide offers"""
+    queryset = GymOffer.objects.all()
+    serializer_class = GymOfferSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.gym:
+            return GymOffer.objects.none()
+        
+        queryset = GymOffer.objects.filter(gym=user.gym)
+        
+        # Optional: Filter for a specific member
+        member_id = self.request.query_params.get('member')
+        if member_id:
+            try:
+                member = Member.objects.get(id=member_id, gym=user.gym)
+                # Filter for offers applicable to this member or global
+                queryset = queryset.filter(
+                    Q(specific_members=member) | Q(specific_members__isnull=True)
+                ).filter(is_active=True, start_date__lte=timezone.now().date(), end_date__gte=timezone.now().date())
+            except Member.DoesNotExist:
+                pass
+                
+        return queryset.distinct()
+
+    def perform_create(self, serializer):
+        serializer.save(gym=self.request.user.gym)

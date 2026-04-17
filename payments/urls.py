@@ -19,4 +19,8 @@ urlpatterns = [
     path('api/list/', api.PaymentViewSet.as_view({'get': 'list', 'post': 'create'}), name='api-payment-list'),
     path('api/stats/', api.PaymentViewSet.as_view({'get': 'stats'}), name='api-payment-stats'),
     path('api/<int:pk>/', api.PaymentViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='api-payment-detail'),
+
+    # Offer REST API
+    path('api/offers/', api.GymOfferViewSet.as_view({'get': 'list', 'post': 'create'}), name='api-offer-list'),
+    path('api/offers/<int:pk>/', api.GymOfferViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='api-offer-detail'),
 ]
