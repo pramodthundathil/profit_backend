@@ -21,21 +21,20 @@
 <!-- Payment Status Banner for Current Subscription -->
 {% with sub=member.current_subscription %}
     {% if sub and sub.payment_status_label != 'Paid' %}
-    <div class="alert alert-{% if sub.payment_status_label == 'Partial' %}warning{% else %}danger{% endif %} d-flex align-items-center mb-4 shadow-sm border-0" role="alert">
+    <div class="alert badge-premium-{% if sub.payment_status_label == 'Partial' %}warning{% else %}danger{% endif %} d-flex align-items-center mb-4 shadow-sm border-0 p-3 rounded-4" role="alert">
         <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
         <div>
             <h6 class="alert-heading mb-1 fw-bold">Payment Attention Required</h6>
-            <div class="mb-0">
+            <div class="mb-0 small opacity-75">
                 The current subscription is <strong>{{ sub.payment_status_label }}y Paid</strong>. 
-                Amount Due: <strong>{{ sub.due_amount }}</strong>. 
-                <a href="#" class="alert-link text-decoration-underline">Record Payment</a>
+                Amount Due: <strong>{{ currency_symbol }}{{ sub.due_amount }}</strong>. 
             </div>
         </div>
     </div>
     {% elif sub and sub.payment_status_label == 'Paid' %}
-    <div class="alert alert-success d-flex align-items-center mb-4 shadow-sm border-0 py-2" role="alert">
+    <div class="alert badge-premium-success d-flex align-items-center mb-4 shadow-sm border-0 py-2 rounded-4" role="alert">
         <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-        <div class="fw-medium">
+        <div class="fw-medium small">
             Active plan is fully paid.
         </div>
     </div>
@@ -44,8 +43,8 @@
 
 <div class="row g-4">
     <!-- Left Column: Profile Card -->
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
+    <div class="col-xl-4 col-lg-5">
+        <div class="card card-premium h-100 pb-3">
             <div class="card-body text-center pt-4">
                 <div class="mb-3 position-relative d-inline-block">
                     {% if member.photo %}
@@ -56,24 +55,28 @@
                     </div>
                     {% endif %}
                     
-                    <span class="position-absolute bottom-0 end-0 badge rounded-pill {% if member.membership_status == 'Active' %}bg-success{% else %}bg-secondary{% endif %} border border-white">
+                    <span class="position-absolute bottom-0 end-0 badge badge-premium {% if member.membership_status == 'Active' %}badge-premium-success{% else %}badge-premium-secondary{% endif %} border border-white">
                         {{ member.membership_status }}
                     </span>
                 </div>
                 
                 {% if member.risk_medical %}
                 <div class="mb-2">
-                    <span class="badge bg-danger rounded-pill"><i class="bi bi-exclamation-triangle-fill me-1"></i> Medical Risk</span>
+                    <span class="badge badge-premium badge-premium-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Medical Risk</span>
                 </div>
                 {% endif %}
                 
                 <h4 class="mb-1">{{ member.full_name }}</h4>
                 <p class="text-muted mb-3">{{ member.member_id }}</p>
                 
-                <div class="d-flex justify-content-center gap-2 mb-4">
-                    <a href="{% url 'member-edit' member.id %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+                <div class="d-flex justify-content-center gap-3 mb-4">
+                    <a href="{% url 'member-edit' member.id %}" class="btn btn-dark btn-sm rounded-pill px-4 py-2 shadow-sm">
+                        <i class="bi bi-pencil-square me-2"></i>Edit
+                    </a>
                     {% if member.mobile_number %}
-                    <a href="tel:{{ member.mobile_number }}" class="btn btn-outline-success btn-sm"><i class="bi bi-telephone"></i> Call</a>
+                    <a href="tel:{{ member.mobile_number }}" class="btn btn-premium-primary btn-sm rounded-pill px-4 py-2 shadow-sm">
+                        <i class="bi bi-telephone-fill me-2"></i>Call
+                    </a>
                     {% endif %}
                 </div>
                 
@@ -103,24 +106,22 @@
                             <span class="text-muted small text-uppercase fw-bold">Gym Access Status</span>
                             <div class="mt-1">
                                 {% if member.is_access_blocked %}
-                                    <span class="badge bg-danger w-100 p-2"><i class="fas fa-ban me-1"></i> BLOCKED</span>
+                                    <span class="badge badge-premium badge-premium-danger w-100 p-2"><i class="fas fa-ban me-1"></i> BLOCKED</span>
                                 {% elif member.access_enabled %}
-                                    <span class="badge bg-success w-100 p-2"><i class="fas fa-check-circle me-1"></i> ACTIVE</span>
+                                    <span class="badge badge-premium badge-premium-success w-100 p-2"><i class="fas fa-check-circle me-1"></i> ACTIVE</span>
                                 {% else %}
-                                    <span class="badge bg-secondary w-100 p-2"><i class="fas fa-times-circle me-1"></i> EXPIRED</span>
+                                    <span class="badge badge-premium badge-premium-secondary w-100 p-2"><i class="fas fa-times-circle me-1"></i> EXPIRED</span>
                                 {% endif %}
                             </div>
                         </div>
 
-                        {% if member.access_expiry_date %}
-                        <div class="p-2 bg-primary bg-opacity-10 border border-primary-subtle rounded text-center mb-2">
-                            <small class="text-primary fw-bold d-block" style="font-size: 0.65rem;">VALID UNTIL</small>
-                            <span class="fs-5 fw-bold text-primary">{{ member.access_expiry_date|date:"d M Y" }}</span>
+                        <div class="p-3 bg-dark border border-secondary rounded text-center mb-2 shadow-sm">
+                            <small class="text-white-50 fw-bold d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.05rem;">VALID UNTIL</small>
+                            <span class="fs-4 fw-bold text-primary">{{ member.access_expiry_date|date:"d M Y" }}</span>
                             {% if member.manual_access_expiry and member.access_expiry_date == member.manual_access_expiry %}
-                                <small class="text-muted d-block fw-normal" style="font-size: 0.6rem;">(Manual Extension)</small>
+                                <small class="text-white-50 d-block fw-normal" style="font-size: 0.6rem;">(Manual Extension)</small>
                             {% endif %}
                         </div>
-                        {% endif %}
 
                         <div class="d-grid gap-2">
                             {% if member.is_access_blocked %}
@@ -143,10 +144,10 @@
     </div>
 
     <!-- Right Column: Details Tabs -->
-    <div class="col-md-8">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-bottom-0 pt-3 px-4">
-                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card card-premium h-100">
+            <div class="card-header bg-transparent border-bottom-0 pt-4 px-4 overflow-auto">
+                <ul class="nav nav-segmented" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active" data-bs-toggle="tab" href="#subscriptions" role="tab">Subscriptions</a>
                     </li>
@@ -166,20 +167,19 @@
                 <!-- Subscriptions Tab -->
                 <div class="tab-pane fade show active" id="subscriptions" role="tabpanel">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0">Subscription History</h6>
-                        <a href="{% url 'member-subscription-add' member.pk %}" class="btn btn-sm btn-dark"><i class="bi bi-plus-lg"></i> New Subscription</a>
+                        <h6 class="mb-0 fw-bold">Subscription History</h6>
+                        <a href="{% url 'member-subscription-add' member.pk %}" class="btn btn-sm btn-premium-primary"><i class="bi bi-plus-lg me-1"></i> New Subscription</a>
                     </div>
                     
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Plan</th>
-                                    <th>Start</th>
-                                    <th>Ends</th>
-                                    <th>Status</th>
-                                    <th>Amount</th>
-                                    <th class="text-end">Actions</th>
+                        <table class="table table-hover align-middle border-0">
+                            <thead>
+                                <tr class="text-uppercase small text-muted border-bottom" style="letter-spacing: 0.1em; font-weight: 800;">
+                                    <th class="py-3 border-0">Plan</th>
+                                    <th class="py-3 border-0">Validity</th>
+                                    <th class="py-3 border-0 text-center">Status</th>
+                                    <th class="py-3 border-0">Amount</th>
+                                    <th class="py-3 border-0 text-end pe-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -189,15 +189,17 @@
                                         <div class="fw-medium">{{ sub.subscription_type.name|default:"Custom Plan" }}</div>
                                         <small class="text-muted">{{ sub.get_duration_display }}</small>
                                     </td>
-                                    <td>{{ sub.start_date|date:"d M Y" }}</td>
-                                    <td class="{% if sub.is_expired %}text-danger fw-bold{% endif %}">
-                                        {{ sub.end_date|date:"d M Y"|default:"Not Calculated" }}
-                                    </td>
                                     <td>
+                                        <div class="small fw-bold">{{ sub.start_date|date:"d M Y" }}</div>
+                                        <div class="small {% if sub.is_expired %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                                            to {{ sub.end_date|date:"d M Y"|default:"-" }}
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
                                         {% if sub.status == 'Active' %}
-                                        <span class="badge bg-success bg-opacity-10 text-success">Active</span>
+                                        <span class="badge badge-premium badge-premium-success">Active</span>
                                         {% else %}
-                                        <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ sub.status }}</span>
+                                        <span class="badge badge-premium badge-premium-secondary">{{ sub.status }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -208,76 +210,87 @@
                                             {% endif %}
                                         </div>
                                     </td>
-                                    <td class="text-end">
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'subscription-edit' sub.pk %}" class="btn btn-outline-dark" title="Edit Plan"><i class="bi bi-pencil"></i></a>
-                                            <button type="button" class="btn btn-outline-danger" title="Delete Plan" onclick="if(confirm('Are you sure you want to delete this subscription? This action cannot be undone.')) { document.getElementById('delete-subscription-form-{{ sub.pk }}').submit(); }">
-                                                <i class="bi bi-trash"></i>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm shadow-sm rounded-3 overflow-hidden">
+                                            <a href="{% url 'subscription-edit' sub.pk %}" class="btn btn-light border" title="Edit Plan"><i class="bi bi-pencil-square text-dark"></i></a>
+                                            <button type="button" class="btn btn-light border text-danger" title="Delete Plan" onclick="if(confirm('Are you sure you want to delete this subscription? This action cannot be undone.')) { document.getElementById('delete-subscription-form-{{ sub.pk }}').submit(); }">
+                                                <i class="bi bi-trash3"></i>
                                             </button>
-                                            <form id="delete-subscription-form-{{ sub.pk }}" action="{% url 'subscription-delete' sub.pk %}" method="POST" style="display: none;">
-                                                {% csrf_token %}
-                                            </form>
-
                                         </div>
+                                        <form id="delete-subscription-form-{{ sub.pk }}" action="{% url 'subscription-delete' sub.pk %}" method="POST" style="display: none;">
+                                            {% csrf_token %}
+                                        </form>
                                     </td>
                                 </tr>
                                 {% if sub.installments.exists %}
                                 <tr>
-                                    <td colspan="5" class="bg-light p-3">
-                                        <div class="small fw-bold mb-2">Payment Details / Installments</div>
-                                        <table class="table table-sm table-bordered bg-white mb-0">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Due Date</th>
-                                                    <th>Amount</th>
-                                                    <th>Paid (Cash)</th>
-                                                    <th>Discount</th>
-                                                    <th>Status</th>
-                                                    <th style="width: 100px;">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for inst in sub.installments.all %}
-                                                <tr>
-                                                    <td>{{ inst.installment_number }}</td>
-                                                    <td>{{ inst.due_date|date:"d M Y" }}</td>
-                                                    <td>
-                                                        {{ inst.amount }}
-                                                        {% if inst.remaining_amount > 0 and inst.status == 'Partially Paid' %}
-                                                        <span class="text-danger small ms-1">(Bal: {{ currency_symbol }}{{ inst.remaining_amount }})</span>
-                                                        {% endif %}
-                                                    </td>
-                                                    <td class="text-success">{{ currency_symbol }}{{ inst.amount_paid }}</td>
-                                                    <td class="text-info">{{ currency_symbol }}{{ inst.discount_amount }}</td>
-                                                    <td>
-                                                        {% if inst.status == 'Paid' %}
-                                                        <span class="badge bg-success">Paid</span>
-                                                        {% elif inst.status == 'Partially Paid' %}
-                                                        <span class="badge bg-info text-white">Partial</span>
-                                                        {% else %}
-                                                        <span class="badge bg-warning text-dark">Pending</span>
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>
-                                                        {% if inst.status != 'Paid' %}
-                                                        <button type="button" 
-                                                            class="btn btn-primary btn-sm py-0 px-2" 
-                                                            style="font-size: 0.75rem;"
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#paymentModal"
-                                                            data-installment-id="{{ inst.pk }}"
-                                                            data-installment-num="{{ inst.installment_number }}"
-                                                            data-amount="{{ inst.remaining_amount }}"
-                                                            data-pay-url="{% url 'installment-pay' inst.pk %}">
-                                                            Pay
-                                                        </button>
-                                                        {% endif %}
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
+                                    <td colspan="5" class="p-0 border-0">
+                                        <div class="surface-soft m-3 p-4 shadow-sm">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="small fw-bold text-uppercase mb-0" style="letter-spacing: 0.05em; color: #475569;">Payment Installments</h6>
+                                                <span class="badge badge-premium badge-premium-secondary small">{{ sub.installments.count }} Parts</span>
+                                            </div>
+                                            <table class="table table-sm table-borderless table-glass mb-0 rounded-3 overflow-hidden shadow-sm">
+                                                <thead style="background: rgba(0,0,0,0.03);">
+                                                    <tr class="small text-muted">
+                                                        <th class="ps-3 py-2">#</th>
+                                                        <th class="py-2">Due Date</th>
+                                                        <th class="py-2">Amount</th>
+                                                        <th class="py-2">Paid</th>
+                                                        <th class="py-2 text-center">Status</th>
+                                                        <th class="pe-3 py-2 text-end">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for inst in sub.installments.all %}
+                                                    <tr class="border-top" style="border-color: rgba(0,0,0,0.05) !important;">
+                                                        <td class="ps-3 py-3 fw-bold">{{ inst.installment_number }}</td>
+                                                        <td class="py-3">{{ inst.due_date|date:"d M Y" }}</td>
+                                                        <td class="py-3">
+                                                            {{ currency_symbol }}{{ inst.amount }}
+                                                            {% if inst.remaining_amount > 0 and inst.status == 'Partially Paid' %}
+                                                            <div class="text-danger extra-small" style="font-size: 0.65rem;">Bal: {{ currency_symbol }}{{ inst.remaining_amount }}</div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="py-3 text-success fw-medium">
+                                                            {{ currency_symbol }}{{ inst.amount_paid }}
+                                                            {% if inst.discount_amount > 0 %}
+                                                            <div class="badge-premium badge-premium-success mt-1 d-inline-block" style="font-size: 0.65rem; padding: 2px 6px;">
+                                                                Saved {{ currency_symbol }}{{ inst.discount_amount }}
+                                                            </div>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="py-3 text-center">
+                                                            {% if inst.status == 'Paid' %}
+                                                            <span class="badge badge-premium badge-premium-success py-1">Paid</span>
+                                                            {% elif inst.status == 'Partially Paid' %}
+                                                            <span class="badge badge-premium badge-premium-primary py-1">Partial</span>
+                                                            {% else %}
+                                                            <span class="badge badge-premium badge-premium-warning py-1">Pending</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="pe-3 py-3 text-end">
+                                                            {% if inst.status != 'Paid' %}
+                                                            <button type="button" 
+                                                                class="btn btn-premium-primary btn-sm py-1 px-3 shadow-sm" 
+                                                                style="font-size: 0.75rem; border-radius: 6px;"
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#paymentModal"
+                                                                data-installment-id="{{ inst.pk }}"
+                                                                data-installment-num="{{ inst.installment_number }}"
+                                                                data-amount="{{ inst.remaining_amount }}"
+                                                                data-pay-url="{% url 'installment-pay' inst.pk %}">
+                                                                Pay Now
+                                                            </button>
+                                                            {% else %}
+                                                            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -314,9 +327,9 @@
                                     <td>{{ payment.payment_method }}</td>
                                     <td>
                                         {% if payment.is_installment %}
-                                        <span class="badge bg-info bg-opacity-10 text-info">Inst. #{{ payment.installment_number }}</span>
+                                        <span class="badge badge-premium badge-premium-primary">Inst. #{{ payment.installment_number }}</span>
                                         {% else %}
-                                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Full</span>
+                                        <span class="badge badge-premium badge-premium-secondary">Full Payment</span>
                                         {% endif %}
                                     </td>
                                    
@@ -335,13 +348,13 @@
                 <!-- Health Info Tab -->
                 <div class="tab-pane fade" id="health" role="tabpanel">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0">Physical & Medical Information</h6>
-                        <div class="btn-group btn-group-sm">
+                        <h6 class="mb-0 fw-bold">Physical & Medical Information</h6>
+                        <div class="btn-group">
                             {% if member.health_history %}
-                                <a href="{% url 'health-history-detail' member.id %}" class="btn btn-outline-dark">View Health History</a>
-                                <a href="{% url 'health-history-form' member.id %}" class="btn btn-outline-secondary">Edit</a>
+                                <a href="{% url 'health-history-detail' member.id %}" class="btn btn-sm btn-outline-dark px-3">View History</a>
+                                <a href="{% url 'health-history-form' member.id %}" class="btn btn-sm btn-outline-secondary px-3">Edit</a>
                             {% else %}
-                                <a href="{% url 'health-history-form' member.id %}" class="btn btn-dark">Complete Health History</a>
+                                <a href="{% url 'health-history-form' member.id %}" class="btn btn-sm btn-premium-primary px-3">Complete Form</a>
                             {% endif %}
                         </div>
                     </div>
@@ -512,8 +525,8 @@
         <div class="modal-content border-0 shadow">
             <form id="paymentForm" method="post">
                 {% csrf_token %}
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title" id="paymentModalLabel">Record Payment</h5>
+                <div class="modal-header bg-dark text-white p-4">
+                    <h5 class="modal-title fw-bold" id="paymentModalLabel">Record Payment</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
