@@ -12,7 +12,7 @@ from dateutil.relativedelta import relativedelta
 from .models import Member, Subscription, HealthHistory, Medication, ParqForm, SubscriptionInstallment
 from .forms import MemberForm, SubscriptionForm, HealthHistoryForm, MedicationFormSet, ParqFormModelForm, ParqUpdateForm
 from home.models import GymBranch
-from payments.models import Payment
+from payments.models import Payment, GymOffer
 
 @login_required
 def payment_receipt(request, pk):
@@ -201,15 +201,8 @@ def member_delete(request, pk):
         return redirect('member-list')
         
     if request.method == 'POST':
-        member.is_active = False # Soft delete style or direct delete? 
-        # Requirement says "edit delete also same".
-        # If we use SoftDeleteMixin on Member (it's not there in models.py check), we use delete().
-        # Member model in step 6 DOES NOT have SoftDeleteMixin. It has is_active field.
-        # "is_active = models.BooleanField(default=True)"
-        # So we set is_active = False.
-        member.membership_status = 'Cancelled'
-        member.save()
-        messages.success(request, "Member deactivated/deleted successfully.")
+        member.delete()
+        messages.success(request, "Member deleted successfully.")
         
     return redirect('member-list')
 
@@ -223,10 +216,15 @@ def member_detail(request, pk):
         messages.error(request, "Access denied.")
         return redirect('member-list')
         
+    # Fetch Best Active Offer for Member (Priority: Specific > Global)
+    best_offer = GymOffer.get_active_offer(user.gym, member)
+    filtered_offers = [best_offer] if best_offer else []
+
     context = {
         'member': member,
         'title': f"Member Details: {member.full_name}",
-        'subscriptions': member.subscriptions.all().order_by('-created_at')
+        'subscriptions': member.subscriptions.all().order_by('-created_at'),
+        'active_offers': filtered_offers
     }
     return render(request, "user/members/member_detail.html", context)
 
@@ -384,39 +382,72 @@ def installment_pay(request, pk):
         amount = Decimal(amount_str) if amount_str else installment.remaining_amount
         payment_method = request.POST.get('payment_method', 'Cash')
         expiry_date = request.POST.get('expiry_date')
+        transaction_id = request.POST.get('transaction_id')
+        collected_by = request.POST.get('collected_by')
+        notes = request.POST.get('notes')
         
-        # 1. Update Installment
-        installment.amount_paid += amount
-        if installment.amount_paid >= installment.amount:
-            installment.status = 'Paid'
-        else:
-            installment.status = 'Partially Paid'
+        # Capture balance BEFORE applying payment
+        # This is critical for calculating the discount correctly
+        balance_before = installment.remaining_amount
         
-        installment.paid_date = timezone.now().date()
-        installment.save()
+        # 2. Apply Offer Logic (Priority Scoping: Specific > Global)
+        from payments.models import GymOffer
+        active_offer = GymOffer.get_active_offer(installment.subscription.member.gym, installment.subscription.member)
         
-        # 2. Create Payment record
+        discount_amount = Decimal('0.00')
+        # Only apply discount if it's a full payment consideration
+        if active_offer:
+            # Calculate Offer Price (required to clear balance)
+            discount_rate = active_offer.discount_percentage / 100
+            # Standardize rounding
+            offer_price = (balance_before * (1 - discount_rate)).quantize(Decimal('0.01'))
+            
+            if amount >= offer_price:
+                # Apply discount to clear the entire installment balance
+                discount_amount = balance_before - amount
+            else:
+                active_offer = None # Not eligible for discount
+        
+        # 3. Create Payment record
         from payments.models import Payment
         sub = installment.subscription
-        Payment.objects.create(
+        payment = Payment.objects.create(
             subscription=sub,
             member=sub.member,
             installment=installment,
             amount=amount,
+            discount_amount=discount_amount,
+            offer=active_offer,
             payment_method=payment_method,
+            transaction_id=transaction_id,
+            collected_by=collected_by,
+            notes=notes,
             is_installment=True,
             installment_number=installment.installment_number,
-            status='Completed',
-            notes=f"{payment_type} payment for installment {installment.installment_number}"
+            status='Completed'
         )
-        # Note: update_payment_status is called automatically by Payment.save()
         
-        # 3. Explicitly set expiry date if it's a partial payment and user provided a date
+        # 4. CRITICAL: Update the models with the discount amount
+        # This is where the actual balance reduction happens!
+        if discount_amount > 0:
+            installment.discount_amount = (installment.discount_amount or Decimal('0.00')) + discount_amount
+            installment.save(update_fields=['discount_amount'])
+            
+            sub.discount_amount = (sub.discount_amount or Decimal('0.00')) + discount_amount
+            sub.save(update_fields=['discount_amount'])
+
+        # 5. Explicitly update installment status with new credit (amount + discount)
+        installment.update_payment_status()
+        
+        # 4. Explicitly set expiry date if it's a partial payment and user provided a date
         if payment_type == 'Partial' and expiry_date:
             sub.end_date = expiry_date
             sub.save(update_fields=['end_date'])
         
-        messages.success(request, f"Payment of {amount} for installment {installment.installment_number} recorded successfully.")
+        msg = f"Payment of {amount} for installment {installment.installment_number} recorded successfully."
+        if discount_amount > 0:
+            msg += f" (Bonus of {discount_amount} applied for full payment)"
+        messages.success(request, msg)
         return redirect('member-detail', pk=sub.member.pk)
         
     return redirect('member-detail', pk=installment.subscription.member.pk)
@@ -565,11 +596,16 @@ def subscription_detail(request, pk):
         messages.error(request, "Access denied. You do not have permission to view this subscription.")
         return redirect('subscription-list')
         
+    # Fetch Best Active Offer for Member
+    best_offer = GymOffer.get_active_offer(user.gym, subscription.member)
+    filtered_offers = [best_offer] if best_offer else []
+
     context = {
         'subscription': subscription,
         'member': subscription.member,
         'installments': subscription.installments.all().order_by('installment_number'),
         'payments': subscription.payments.all().order_by('-payment_date'),
+        'active_offers': filtered_offers,
         'title': f"Subscription Details: {subscription.member.full_name}"
     }
     return render(request, "user/members/subscription_detail.html", context)

@@ -230,7 +230,7 @@ def update_gym_settings(request):
         
     gym = user.gym
     if request.method == 'POST':
-        form = GymOfficeSettingsForm(request.POST, instance=gym)
+        form = GymOfficeSettingsForm(request.POST, request.FILES, instance=gym)
         if form.is_valid():
             form.save()
             messages.success(request, "Gym settings updated successfully.")

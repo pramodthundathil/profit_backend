@@ -8,7 +8,7 @@ from decimal import Decimal
 from drf_yasg.utils import swagger_auto_schema
 from django.utils.decorators import method_decorator
 
-from .models import Payment
+from .models import Payment, GymOffer
 from .serializers import PaymentSerializer, PaymentSummarySerializer
 from members.models import Subscription, SubscriptionInstallment
 
@@ -88,6 +88,39 @@ class PaymentViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by('-payment_date')
              
         return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        payment = serializer.save()
+        
+        # Automatic Offer Application for API (Priority: Specific > Global)
+        if user and user.gym:
+             active_offer = GymOffer.get_active_offer(user.gym, payment.member)
+             
+             if active_offer:
+                 # Check if it's a Full Payment Consideration (Recalculated)
+                 balance_before = Decimal('0.00')
+                 
+                 if payment.installment:
+                     # Add back payment.amount to get previous balance (since save() already ran)
+                     balance_before = payment.installment.remaining_amount + payment.amount
+                 else:
+                     balance_before = payment.subscription.balance_amount + payment.amount
+                 
+                 discount_rate = active_offer.discount_percentage / 100
+                 # Precision rounding for comparison
+                 offer_price = (balance_before * (1 - discount_rate)).quantize(Decimal('0.01'))
+                 
+                 if payment.amount >= offer_price:
+                    # Apply discount to clear the entire balance
+                    payment.offer = active_offer
+                    payment.discount_amount = balance_before - payment.amount
+                    payment.save()
+                    
+                    # Refresh statuses
+                    if payment.installment:
+                        payment.installment.update_payment_status()
+                    payment.subscription.update_payment_status()
 
     def list(self, request, *args, **kwargs):
         """Include summary statistics in the list response if requested"""

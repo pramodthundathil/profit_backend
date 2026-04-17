@@ -23,7 +23,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'amount', 'payment_method', 'is_installment', 
             'installment_number', 'payment_date', 'created_at', 
             'status', 'transaction_id', 'receipt_number', 
-            'notes', 'collected_by', 'member_details', 'subscription_details'
+            'notes', 'collected_by', 'offer', 'discount_amount',
+            'member_details', 'subscription_details'
         ]
         read_only_fields = ['receipt_number', 'created_at']
 

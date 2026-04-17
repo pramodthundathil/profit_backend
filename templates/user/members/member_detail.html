@@ -231,6 +231,8 @@
                                                     <th>#</th>
                                                     <th>Due Date</th>
                                                     <th>Amount</th>
+                                                    <th>Paid (Cash)</th>
+                                                    <th>Discount</th>
                                                     <th>Status</th>
                                                     <th style="width: 100px;">Action</th>
                                                 </tr>
@@ -246,6 +248,8 @@
                                                         <span class="text-danger small ms-1">(Bal: {{ currency_symbol }}{{ inst.remaining_amount }})</span>
                                                         {% endif %}
                                                     </td>
+                                                    <td class="text-success">{{ currency_symbol }}{{ inst.amount_paid }}</td>
+                                                    <td class="text-info">{{ currency_symbol }}{{ inst.discount_amount }}</td>
                                                     <td>
                                                         {% if inst.status == 'Paid' %}
                                                         <span class="badge bg-success">Paid</span>
@@ -506,7 +510,7 @@
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">
-            <form id="paymentForm" method="post" onsubmit="disableSubmitButton(this)">
+            <form id="paymentForm" method="post">
                 {% csrf_token %}
                 <div class="modal-header bg-dark text-white">
                     <h5 class="modal-title" id="paymentModalLabel">Record Payment</h5>
@@ -526,6 +530,20 @@
                             </div>
                         </div>
                     </div>
+
+                    {% if active_offers %}
+                    <div id="offerAlert" class="alert alert-success border-0 bg-success bg-opacity-10 py-2 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-patch-check-fill me-2"></i>
+                            <div class="small">
+                                {% for offer in active_offers %}
+                                <div class="fw-bold text-success">{{ offer.name }} Active!</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Pay the discounted amount to clear full balance.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -560,6 +578,7 @@
     </div>
 </div>
 
+
 <!-- Extend Access Modal -->
 <div class="modal fade" id="extendAccessModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -590,81 +609,101 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('submit', function(e) {
-        if (e.target && e.target.tagName === 'FORM') {
-            const btn = e.target.querySelector('.submit-btn');
-            if (btn && !btn.disabled) {
-                setTimeout(() => {
-                    btn.disabled = true;
-                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
-                }, 10);
-            }
-        }
-    });
-
-    // Keeping function as a fallback
-    function disableSubmitButton(form) {
-        const btn = form.querySelector('.submit-btn');
-        if (btn && !btn.disabled) {
-            setTimeout(() => {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
-            }, 10);
-        }
-    }
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Check for hash in URL to open specific tab
-    const hash = window.location.hash;
-    if (hash) {
-        const tabEl = document.querySelector('a[href="' + hash + '"]');
-        if (tabEl) {
-            new bootstrap.Tab(tabEl).show();
-        }
-    }
-
-    const paymentModal = document.getElementById('paymentModal');
-    const paymentForm = document.getElementById('paymentForm');
-    const amountToPay = document.getElementById('amountToPay');
-    const expiryGroup = document.getElementById('expiryGroup');
-    const expiryDateInput = document.getElementById('expiryDate');
-    const typeRadios = document.querySelectorAll('input[name="payment_type"]');
-
-    // Handle Modal Data Population
-    paymentModal.addEventListener('show.bs.modal', function(event) {
-        const button = event.relatedTarget;
-        const url = button.getAttribute('data-pay-url');
-        const amount = button.getAttribute('data-amount');
-        const instNum = button.getAttribute('data-installment-num');
-
-        paymentForm.action = url;
-        amountToPay.value = amount;
-        amountToPay.dataset.fullAmount = amount; // Store full amount for easy reset
-        
-        document.getElementById('paymentModalLabel').textContent = `Record Payment: Installment #${instNum}`;
-        
-        // Reset state
-        document.getElementById('typeFull').checked = true;
-        expiryGroup.style.display = 'none';
-        expiryDateInput.required = false;
-        amountToPay.readOnly = false;
-    });
-
-    // Handle Radio Changes
-    typeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.value === 'Partial') {
-                expiryGroup.style.display = 'block';
-                expiryDateInput.required = true;
-                amountToPay.readOnly = false;
-            } else {
-                expiryGroup.style.display = 'none';
-                expiryDateInput.required = false;
-                amountToPay.value = amountToPay.dataset.fullAmount;
-                // Note: Keep full amount visible but maybe make readOnly if strictly enforcing full payment
+    $(document).ready(function() {
+        // Global delegate for all forms
+        $(document).on('submit', 'form', function(e) {
+            const $form = $(this);
+            const $btn = $form.find('.submit-btn');
+            
+            if ($btn.length && !$btn.hasClass('is-processing')) {
+                // Check validity first
+                if (this.checkValidity()) {
+                    // Mark as processing
+                    $btn.addClass('is-processing');
+                    
+                    // Small delay to let browser start submission before the UI 'locks'
+                    setTimeout(function() {
+                        $btn.prop('disabled', true);
+                        $btn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...');
+                    }, 50);
+                }
             }
         });
     });
+
+    // Handle URL Hash for tabs
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check for hash in URL to open specific tab
+        const hash = window.location.hash;
+        if (hash) {
+            const tabEl = document.querySelector('a[href="' + hash + '"]');
+            if (tabEl) {
+                new bootstrap.Tab(tabEl).show();
+            }
+        }
+
+        const paymentModal = document.getElementById('paymentModal');
+        const paymentForm = document.getElementById('paymentForm');
+        const amountToPay = document.getElementById('amountToPay');
+        const expiryGroup = document.getElementById('expiryGroup');
+        const expiryDateInput = document.getElementById('expiryDate');
+        const typeRadios = document.querySelectorAll('input[name="payment_type"]');
+
+        // Handle Modal Data Population
+        paymentModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const url = button.getAttribute('data-pay-url');
+            const amount = button.getAttribute('data-amount');
+            const instNum = button.getAttribute('data-installment-num');
+
+            paymentForm.action = url;
+            amountToPay.value = amount;
+            amountToPay.dataset.fullAmount = amount; // Store full amount for easy reset
+            
+            // Apply discount instantly if active_offers exist
+            {% if active_offers %}
+                {% with offer=active_offers.0 %}
+                const discount = {{ offer.discount_percentage }};
+                const offerPrice = (parseFloat(amount) * (1 - discount/100)).toFixed(2);
+                amountToPay.value = offerPrice;
+                {% endwith %}
+            {% endif %}
+
+            document.getElementById('paymentModalLabel').textContent = `Record Payment: Installment #${instNum}`;
+            
+            // Reset state
+            document.getElementById('typeFull').checked = true;
+            expiryGroup.style.display = 'none';
+            expiryDateInput.required = false;
+            amountToPay.readOnly = false; // Allow manual overide if needed
+        });
+
+        // Handle Radio Changes
+        typeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'Partial') {
+                    expiryGroup.style.display = 'block';
+                    expiryDateInput.required = true;
+                    amountToPay.readOnly = false;
+                    $('#offerAlert').fadeOut();
+                } else {
+                    expiryGroup.style.display = 'none';
+                    expiryDateInput.required = false;
+                    
+                    // Recalculate full amount with discount if active_offers exist
+                    let fullAmount = parseFloat(amountToPay.dataset.fullAmount);
+                    {% if active_offers %}
+                        {% with offer=active_offers.0 %}
+                        const discount = {{ offer.discount_percentage }};
+                        fullAmount = (fullAmount * (1 - discount/100)).toFixed(2);
+                        {% endwith %}
+                    {% endif %}
+                    
+                    amountToPay.value = fullAmount;
+                    $('#offerAlert').fadeIn();
+                }
+            });
+        });
     });
 
     function copyToClipboard(elementId, btn) {

@@ -84,7 +84,9 @@
             <thead class="table-light small">
                 <tr>
                     <th class="text-uppercase fw-bold">Description</th>
-                    <th class="text-end text-uppercase fw-bold" style="width: 150px;">Amount</th>
+                    <th class="text-end text-uppercase fw-bold" style="width: 120px;">Amount</th>
+                    <th class="text-end text-uppercase fw-bold" style="width: 120px;">Discount</th>
+                    <th class="text-end text-uppercase fw-bold" style="width: 120px;">Total Credit</th>
                 </tr>
             </thead>
             <tbody>
@@ -100,7 +102,9 @@
                         </div>
                         <div class="text-muted extra-small italic">Valid Term: {{ payment.subscription.start_date|date:"d M Y" }} — {{ payment.subscription.end_date|date:"d M Y" }}</div>
                     </td>
-                    <td class="text-end fs-5 fw-bold text-dark">{{ currency_symbol }}{{ payment.amount }}</td>
+                    <td class="text-end fs-6 fw-bold text-dark">{{ currency_symbol }}{{ payment.amount }}</td>
+                    <td class="text-end fs-6 text-muted">{{ currency_symbol }}{{ payment.discount_amount }}</td>
+                    <td class="text-end fs-5 fw-bold text-primary">{{ currency_symbol }}{{ payment.amount|add:payment.discount_amount }}</td>
                 </tr>
                 {% if payment.notes %}
                 <tr>
@@ -112,8 +116,18 @@
             </tbody>
             <tfoot>
                 <tr class="table-light">
-                    <th class="text-end py-3">Total Amount Paid</th>
-                    <th class="text-end text-primary py-3 fw-bold h5">{{ currency_symbol }}{{ payment.amount }}</th>
+                    <td colspan="3" class="text-end py-2">Cash/Card Received</td>
+                    <td class="text-end py-2 fw-bold">{{ currency_symbol }}{{ payment.amount }}</td>
+                </tr>
+                {% if payment.discount_amount > 0 %}
+                <tr class="table-light">
+                    <td colspan="3" class="text-end py-2">Offer Discount Benefit</td>
+                    <td class="text-end py-2 fw-bold text-success">{{ currency_symbol }}{{ payment.discount_amount }}</td>
+                </tr>
+                {% endif %}
+                <tr class="bg-dark text-white">
+                    <th colspan="3" class="text-end py-3">Total Value Applied to Subscription</th>
+                    <th class="text-end py-3 fw-black h5 mb-0 text-white">{{ currency_symbol }}{{ payment.amount|add:payment.discount_amount }}</th>
                 </tr>
             </tfoot>
         </table>

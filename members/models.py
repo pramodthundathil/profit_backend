@@ -10,6 +10,20 @@ from decimal import Decimal
 from utils.models import  Batch_DB, TypeSubscription, SubscriptionPeriod   
 from home.models  import GymOffice, GymBranch
 
+class SoftDeleteQuerySet(models.QuerySet):
+    def delete(self):
+        """Soft delete for queryset"""
+        return super().update(is_deleted=True)
+
+    def hard_delete(self):
+        """Actual deletion from database"""
+        return super().delete()
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db).filter(is_deleted=False)
+
+
 # ============================================================================
 # MEMBER MODEL
 # ============================================================================
@@ -132,6 +146,10 @@ class Member(models.Model):
     
     risk_medical = models.BooleanField(default=False)
     public_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, null=True)
+    is_deleted = models.BooleanField(default=False)
+    
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
     
     class Meta:
         unique_together = ['gym', 'mobile_number']
@@ -145,7 +163,7 @@ class Member(models.Model):
     def save(self, *args, **kwargs):
         if not self.member_id:
             # Generate unique member ID
-            last_member = Member.objects.filter(gym=self.gym).order_by('-id').first()
+            last_member = Member.all_objects.filter(gym=self.gym).order_by('-id').first()
             if last_member and last_member.member_id:
                 try:
                     last_number = int(last_member.member_id.split('-')[-1])
@@ -160,6 +178,17 @@ class Member(models.Model):
             self.member_id = f"{gym_code}-{new_number:05d}"
         
         super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        """Soft delete member and cascade to subscriptions"""
+        self.is_deleted = True
+        self.is_active = False
+        self.membership_status = 'Cancelled'
+        self.save()
+        
+        # Soft delete all subscriptions
+        for subscription in self.subscriptions.all():
+            subscription.delete()
     
     def update_membership_status(self):
         """Update membership status based on active subscriptions"""
@@ -365,6 +394,12 @@ class Subscription(models.Model):
         decimal_places=2,
         default=0
     )
+    discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Total discount applied via offers"
+    )
     balance_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -442,6 +477,10 @@ class Subscription(models.Model):
     notes = models.TextField(blank=True, null=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+    
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
     
     class Meta:
         ordering = ['-created_at']
@@ -453,24 +492,20 @@ class Subscription(models.Model):
     
     @property
     def due_amount(self):
-        """Calculate amount due"""
-        return max(0, self.final_amount - self.amount_paid)
+        """Calculate amount due (Total - Paid - Discount)"""
+        return max(0, self.final_amount - self.amount_paid - self.discount_amount)
 
     @property
     def payment_status_label(self):
-        """Get payment status label"""
-        if self.amount_paid >= self.final_amount:
+        """Get payment status label based on total credit"""
+        total_credit = self.amount_paid + self.discount_amount
+        if total_credit >= self.final_amount:
             return "Paid"
-        elif self.amount_paid > 0:
+        elif total_credit > 0:
             return "Partial"
         return "Unpaid"
 
     def save(self, *args, **kwargs):
-        # Auto-calculate end date if not provided (DEACTIVATED: expiry now only on payment)
-        # if not self.end_date and self.start_date:
-        #     days = self.get_total_days()
-        #     self.end_date = self.start_date + timedelta(days=days)
-        
         # Auto-calculate final amount
         if not self.final_amount or self.final_amount == 0:
             # Apply percentage discount
@@ -482,9 +517,19 @@ class Subscription(models.Model):
         
         super().save(*args, **kwargs)
         
-        # Generate installments if applicable
+        # Generate installments if applicable and if they don't already exist
         if self.payment_terms in ['Installment', 'Full']:
-            self.generate_installments()
+            if not self.installments.exists():
+                self.generate_installments()
+            
+    def delete(self, *args, **kwargs):
+        """Soft delete subscription and permanently delete installments"""
+        self.is_deleted = True
+        self.status = 'Cancelled'
+        self.save()
+        
+        # Permanently delete installments
+        self.installments.all().delete()
     
     def clean(self):
         # Validate batch belongs to same gym
@@ -513,15 +558,21 @@ class Subscription(models.Model):
     
     def update_payment_status(self):
         """Update payment status based on payments and adjust end date based on installments"""
-        total_paid = self.payments.filter(
-            status='Completed'
-        ).aggregate(
-            total=models.Sum('amount')
-        )['total'] or Decimal('0')
+        aggr = self.payments.filter(status='Completed').aggregate(
+            total_cash=models.Sum('amount'),
+            total_discount=models.Sum('discount_amount')
+        )
         
-        self.amount_paid = total_paid
-        self.balance_amount = max(self.final_amount - self.amount_paid, 0)
-        self.is_fully_paid = (self.amount_paid >= self.final_amount)
+        self.amount_paid = aggr['total_cash'] or Decimal('0')
+        self.discount_amount = aggr['total_discount'] or Decimal('0')
+        
+        # Balance = Total - Cash Paid - Discounts
+        self.balance_amount = max(self.final_amount - self.amount_paid - self.discount_amount, 0)
+        
+        # Status uses total credit (Cash + Discount)
+        total_credit = self.amount_paid + self.discount_amount
+        # Use a small tolerance (0.01) to handle potential rounding issues with discounts
+        self.is_fully_paid = (total_credit >= (self.final_amount - Decimal('0.01')))
         
         # Dynamic End Date Logic based on Installments
         # Only run auto-calculation if not explicitly overridden by a partial payment logic
@@ -538,7 +589,7 @@ class Subscription(models.Model):
             # Full Payment also sets end date based on duration
             self.end_date = self.start_date + timedelta(days=self.get_total_days())
         
-        self.save(update_fields=['amount_paid', 'balance_amount', 'is_fully_paid', 'end_date'])
+        self.save(update_fields=['amount_paid', 'discount_amount', 'balance_amount', 'is_fully_paid', 'end_date'])
         
         # When a payment is recorded, also unblock the member if they were restricted
         if self.member.is_access_blocked:
@@ -636,7 +687,7 @@ class Subscription(models.Model):
         
         def calculate_due_date(num, start_date):
             offset = num if has_advance else (num - 1)
-            interval = offset * self.installment_period
+            interval = offset * (self.installment_period or 1)
             
             if self.installment_period_unit == 'Days':
                 return start_date + timedelta(days=interval)
@@ -649,21 +700,10 @@ class Subscription(models.Model):
             else:
                 return start_date + relativedelta(months=interval)
 
-        # If count matches, update amounts AND due dates if they differ
-        if current_count == count:
-             for inst in current_installments:
-                 if inst.status in ['Pending', 'Overdue']:
-                     new_due_date = calculate_due_date(inst.installment_number, self.start_date)
-                     updated = False
-                     if inst.amount != amount_per_installment:
-                         inst.amount = amount_per_installment
-                         updated = True
-                     if inst.due_date != new_due_date:
-                         inst.due_date = new_due_date
-                         updated = True
-                     if updated:
-                         inst.save(update_fields=['amount', 'due_date'])
-             return
+        # 1. If installments already exist, DO NOT RECALCULATE AMOUNTS
+        # This prevents accidental changes to the payment schedule after payments/discounts are applied.
+        if current_count > 0:
+            return
 
         # Clear existing pending installments if re-generating
         self.installments.filter(status='Pending').delete()
@@ -735,7 +775,6 @@ class SubscriptionInstallment(models.Model):
     installment_number = models.PositiveIntegerField()
     due_date = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    
     status = models.CharField(
         max_length=20,
         choices=(
@@ -751,7 +790,14 @@ class SubscriptionInstallment(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Amount paid for this specific installment"
+        help_text="Cash amount paid for this specific installment"
+    )
+    
+    discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Discount amount applied to this specific installment"
     )
     
     paid_date = models.DateField(null=True, blank=True)
@@ -764,22 +810,28 @@ class SubscriptionInstallment(models.Model):
         
     @property
     def remaining_amount(self):
-        """Amount remaining for this installment"""
-        return max(0, self.amount - self.amount_paid)
+        """Amount remaining for this installment (Total - Paid - Discount)"""
+        return max(0, self.amount - self.amount_paid - self.discount_amount)
 
     def update_payment_status(self):
         """Recalculate amount paid from linked payments and update status"""
-        total_paid = self.payments.filter(status='Completed').aggregate(
-            total=models.Sum('amount')
-        )['total'] or Decimal('0')
+        aggr = self.payments.filter(status='Completed').aggregate(
+            total_cash=models.Sum('amount'),
+            total_discount=models.Sum('discount_amount')
+        )
         
-        self.amount_paid = total_paid
+        self.amount_paid = aggr['total_cash'] or Decimal('0')
+        self.discount_amount = aggr['total_discount'] or Decimal('0')
         
-        if self.amount_paid >= self.amount:
+        # Status calculation based on total credit (Cash + Discount)
+        total_credit = self.amount_paid + self.discount_amount
+        
+        # Use a small tolerance (0.01) for rounding safety
+        if total_credit >= (self.amount - Decimal('0.01')):
             self.status = 'Paid'
             if not self.paid_date:
                 self.paid_date = timezone.now().date()
-        elif self.amount_paid > 0:
+        elif total_credit > 0:
             self.status = 'Partially Paid'
         else:
             if self.due_date and self.due_date < timezone.now().date():
@@ -787,7 +839,7 @@ class SubscriptionInstallment(models.Model):
             else:
                 self.status = 'Pending'
                 
-        self.save(update_fields=['amount_paid', 'status', 'paid_date'])
+        self.save(update_fields=['amount_paid', 'discount_amount', 'status', 'paid_date'])
 
     def __str__(self):
         return f"{self.subscription} - Installment {self.installment_number} ({self.amount})"

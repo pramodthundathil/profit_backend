@@ -198,9 +198,7 @@ def member_update_api(request, pk):
 def member_delete_api(request, pk):
     """API view to deactivate a member"""
     member = get_object_or_404(Member, pk=pk, gym=request.user.gym)
-    member.is_active = False
-    member.membership_status = 'Cancelled'
-    member.save()
+    member.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 @swagger_auto_schema(
@@ -363,8 +361,7 @@ def subscription_detail_api(request, pk):
 def subscription_delete_api(request, pk):
     """API view to cancel/delete a subscription"""
     subscription = get_object_or_404(Subscription, pk=pk, member__gym=request.user.gym)
-    subscription.status = 'Cancelled'
-    subscription.save()
+    subscription.delete()
     subscription.member.update_membership_status()
     return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -6,8 +6,8 @@ from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
 
-from .models import Payment
-from .forms import PaymentForm, PaymentFilterForm
+from .models import Payment, GymOffer
+from .forms import PaymentForm, PaymentFilterForm, GymOfferForm
 from members.models import Member, Subscription, SubscriptionInstallment
 
 @login_required
@@ -108,15 +108,76 @@ def payment_create(request):
             if payment.member.gym != user.gym:
                 messages.error(request, "Invalid member selected.")
             else:
-                payment.save() # save() also updates subscription status
+                # Automatic Offer Application
+                today = timezone.now().date()
+                active_offer = GymOffer.objects.filter(
+                    gym=user.gym,
+                    is_active=True,
+                    start_date__lte=today,
+                    end_date__gte=today
+                ).first()
+                
+                # Check if specific to certain members
+                if active_offer and active_offer.specific_members.exists():
+                    if not active_offer.specific_members.filter(id=payment.member.id).exists():
+                        active_offer = None
+
+                if active_offer:
+                    # Check if it's a Full Payment (considering discount)
+                    # New Logic: threshold = balance * (1 - percentage/100)
+                    is_full_payment = False
+                    balance_to_check = Decimal('0.00')
+                    
+                    if payment.installment:
+                        balance_to_check = payment.installment.remaining_amount
+                    else:
+                        balance_to_check = payment.subscription.balance_amount
+                    
+                    # Calculate required amount to clear balance
+                    discount_rate = active_offer.discount_percentage / 100
+                    # Standardize rounding to compare exactly with UI values
+                    offer_price = (balance_to_check * (1 - discount_rate)).quantize(Decimal('0.01'))
+                    
+                    if payment.amount >= offer_price:
+                        is_full_payment = True
+                        # Discount is the remaining part of the balance to reach exactly 0.00
+                        payment.offer = active_offer
+                        payment.discount_amount = balance_to_check - payment.amount
+                        
+                        # Extra safety: Ensure if they paid exactly offer_price, 
+                        # discount_amount + amount = initial_balance
+                    else:
+                        active_offer = None # Not a full payment
+
+                payment.save() # save() update statuses
+                
+                # Re-check status for message clarity
+                if payment.installment:
+                    payment.installment.update_payment_status()
+                
                 messages.success(request, f"Payment recorded successfully: {payment.receipt_number}")
+                if active_offer:
+                    messages.info(request, f"Offer applied: {active_offer.name}. Full balance cleared with {active_offer.discount_percentage}% discount benefit.")
+                else:
+                    messages.info(request, "Tip: Pay the discounted 'Offer Price' to clear the full balance instantly.")
                 return redirect('payment-list')
     else:
         form = PaymentForm(user=user)
         
+    # Fetch Best Active Offer for visibility in form (if possible without selected member)
+    # Note: Global offer only as we don't know the member yet in initial GET
+    active_offers = GymOffer.objects.filter(
+        gym=user.gym,
+        is_active=True,
+        specific_members__isnull=True,
+        start_date__lte=timezone.now().date(),
+        end_date__gte=timezone.now().date()
+    )
+    
     context = {
         'form': form,
-        'title': 'Record New Payment'
+        'title': 'Record New Payment',
+        'active_offers': active_offers
     }
     return render(request, 'user/payments/payment_form.html', context)
 
@@ -134,7 +195,8 @@ def payment_invoice(request, pk):
     gym = user.gym
     branch = payment.member.branch
     subscription = payment.subscription
-    total_discount = subscription.base_amount - subscription.final_amount
+    subscription_discount = subscription.base_amount - subscription.final_amount
+    offer_discount = payment.discount_amount
     
     context = {
         'payment': payment,
@@ -142,7 +204,9 @@ def payment_invoice(request, pk):
         'branch': branch,
         'member': payment.member,
         'subscription': subscription,
-        'total_discount': total_discount,
+        'subscription_discount': subscription_discount,
+        'offer_discount': offer_discount,
+        'total_credit': payment.amount + offer_discount,
         'title': f"Invoice - {payment.receipt_number}"
     }
     return render(request, 'user/payments/invoice.html', context)
@@ -201,25 +265,128 @@ def ajax_member_data(request, member_id):
         
     subs = Subscription.objects.filter(member=member)
     
+    # Best Offer for this member
+    best_offer = GymOffer.get_active_offer(user.gym, member)
+    offer_data = None
+    if best_offer:
+        offer_data = {
+            "name": best_offer.name,
+            "percentage": float(best_offer.discount_percentage)
+        }
+        
     data = []
     for sub in subs:
         installments = []
         for inst in sub.installments.all():
+            rem = float(inst.remaining_amount)
+            offer_price = rem
+            if best_offer:
+                offer_price = float(Decimal(str(rem)) * (1 - best_offer.discount_percentage/100))
+
             installments.append({
                 "id": inst.id,
                 "installment_number": inst.installment_number,
                 "due_date": inst.due_date.strftime("%Y-%m-%d") if inst.due_date else None,
-                "remaining_amount": float(inst.remaining_amount),
+                "remaining_amount": rem,
+                "offer_price": round(offer_price, 2),
                 "status": inst.status
             })
             
+        bal = float(sub.balance_amount)
+        offer_price_bal = bal
+        if best_offer:
+            offer_price_bal = float(Decimal(str(bal)) * (1 - best_offer.discount_percentage/100))
+
         data.append({
             "id": sub.id,
             "subscription_type_name": sub.subscription_type.name if sub.subscription_type else "Custom",
             "start_date": sub.start_date.strftime("%Y-%m-%d") if sub.start_date else None,
             "end_date": sub.end_date.strftime("%Y-%m-%d") if sub.end_date else None,
-            "balance_amount": float(sub.balance_amount),
+            "balance_amount": bal,
+            "offer_price": round(offer_price_bal, 2),
             "installments": installments
         })
         
-    return JsonResponse({"subscriptions": data})
+    return JsonResponse({
+        "subscriptions": data,
+        "active_offer": offer_data
+    })
+
+
+# ============================================================================
+# OFFER VIEWS (Admin Only)
+# ============================================================================
+
+from django.contrib.auth.decorators import user_passes_test
+
+def is_gym_admin(user):
+    return user.is_authenticated and user.role == 'gym_admin'
+
+@login_required
+@user_passes_test(is_gym_admin)
+def offer_list(request):
+    user = request.user
+    offers = GymOffer.objects.filter(gym=user.gym)
+    
+    context = {
+        'offers': offers,
+        'title': 'Offer Management'
+    }
+    return render(request, 'user/payments/offer_list.html', context)
+
+@login_required
+@user_passes_test(is_gym_admin)
+def offer_create(request):
+    user = request.user
+    if request.method == 'POST':
+        form = GymOfferForm(request.POST, user=user)
+        if form.is_valid():
+            offer = form.save(commit=False)
+            offer.gym = user.gym
+            offer.save()
+            form.save_m2m()
+            messages.success(request, "Offer created successfully.")
+            return redirect('offer-list')
+    else:
+        form = GymOfferForm(user=user)
+        
+    context = {
+        'form': form,
+        'title': 'Create New Offer'
+    }
+    return render(request, 'user/payments/offer_form.html', context)
+
+@login_required
+@user_passes_test(is_gym_admin)
+def offer_edit(request, pk):
+    user = request.user
+    offer = get_object_or_404(GymOffer, pk=pk, gym=user.gym)
+    
+    if request.method == 'POST':
+        form = GymOfferForm(request.POST, instance=offer, user=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Offer updated successfully.")
+            return redirect('offer-list')
+    else:
+        form = GymOfferForm(instance=offer, user=user)
+        
+    context = {
+        'form': form,
+        'offer': offer,
+        'title': 'Edit Offer'
+    }
+    return render(request, 'user/payments/offer_form.html', context)
+
+@login_required
+@user_passes_test(is_gym_admin)
+def offer_delete(request, pk):
+    user = request.user
+    offer = get_object_or_404(GymOffer, pk=pk, gym=user.gym)
+    
+    if request.method == 'POST':
+        offer.delete()
+        messages.success(request, "Offer deleted successfully.")
+        return redirect('offer-list')
+        
+    return render(request, 'user/payments/offer_confirm_delete.html', {'offer': offer})

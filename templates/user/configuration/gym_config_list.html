@@ -68,24 +68,58 @@
             </div>
             <div class="card-body p-4">
                 {% if request.user.role == 'gym_admin' %}
-                <form action="{% url 'update-gym-settings' %}" method="post">
+                <form action="{% url 'update-gym-settings' %}" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="row g-4">
+                        <!-- Gym Identity Section -->
                         <div class="col-12">
-                            <div class="bg-warning bg-opacity-10 p-3 rounded-3 border border-warning-subtle mb-4">
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-3 border border-primary-subtle mb-3">
                                 <h6 class="text-dark d-flex align-items-center mb-2">
-                                    <i class="bi bi-currency-exchange me-2"></i> Currency Configuration
+                                    <i class="bi bi-building me-2"></i> Gym Identity
                                 </h6>
-                                <p class="small text-muted mb-0">Select your base currency for all transactions. This will update the currency symbol across receipts, reports, and payments.</p>
+                                <p class="small text-muted mb-0">Update your gym's official name, contact details, and branding logo.</p>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Gym Name</label>
+                            {{ settings_form.name }}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Gym Logo</label>
+                            {{ settings_form.logo }}
+                            <div class="form-text small mt-1">Recommended size: 512x512px. JPG/PNG.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Official Email</label>
+                            {{ settings_form.email }}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Phone Number</label>
+                            {{ settings_form.phone }}
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-dark">Office Address</label>
+                            {{ settings_form.address }}
+                        </div>
+
+                        <!-- Regional Settings Section -->
+                        <div class="col-12 mt-4">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-3 border border-warning-subtle mb-3">
+                                <h6 class="text-dark d-flex align-items-center mb-2">
+                                    <i class="bi bi-currency-exchange me-2"></i> Regional Configuration
+                                </h6>
+                                <p class="small text-muted mb-0">Select your base currency for all transactions across all branches.</p>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Operating Currency</label>
                             {{ settings_form.currency_code }}
-                            <div class="form-text mt-2 small">
-                                e.g. Indian Rupee, US Dollar, etc.
-                            </div>
                         </div>
                         
                         <div class="col-md-6">
@@ -94,18 +128,15 @@
                                 <span class="input-group-text bg-light"><i class="bi bi-hash"></i></span>
                                 {{ settings_form.currency_symbol }}
                             </div>
-                            <div class="form-text mt-2 small">
-                                Automatically detected from selection.
-                            </div>
                         </div>
 
                         <div class="col-12 mt-4 pt-3 border-top">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="text-muted small">
-                                    <i class="bi bi-info-circle-fill me-1"></i> These settings affect all branches under your gym headquarters.
+                                    <i class="bi bi-info-circle-fill me-1"></i> Changes will affect all branch headers and receipt layouts.
                                 </span>
                                 <button type="submit" class="btn btn-dark px-4 py-2 d-flex align-items-center shadow-sm">
-                                    <i class="bi bi-save me-2 text-warning"></i> Save Global Settings
+                                    <i class="bi bi-save me-2 text-warning"></i> Update Configuration
                                 </button>
                             </div>
                         </div>

@@ -1,0 +1,31 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}Delete Offer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center pt-5">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm text-center p-4">
+            <div class="card-body">
+                <div class="text-danger mb-4">
+                    <i class="bi bi-exclamation-triangle-fill display-1"></i>
+                </div>
+                <h3>Are you sure?</h3>
+                <p class="text-muted mb-4">
+                    You are about to delete the offer <strong>"{{ offer.name }}"</strong>. 
+                    This action cannot be undone, however, past payments that used this offer will remain unaffected.
+                </p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">Yes, Delete Offer</button>
+                        <a href="{% url 'offer-list' %}" class="btn btn-light">Cancel and Go Back</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

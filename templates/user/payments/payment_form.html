@@ -22,6 +22,34 @@
                 <h5 class="mb-0 fs-6">Payment Recording Form</h5>
             </div>
             <div class="card-body p-4">
+                <div id="offerSection" class="alert alert-success border-0 shadow-sm mb-4 bg-success bg-opacity-10" style="display: none;">
+                    <div class="d-flex">
+                        <i class="bi bi-patch-check-fill fs-4 me-3 text-success"></i>
+                        <div>
+                            <h6 class="alert-heading fw-bold mb-1">Special Offer Applied: <span id="offerName"></span></h6>
+                            <p class="mb-0 small">This member is eligible for a <strong id="offerPercent"></strong>% discount. Pay the green <strong>Offer Price</strong> to clear the full balance.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if active_offers and not member %}
+                <div class="alert alert-info border-0 shadow-sm mb-4 bg-info bg-opacity-10">
+                    <div class="d-flex">
+                        <i class="bi bi-gift-fill fs-4 me-3 text-info"></i>
+                        <div>
+                            <h6 class="alert-heading fw-bold mb-1">Active Promotions</h6>
+                            <ul class="list-unstyled mb-0 small">
+                                {% for offer in active_offers %}
+                                <li>
+                                    <strong>{{ offer.name }}</strong>: Get <strong>{{ offer.discount_percentage }}% discount</strong> on full payments.
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
                 <form method="post" class="needs-validation" onsubmit="disableSubmitButton(this)" novalidate>
                     {% csrf_token %}
                     
@@ -52,7 +80,7 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted mb-1">Amount ({{ currency_symbol }})</label>
+                            <label id="amountLabel" class="form-label small fw-bold text-muted mb-1">Amount ({{ currency_symbol }})</label>
                             {% render_field form.amount class="form-control form-control-sm" placeholder="0.00" %}
                             {% if form.amount.errors %}
                                 <div class="text-danger small mt-1">{{ form.amount.errors }}</div>
@@ -140,6 +168,7 @@
             
             $subSelect.empty().append('<option value="">---------</option>');
             $instSelect.empty().append('<option value="">---------</option>');
+            $('#offerSection').fadeOut();
 
             if (!memberId) return;
 
@@ -147,11 +176,17 @@
                 url: `/v2/payments/ajax/member-data/${memberId}/`,
                 method: 'GET',
                 success: function(data) {
+                    if (data.active_offer) {
+                        $('#offerName').text(data.active_offer.name);
+                        $('#offerPercent').text(data.active_offer.percentage);
+                        $('#offerSection').fadeIn();
+                    }
+
                     if (data.subscriptions && data.subscriptions.length > 0) {
                         data.subscriptions.forEach(function(sub) {
                             const subText = `${sub.subscription_type_name || 'Custom'} (${sub.start_date} to ${sub.end_date}) - Bal: {{ currency_symbol }}${sub.balance_amount}`;
                             const isSelected = (selectedSub && parseInt(selectedSub) === sub.id) ? 'selected' : '';
-                            $subSelect.append(`<option value="${sub.id}" ${isSelected}>${subText}</option>`);
+                            $subSelect.append(`<option value="${sub.id}" ${isSelected} data-balance="${sub.balance_amount}" data-offer-price="${sub.offer_price}">${subText}</option>`);
                         });
                         
                         $subSelect.data('subscriptions', data.subscriptions);
@@ -171,37 +206,58 @@
             const memberId = $(this).val();
             loadMemberData(memberId, null, null);
             $('#id_amount').val('');
+            $('#amountLabel').text('Amount ({{ currency_symbol }})');
             maxAllowedAmount = Infinity;
         });
 
         $('#id_subscription').change(function(e, selectedInst) {
             const subId = $(this).val();
             const $instSelect = $('#id_installment');
-            $instSelect.empty().append('<option value="">---------</option>');
+            $instSelect.empty().append('<option value="">--- Select Installment (Optional) ---</option>');
             
             $('#id_amount').val('');
+            $('#amountLabel').text('Amount ({{ currency_symbol }})');
             maxAllowedAmount = Infinity;
 
             if (!subId) return;
 
+            const $selectedSub = $(this).find('option:selected');
+            const balance = $selectedSub.data('balance');
+            const offerPrice = $selectedSub.data('offer-price');
+
             const subs = $('#id_subscription').data('subscriptions');
+            let hasInstallments = false;
+            
             if (subs) {
                 const sub = subs.find(s => s.id == parseInt(subId));
                 if (sub && sub.installments && sub.installments.length > 0) {
+                    hasInstallments = true;
                     sub.installments.forEach(function(inst) {
                         if (inst.status !== 'Paid') {
                             const instText = `Inst #${inst.installment_number} - Due: ${inst.due_date} - Bal: {{ currency_symbol }}${inst.remaining_amount}`;
                             const isSelected = (selectedInst && parseInt(selectedInst) === inst.id) ? 'selected' : '';
-                            $instSelect.append(`<option value="${inst.id}" ${isSelected} data-remaining="${inst.remaining_amount}">${instText}</option>`);
+                            $instSelect.append(`<option value="${inst.id}" ${isSelected} data-remaining="${inst.remaining_amount}" data-offer-price="${inst.offer_price}">${instText}</option>`);
                         }
                     });
                 }
-                
-                // If no installment is selected but sub is, maybe set amount to sub balance? 
-                // Let's stick to installment first as requested.
-                if (!selectedInst) {
-                    maxAllowedAmount = parseFloat(sub.balance_amount);
+            }
+
+            // If installments exist, mandatory to select one. 
+            // Clear amount and show hint.
+            if (hasInstallments) {
+                $instSelect.prop('required', true).addClass('border-primary');
+                $('#amountLabel').html(`Amount ({{ currency_symbol }}) - <span class="text-primary fw-bold small">Please select an installment below</span>`);
+                $('#id_amount').val('');
+            } else {
+                // For non-installment plans, allow direct payment
+                $instSelect.prop('required', false).removeClass('border-primary');
+                if (offerPrice && offerPrice < balance) {
+                    $('#id_amount').val(offerPrice);
+                    $('#amountLabel').html(`Amount ({{ currency_symbol }}) - <span class="text-success fw-bold">Offer Price: {{ currency_symbol }}${offerPrice}</span>`);
+                } else {
+                    $('#id_amount').val(balance);
                 }
+                maxAllowedAmount = parseFloat(balance);
             }
         });
 
@@ -212,17 +268,28 @@
             
             if (instId) {
                 const remaining = parseFloat($selectedOption.data('remaining'));
-                $('#id_amount').val(remaining.toFixed(2));
+                const offerPrice = $selectedOption.data('offer-price');
+                
+                if (offerPrice && offerPrice < remaining) {
+                    $('#id_amount').val(offerPrice);
+                    $('#amountLabel').html(`Amount ({{ currency_symbol }}) - <span class="text-success fw-bold">Offer Price: {{ currency_symbol }}${offerPrice}</span>`);
+                } else {
+                    $('#id_amount').val(remaining.toFixed(2));
+                }
                 maxAllowedAmount = remaining;
             } else {
-                // Fallback to subscription balance if installment is cleared
-                const subId = $('#id_subscription').val();
-                if (subId) {
-                    const subs = $('#id_subscription').data('subscriptions');
-                    const sub = subs.find(s => s.id == parseInt(subId));
-                    maxAllowedAmount = parseFloat(sub.balance_amount);
-                } else {
-                    maxAllowedAmount = Infinity;
+                // Fallback to subscription balance
+                const $subSelected = $('#id_subscription').find('option:selected');
+                if ($subSelected.val()) {
+                    const balance = $subSelected.data('balance');
+                    const offerPrice = $subSelected.data('offer-price');
+                    if (offerPrice && offerPrice < balance) {
+                        $('#id_amount').val(offerPrice);
+                        $('#amountLabel').html(`Amount ({{ currency_symbol }}) - <span class="text-success fw-bold">Offer Price: {{ currency_symbol }}${offerPrice}</span>`);
+                    } else {
+                        $('#id_amount').val(balance);
+                    }
+                    maxAllowedAmount = parseFloat(balance);
                 }
             }
         });

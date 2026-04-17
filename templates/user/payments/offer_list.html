@@ -1,0 +1,119 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block header_title %}Offer Management{% endblock %}
+{% block header_subtitle %}Define automatic discounts for your gym members and staff{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}" class="text-decoration-none text-muted">Home</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'payment-list' %}" class="text-decoration-none text-muted">Payments</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Offers</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 text-dark">Active & Scheduled Offers</h5>
+        <a href="{% url 'offer-create' %}" class="btn btn-dark btn-sm">
+            <i class="bi bi-plus-lg"></i> Create New Offer
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="offersTable" class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Offer Name</th>
+                        <th>Discount (%)</th>
+                        <th>Period</th>
+                        <th>Status</th>
+                        <th>Scope</th>
+                        <th data-orderable="false">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for offer in offers %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-dark">{{ offer.name }}</div>
+                            <small class="text-muted">{{ offer.description|truncatechars:50 }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-success bg-opacity-10 text-success fs-6">
+                                {{ offer.discount_percentage }}%
+                            </span>
+                        </td>
+                        <td>
+                            <div class="small">
+                                <i class="bi bi-calendar-event me-1"></i> {{ offer.start_date|date:"D, d M" }} - {{ offer.end_date|date:"D, d M Y" }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if offer.is_active %}
+                                {% if offer.is_currently_valid %}
+                                    <span class="badge bg-success rounded-pill px-3">Live Now</span>
+                                {% else %}
+                                    <span class="badge bg-info rounded-pill px-3 text-white">Scheduled</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary rounded-pill px-3">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if offer.specific_members.exists %}
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-people-fill me-1"></i> {{ offer.specific_members.count }} Members
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-globe me-1"></i> All Members
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'offer-edit' offer.id %}" class="btn btn-sm btn-outline-dark" title="Edit Offer">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'offer-delete' offer.id %}" class="btn btn-sm btn-outline-danger" title="Delete Offer">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="bi bi-tag text-muted fs-1 d-block mb-3"></i>
+                            <h6 class="text-muted">No offers defined yet</h6>
+                            <p class="small text-muted mb-0">Create promotional offers that automatically apply to payments.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        $('#offersTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "info": true,
+            "ordering": true,
+            "order": [[2, "desc"]],
+            "language": {
+                "search": "Filter Offers:"
+            }
+        });
+    });
+</script>
+{% endblock %}

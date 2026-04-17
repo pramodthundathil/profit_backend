@@ -8,6 +8,12 @@ urlpatterns = [
     path('detail/<int:pk>/', views_user.payment_detail, name='payment-detail'),
     path('invoice/<int:pk>/', views_user.payment_invoice, name='payment-invoice'),
     path('ajax/member-data/<int:member_id>/', views_user.ajax_member_data, name='ajax-member-data'),
+    
+    # Offer Management (Admin Only)
+    path('offers/', views_user.offer_list, name='offer-list'),
+    path('offers/create/', views_user.offer_create, name='offer-create'),
+    path('offers/edit/<int:pk>/', views_user.offer_edit, name='offer-edit'),
+    path('offers/delete/<int:pk>/', views_user.offer_delete, name='offer-delete'),
 
     # REST API endpoints (For mobile app & integrations - Separated in api.py)
     path('api/list/', api.PaymentViewSet.as_view({'get': 'list', 'post': 'create'}), name='api-payment-list'),

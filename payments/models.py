@@ -8,6 +8,85 @@ from home.models import GymBranch, GymOffice
 # Create your models here.
 
 # ============================================================================
+# OFFER MODEL
+# ============================================================================
+
+class GymOffer(models.Model):
+    """Gym-wide offers for specific periods"""
+    gym = models.ForeignKey(GymOffice, on_delete=models.CASCADE, related_name='offers')
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    
+    discount_percentage = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2,
+        help_text="Percentage discount to apply (e.g., 10 for 10%)"
+    )
+    
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_active = models.BooleanField(default=True)
+    
+    # Optional: restricts offer to specific members
+    specific_members = models.ManyToManyField(
+        Member, 
+        blank=True, 
+        related_name='eligible_offers',
+        help_text="If empty, applies to all members of the gym"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-start_date']
+
+    def is_currently_valid(self, member=None):
+        """Check if offer is valid today and applicable to member"""
+        today = timezone.now().date()
+        if not self.is_active:
+            return False
+        if not (self.start_date <= today <= self.end_date):
+            return False
+        if self.specific_members.exists() and member:
+            if not self.specific_members.filter(id=member.id).exists():
+                return False
+        return True
+
+    @classmethod
+    def get_active_offer(cls, gym, member=None):
+        """
+        Priority Scoping Logic:
+        1. Look for active offers specific to the member.
+        2. If none, look for active global offers for the gym.
+        Returns the most recent single offer or None.
+        """
+        today = timezone.now().date()
+        base_qs = cls.objects.filter(
+            gym=gym,
+            is_active=True,
+            start_date__lte=today,
+            end_date__gte=today
+        ).order_by('-created_at')
+
+        if member:
+            # 1. Try specific offers
+            specific_offer = base_qs.filter(specific_members=member).first()
+            if specific_offer:
+                return specific_offer
+
+        # 2. Try global offers (specific_members is empty)
+        # Note: In Django, if a M2M is empty, .filter(specific_members=None) works 
+        # but usually it's better to check .annotate(count=Count('specific_members')).filter(count=0)
+        # However, for simplicity and since we only care about if anyone is IN it:
+        global_offer = base_qs.filter(specific_members__isnull=True).first()
+        return global_offer
+
+    def __str__(self):
+        return f"{self.name} ({self.discount_percentage}%)"
+
+
+# ============================================================================
 # PAYMENT MODEL
 # ============================================================================
 
@@ -30,6 +109,21 @@ class Payment(models.Model):
         null=True,
         blank=True,
         related_name='payments'
+    )
+    
+    # Offer Tracking
+    offer = models.ForeignKey(
+        GymOffer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments'
+    )
+    discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Amount discounted via an offer"
     )
     
     # Payment Details
@@ -122,6 +216,12 @@ class Payment(models.Model):
             
             self.receipt_number = f"RCP-{gym_code}-{today}-{new_seq:04d}"
         
+        # Auto-sync installment info
+        if self.installment:
+            self.is_installment = True
+            if not self.installment_number:
+                self.installment_number = self.installment.installment_number
+
         super().save(*args, **kwargs)
         
         # Update installment status if this payment is linked to one

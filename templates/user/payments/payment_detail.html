@@ -93,6 +93,14 @@
                     <dt class="col-sm-4 text-muted small">Is Installment?</dt>
                     <dd class="col-sm-8">{% if payment.is_installment %}Yes (Installment #{{ payment.installment_number }}){% else %}No{% endif %}</dd>
                     
+                    {% if payment.offer %}
+                    <dt class="col-sm-4 text-muted small">Offer Applied</dt>
+                    <dd class="col-sm-8 text-success fw-bold">{{ payment.offer.name }} ({{ payment.offer.discount_percentage }}%)</dd>
+
+                    <dt class="col-sm-4 text-muted small">Discount/Bonus Credit</dt>
+                    <dd class="col-sm-8 text-success fw-bold">+{{ currency_symbol }}{{ payment.discount_amount }}</dd>
+                    {% endif %}
+
                     <hr class="my-3">
 
                     <dt class="col-sm-4 text-muted small">Admin Notes</dt>

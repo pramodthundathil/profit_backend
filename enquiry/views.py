@@ -285,10 +285,10 @@ def _create_member_from_enquiry(gym, enquiry):
     
     # Generate unique mobile number if collision
     mobile = enquiry.phone_number
-    if Member.objects.filter(gym=gym, mobile_number=mobile).exists():
+    if Member.all_objects.filter(gym=gym, mobile_number=mobile).exists():
         original_mobile = mobile
         counter = 1
-        while Member.objects.filter(gym=gym, mobile_number=mobile).exists():
+        while Member.all_objects.filter(gym=gym, mobile_number=mobile).exists():
             suffix = f"-DUP{counter}" if counter > 1 else "-DUP"
             # Limit mobile number to 20 chars
             mobile = f"{original_mobile[:20-len(suffix)]}{suffix}"

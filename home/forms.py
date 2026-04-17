@@ -33,8 +33,13 @@ class GymOfficeSettingsForm(forms.ModelForm):
     
     class Meta:
         model = GymOffice
-        fields = ['currency_code', 'currency_symbol']
+        fields = ['name', 'address', 'email', 'phone', 'logo', 'currency_code', 'currency_symbol']
         widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'logo': forms.FileInput(attrs={'class': 'form-control'}),
             'currency_symbol': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
         }
 

@@ -217,9 +217,15 @@
             <a href="{% url 'subscription-list' %}" class="nav-link {% if 'subscription' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-credit-card-fill"></i> Subscriptions
             </a>
-            <a href="{% url 'payment-list' %}" class="nav-link {% if 'payment' in request.resolver_match.url_name %}active{% endif %}">
+            <a href="{% url 'payment-list' %}" class="nav-link {% if 'payment' in request.resolver_match.url_name and 'offer' not in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-cash-stack"></i> Payments
             </a>
+
+            {% if request.user.role == 'gym_admin' %}
+            <a href="{% url 'offer-list' %}" class="nav-link {% if 'offer' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-tag-fill"></i> Offers
+            </a>
+            {% endif %}
             <a href="{% url 'user-branch-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-branch-list' %}active{% endif %}">
                 <i class="bi bi-shop"></i> Branches
             </a>

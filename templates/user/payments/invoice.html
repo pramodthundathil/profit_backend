@@ -143,19 +143,32 @@
                     <td class="text-center">{{ subscription.duration }} {{ subscription.duration_unit }}</td>
                     <td class="text-end">{{ currency_symbol }}{{ subscription.base_amount }}</td>
                 </tr>
-                {% if total_discount > 0 %}
+                {% if subscription_discount > 0 %}
                 <tr>
-                    <td colspan="2" class="text-end">Discounts</td>
-                    <td class="text-end">-{{ currency_symbol }}{{ total_discount }}</td>
+                    <td colspan="2" class="text-end text-muted small">Plan Discount</td>
+                    <td class="text-end text-muted small">-{{ currency_symbol }}{{ subscription_discount }}</td>
+                </tr>
+                {% endif %}
+                {% if offer_discount > 0 %}
+                <tr>
+                    <td colspan="2" class="text-end text-success small">Offer Discount (Applied)</td>
+                    <td class="text-end text-success small">-{{ currency_symbol }}{{ offer_discount }}</td>
                 </tr>
                 {% endif %}
                 <tr class="total-row">
-                    <td colspan="2" class="text-end">Amount Due</td>
+                    <td colspan="2" class="text-end">Final Total Due</td>
                     <td class="text-end">{{ currency_symbol }}{{ subscription.final_amount }}</td>
                 </tr>
                 <tr class="total-row theme-dark">
-                    <td colspan="2" class="text-end">Amount Paid (This Transaction)</td>
-                    <td class="text-end">{{ currency_symbol }}{{ payment.amount }}</td>
+                    <td colspan="2" class="text-end d-flex align-items-center justify-content-end">
+                        <div class="me-2 text-white-50 small" style="font-weight: 400;">
+                            (Paid: {{ currency_symbol }}{{ payment.amount }} + Bonus: {{ currency_symbol }}{{ offer_discount|default:"0" }})
+                        </div>
+                        Total Credit Applied
+                    </td>
+                    <td class="text-end">
+                        {{ currency_symbol }}{{ total_credit }}
+                    </td>
                 </tr>
             </tbody>
         </table>
