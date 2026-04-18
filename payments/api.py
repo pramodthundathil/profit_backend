@@ -47,7 +47,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         branch_id = self.request.query_params.get('branch')
         if branch_id:
              queryset = queryset.filter(member__branch_id=branch_id)
-        elif user.role == 'branch_admin' and user.branch:
+        elif user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
              queryset = queryset.filter(member__branch=user.branch)
              
         # Date filtering
@@ -202,7 +202,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         base_installments = SubscriptionInstallment.objects.filter(subscription__member__gym=user.gym)
         base_subscriptions = Subscription.objects.filter(member__gym=user.gym)
         
-        if user.role == 'branch_admin' and user.branch:
+        if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
              base_payments = base_payments.filter(member__branch=user.branch)
              base_installments = base_installments.filter(subscription__member__branch=user.branch)
              base_subscriptions = base_subscriptions.filter(member__branch=user.branch)

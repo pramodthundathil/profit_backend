@@ -47,8 +47,8 @@ def mobile_member_list(request):
     # Base query - remove is_active=True to allow searching all members
     members = Member.objects.filter(gym=user.gym).select_related('branch')
 
-    # Apply scope permissions (Gym Admin vs Branch Admin)
-    if user.role == 'branch_admin' and user.branch:
+    # Apply scope permissions (Gym Admin vs Branch Admin/Staff)
+    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
         members = members.filter(branch=user.branch)
     elif branch_filter:
         members = members.filter(branch_id=branch_filter)
@@ -493,7 +493,7 @@ def subscription_list_api(request):
 
     # 2. Apply Branch Permission/Filter
     branch_filter = request.GET.get('branch', '')
-    if user.role == 'branch_admin' and user.branch:
+    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
         subscriptions = subscriptions.filter(member__branch=user.branch)
     elif branch_filter:
         subscriptions = subscriptions.filter(member__branch_id=branch_filter)
