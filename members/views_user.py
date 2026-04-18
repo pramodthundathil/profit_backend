@@ -11,7 +11,7 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from .models import Member, Subscription, HealthHistory, Medication, ParqForm, SubscriptionInstallment
 from .forms import MemberForm, SubscriptionForm, HealthHistoryForm, MedicationFormSet, ParqFormModelForm, ParqUpdateForm
-from home.models import GymBranch
+from home.models import GymBranch, CustomUser
 from payments.models import Payment, GymOffer
 
 @login_required
@@ -42,7 +42,10 @@ def member_list(request):
     members = Member.objects.filter(gym=user.gym, is_active=True).select_related('branch', 'gym').prefetch_related('subscriptions__subscription_type')
 
     # Role-based filtering
-    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+    if user.role == 'trainer':
+        # Trainer: ONLY see members assigned to them
+        members = members.filter(assigned_trainer=user)
+    elif user.role in ['branch_admin', 'staff'] and user.branch:
         # Branch-specific staff/manager: Restricted to their branch only
         members = members.filter(branch=user.branch)
     elif user.role in ['gym_admin', 'branch_admin', 'staff', 'trainer']:
@@ -161,7 +164,10 @@ def member_edit(request, pk):
     member = get_object_or_404(Member, pk=pk, gym=user.gym)
     
     # Permission Check
-    if user.role == 'branch_admin' and member.branch != user.branch:
+    if user.role == 'trainer' and member.assigned_trainer != user:
+        messages.error(request, "Access denied. This member is not assigned to you.")
+        return redirect('member-list')
+    elif user.role == 'branch_admin' and member.branch != user.branch:
         messages.error(request, "Access denied. You can only edit members of your branch.")
         return redirect('member-list')
 
@@ -196,7 +202,10 @@ def member_delete(request, pk):
     user = request.user
     member = get_object_or_404(Member, pk=pk, gym=user.gym)
     
-    if user.role == 'branch_admin' and member.branch != user.branch:
+    if user.role == 'trainer' and member.assigned_trainer != user:
+        messages.error(request, "Access denied.")
+        return redirect('member-list')
+    elif user.role == 'branch_admin' and member.branch != user.branch:
         messages.error(request, "Access denied.")
         return redirect('member-list')
         
@@ -212,7 +221,10 @@ def member_detail(request, pk):
     member = get_object_or_404(Member, pk=pk, gym=user.gym)
     
     # Permission Check
-    if user.role == 'branch_admin' and member.branch != user.branch:
+    if user.role == 'trainer' and member.assigned_trainer != user:
+        messages.error(request, "Access denied. This member is not assigned to you.")
+        return redirect('member-list')
+    elif user.role == 'branch_admin' and member.branch != user.branch:
         messages.error(request, "Access denied.")
         return redirect('member-list')
         
@@ -220,13 +232,52 @@ def member_detail(request, pk):
     best_offer = GymOffer.get_active_offer(user.gym, member)
     filtered_offers = [best_offer] if best_offer else []
 
+    # Fetch Active Trainers for Assignment
+    active_trainers = []
+    if user.role in ['gym_admin', 'branch_admin']:
+        trainers_qs = CustomUser.objects.filter(gym=user.gym, role='trainer', is_active=True)
+        if user.role == 'branch_admin' and user.branch:
+            trainers_qs = trainers_qs.filter(branch=user.branch)
+        active_trainers = trainers_qs
+
     context = {
         'member': member,
         'title': f"Member Details: {member.full_name}",
         'subscriptions': member.subscriptions.all().order_by('-created_at'),
-        'active_offers': filtered_offers
+        'active_offers': filtered_offers,
+        'active_trainers': active_trainers
     }
     return render(request, "user/members/member_detail.html", context)
+
+@login_required
+def member_assign_trainer(request, pk):
+    user = request.user
+    member = get_object_or_404(Member, pk=pk, gym=user.gym)
+    
+    if user.role not in ['gym_admin', 'branch_admin']:
+        messages.error(request, "Access denied. Only admins can assign trainers.")
+        return redirect('member-detail', pk=pk)
+        
+    if user.role == 'branch_admin' and member.branch != user.branch:
+        messages.error(request, "Access denied. You can only edit members of your branch.")
+        return redirect('member-detail', pk=pk)
+
+    if request.method == 'POST':
+        trainer_id = request.POST.get('trainer_id')
+        if trainer_id:
+            try:
+                trainer = CustomUser.objects.get(pk=trainer_id, gym=user.gym, role='trainer', is_active=True)
+                member.assigned_trainer = trainer
+                member.save()
+                messages.success(request, f"Trainer {trainer.get_full_name() or trainer.email} assigned successfully to {member.full_name}.")
+            except CustomUser.DoesNotExist:
+                messages.error(request, "Selected trainer not found or invalid.")
+        else:
+            member.assigned_trainer = None
+            member.save()
+            messages.success(request, f"Trainer unassigned successfully for {member.full_name}.")
+            
+    return redirect('member-detail', pk=pk)
 
 @login_required
 def member_block_access(request, pk):
@@ -291,7 +342,10 @@ def member_add_subscription(request, pk):
     member = get_object_or_404(Member, pk=pk, gym=user.gym)
     
     # Permission Check
-    if user.role == 'branch_admin' and member.branch != user.branch:
+    if user.role == 'trainer' and member.assigned_trainer != user:
+        messages.error(request, "Access denied. You can only add subscriptions for your assigned members.")
+        return redirect('member-list')
+    elif user.role == 'branch_admin' and member.branch != user.branch:
         messages.error(request, "Access denied.")
         return redirect('member-list')
 
@@ -466,7 +520,10 @@ def subscription_list(request):
     subscriptions = Subscription.objects.filter(member__gym=user.gym).select_related('member', 'member__branch', 'subscription_type')
 
     # Role-based filtering
-    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+    if user.role == 'trainer':
+        # Trainer: ONLY see subscriptions for members assigned to them
+        subscriptions = subscriptions.filter(member__assigned_trainer=user)
+    elif user.role in ['branch_admin', 'staff'] and user.branch:
         # Branch-specific: Restricted to their branch only
         subscriptions = subscriptions.filter(member__branch=user.branch)
     elif user.role in ['gym_admin', 'branch_admin', 'staff', 'trainer']:
@@ -588,6 +645,9 @@ def subscription_detail(request, pk):
     has_permission = False
     if user.role == 'gym_admin':
         has_permission = True
+    elif user.role == 'trainer':
+        if subscription.member.assigned_trainer == user:
+            has_permission = True
     elif user.role in ['branch_admin', 'staff']:
         if subscription.member.branch == user.branch:
             has_permission = True

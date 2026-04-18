@@ -24,6 +24,8 @@ def signin(request):
     if request.user.is_authenticated:
         if request.user.role == "admin":
             return redirect("admin-dashboard")
+        elif request.user.role == "trainer":
+            return redirect("trainer-dashboard")
         else:
             return redirect("user-dashboard")
     else:       
@@ -33,7 +35,12 @@ def signin(request):
             user = authenticate(request, email=email, password=password)
             if user is not None:
                 login(request, user)
-                return redirect('admin-dashboard')
+                if user.role == "admin":
+                    return redirect("admin-dashboard")
+                elif user.role == "trainer":
+                    return redirect("trainer-dashboard")
+                else:
+                    return redirect("user-dashboard")
             else:
                 messages.error(request, 'Invalid credentials')
     return render(request,"login.html")

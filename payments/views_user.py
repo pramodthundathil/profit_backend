@@ -33,7 +33,10 @@ def payment_list(request):
     payments = Payment.objects.filter(member__gym=user.gym).select_related('member', 'subscription')
     
     # Role-based restriction
-    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+    if user.role == 'trainer':
+        # Trainer: ONLY see payments for members assigned to them
+        payments = payments.filter(member__assigned_trainer=user)
+    elif user.role in ['branch_admin', 'staff'] and user.branch:
         payments = payments.filter(member__branch=user.branch)
     
     # Apply Filters from Form
@@ -150,6 +153,12 @@ def payment_create(request):
                         active_offer = None # Not a full payment
 
                 payment.save() # save() update statuses
+                
+                # Assign trainer to member if selected
+                trainer = form.cleaned_data.get('trainer')
+                if trainer:
+                    payment.member.assigned_trainer = trainer
+                    payment.member.save(update_fields=['assigned_trainer'])
                 
                 # Re-check status for message clarity
                 if payment.installment:

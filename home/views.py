@@ -783,7 +783,13 @@ class DashboardStatsView(APIView):
         payments_qs = Payment.objects.filter(member__gym=gym)
         installments_qs = SubscriptionInstallment.objects.filter(subscription__member__gym=gym)
 
-        if is_restricted:
+        if user.role == 'trainer':
+             # Trainer: Restricted to assigned members ONLY
+             members_qs = members_qs.filter(assigned_trainer=user)
+             subscriptions_qs = subscriptions_qs.filter(member__assigned_trainer=user)
+             payments_qs = payments_qs.filter(member__assigned_trainer=user)
+             installments_qs = installments_qs.filter(subscription__member__assigned_trainer=user)
+        elif is_restricted:
              members_qs = members_qs.filter(branch=user.branch)
              subscriptions_qs = subscriptions_qs.filter(member__branch=user.branch)
              payments_qs = payments_qs.filter(member__branch=user.branch)
@@ -980,7 +986,6 @@ class HikConfigurationDbViewSet(viewsets.ModelViewSet):
             serializer.save(gym_branch=user.branch)
         else:
              serializer.save()
-
 
 
 

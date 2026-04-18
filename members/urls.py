@@ -11,6 +11,7 @@ urlpatterns = [
     path('user/members/<int:pk>/block/', views_user.member_block_access, name='member-block-access'),
     path('user/members/<int:pk>/unblock/', views_user.member_unblock_access, name='member-unblock-access'),
     path('user/members/<int:pk>/extend/', views_user.member_extend_access, name='member-extend-access'),
+    path('user/members/<int:pk>/assign-trainer/', views_user.member_assign_trainer, name='member-assign-trainer'),
     path('user/members/<int:pk>/subscription/add/', views_user.member_add_subscription, name='member-subscription-add'),
     path('user/payments/<int:pk>/receipt/', views_user.payment_receipt, name='payment-receipt'),
     path('user/members/installment/<int:pk>/pay/', views_user.installment_pay, name='installment-pay'),

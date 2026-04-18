@@ -2,6 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from .models import Member, Subscription, HealthHistory, Medication, ParqForm
+from home.models import CustomUser
 from home.models import GymBranch
 from utils.models import Batch_DB, TypeSubscription, SubscriptionPeriod
 
@@ -29,8 +30,16 @@ class MemberForm(forms.ModelForm):
             'photo': forms.FileInput(attrs={'class': 'form-control'}),
             'id_proof': forms.FileInput(attrs={'class': 'form-control'}),
             'branch': forms.Select(attrs={'class': 'form-select'}),
+            'assigned_trainer': forms.Select(attrs={'class': 'form-select'}),
             'access_token': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'RFID/QR Token (Optional)'}),
         }
+
+    assigned_trainer = forms.ModelChoiceField(
+        queryset=CustomUser.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label="Assigned Trainer"
+    )
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -49,6 +58,13 @@ class MemberForm(forms.ModelForm):
                     self.fields['branch'].queryset = GymBranch.objects.filter(gym=user.gym, is_deleted=False)
                  else:
                     self.fields['branch'].queryset = GymBranch.objects.none()
+                    
+            # Populate assigned trainers based on gym and branch
+            if getattr(user, 'gym', None):
+                trainers = CustomUser.objects.filter(gym=user.gym, role='trainer', is_active=True, is_deleted=False)
+                if user.role == 'branch_admin' and user.branch:
+                    trainers = trainers.filter(branch=user.branch)
+                self.fields['assigned_trainer'].queryset = trainers
 
     def clean(self):
         cleaned_data = super().clean()

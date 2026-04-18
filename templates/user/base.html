@@ -307,22 +307,37 @@
         </div>
         
         <nav class="mt-4">
+            {% if request.user.role == 'trainer' %}
+            <a href="{% url 'trainer-dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'trainer-dashboard' %}active{% endif %}">
+                <i class="bi bi-grid-fill"></i> Trainer Home
+            </a>
+            {% else %}
             <a href="{% url 'user-dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'user-dashboard' %}active{% endif %}">
                 <i class="bi bi-grid-fill"></i> Dashboard
             </a>
+            {% endif %}
+
+            {% if request.user.role != 'trainer' %}
             <a href="{% url 'enquiries:dashboard' %}" class="nav-link {% if 'enquiries' in request.resolver_match.url_name or 'enquiry' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-person-lines-fill"></i> CRM / Enquiries
             </a>
+            {% endif %}
+
             <a href="{% url 'member-list' %}" class="nav-link {% if 'member' in request.resolver_match.url_name and 'pending-fee' not in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-person-vcard-fill"></i> Members
             </a>
+
+            {% if request.user.role != 'trainer' %}
             <a href="{% url 'pending-fee-list' %}" class="nav-link {% if 'pending-fee' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-exclamation-square-fill text-danger"></i> Fee Pending
             </a>
-            
+            {% endif %}
+
             <a href="{% url 'subscription-list' %}" class="nav-link {% if 'subscription' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-credit-card-fill"></i> Subscriptions
             </a>
+
+            {% if request.user.role != 'trainer' %}
             <a href="{% url 'payment-list' %}" class="nav-link {% if 'payment' in request.resolver_match.url_name and 'offer' not in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-cash-stack"></i> Payments
             </a>
@@ -332,6 +347,7 @@
                 <i class="bi bi-tag-fill"></i> Offers
             </a>
             {% endif %}
+            
             <a href="{% url 'user-branch-list' %}" class="nav-link {% if request.resolver_match.url_name == 'user-branch-list' %}active{% endif %}">
                 <i class="bi bi-shop"></i> Branches
             </a>
@@ -364,6 +380,8 @@
                     </a>
                 </div>
             </div>
+            {% endif %}
+            
             <div class="mt-auto border-top border-secondary pt-3 mt-4">
                 <a href="{% url 'signout' %}" class="nav-link text-danger">
                     <i class="bi bi-box-arrow-right"></i> Sign Out

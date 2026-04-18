@@ -147,6 +147,14 @@ class Member(models.Model):
     risk_medical = models.BooleanField(default=False)
     public_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, null=True)
     is_deleted = models.BooleanField(default=False)
+    assigned_trainer = models.ForeignKey(
+        'home.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_members',
+        help_text="Trainer assigned to this member"
+    )
     
     objects = SoftDeleteManager()
     all_objects = models.Manager()

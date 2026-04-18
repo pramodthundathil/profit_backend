@@ -1,0 +1,237 @@
+{% extends 'user/base.html' %}
+{% load static %}
+
+{% block title %}Trainer Dashboard | {{ gym.name|default:"ProFit" }}{% endblock %}
+
+{% block header_title %}Trainer Overview{% endblock %}
+{% block header_subtitle %}Managing your assigned members{% endblock %}
+
+{% block content %}
+<style>
+    .stats-card-trainer {
+        background: #1a1a1a;
+        color: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+        border: none;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .stats-card-trainer:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    
+    .stats-card-trainer .bg-icon {
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        font-size: 80px;
+        opacity: 0.1;
+        transform: rotate(-15deg);
+        color: #FFD700;
+    }
+    
+    .stats-card-trainer .label {
+        color: rgba(255,255,255,0.6);
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    
+    .stats-card-trainer .value {
+        font-size: 32px;
+        font-weight: 800;
+        margin-bottom: 0;
+    }
+    
+    .table-card-premium {
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,0.08);
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+    
+    .table-card-premium .card-header {
+        background: #000;
+        color: #FFD700;
+        padding: 15px 20px;
+        font-weight: 700;
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .badge-status {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    
+    .badge-expiring { background: rgba(255, 140, 0, 0.1); color: #FF8C00; border: 1px solid #FF8C00; }
+    .badge-active { background: rgba(50, 205, 50, 0.1); color: #32CD32; border: 1px solid #32CD32; }
+
+    .quick-action-pill {
+        background: #f8f9fa;
+        color: #333;
+        padding: 12px 20px;
+        border-radius: 12px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .quick-action-pill:hover {
+        background: #000;
+        color: #FFD700;
+        transform: translateX(5px);
+    }
+    
+    .quick-action-pill i {
+        font-size: 1.2rem;
+        margin-right: 12px;
+    }
+</style>
+
+<div class="container-fluid px-0">
+    <!-- Quick Actions -->
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-md-4">
+            <a href="{% url 'member-list' %}" class="quick-action-pill">
+                <i class="bi bi-people-fill"></i>
+                <span>My Members</span>
+            </a>
+        </div>
+        <div class="col-12 col-md-4">
+            <a href="{% url 'enquiries:enquiry_list' %}" class="quick-action-pill">
+                <i class="bi bi-chat-left-text-fill"></i>
+                <span>Leads & Enquiries</span>
+            </a>
+        </div>
+        <div class="col-12 col-md-4">
+            <a href="{% url 'subscription-list' %}" class="quick-action-pill">
+                <i class="bi bi-calendar-check-fill"></i>
+                <span>Subscription Logs</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-md-4">
+            <div class="stats-card-trainer">
+                <div class="label">Assigned Members</div>
+                <div class="value">{{ active_count }}</div>
+                <i class="bi bi-person-badge-fill bg-icon"></i>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stats-card-trainer">
+                <div class="label">Expiring Soon</div>
+                <div class="value">{{ expiring_soon_count }}</div>
+                <div class="small mt-1 text-white-50">Next 7 days</div>
+                <i class="bi bi-clock-history bg-icon"></i>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stats-card-trainer">
+                <div class="label">Recent Activity</div>
+                <div class="value">Active</div>
+                <div class="small mt-1 text-white-50">Monitoring assigned load</div>
+                <i class="bi bi-activity bg-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Recently Assigned -->
+        <div class="col-12 col-lg-7">
+            <div class="table-card-premium h-100">
+                <div class="card-header">
+                    <span><i class="bi bi-person-check-fill me-2"></i> Recently Assigned Members</span>
+                    <a href="{% url 'member-list' %}" class="btn btn-sm btn-outline-warning border-0 fw-bold">View All</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3 border-0">Member</th>
+                                <th class="border-0">Branch</th>
+                                <th class="border-0">Status</th>
+                                <th class="text-end pe-3 border-0">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in recent_members %}
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold text-dark">{{ member.full_name }}</div>
+                                    <div class="small text-muted">{{ member.member_id }}</div>
+                                </td>
+                                <td>{{ member.branch.name|default:"Main" }}</td>
+                                <td>
+                                    <span class="badge-status badge-active">{{ member.membership_status }}</span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <a href="{% url 'member-detail' member.id %}" class="btn btn-dark btn-sm rounded-pill px-3">View Profile</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="bi bi-person-x fs-1 d-block mb-2 opacity-25"></i>
+                                    No members assigned to you yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Near Expiry -->
+        <div class="col-12 col-lg-5">
+            <div class="table-card-premium h-100">
+                <div class="card-header">
+                    <span><i class="bi bi-hourglass-split me-2"></i> Near Expiry</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <tbody>
+                            {% for sub in expiring_soon_list %}
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold text-dark">{{ sub.member.full_name }}</div>
+                                    <div class="small text-muted text-truncate" style="max-width: 150px;">{{ sub.subscription_type.name|default:"General Plan" }}</div>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <span class="badge-status badge-expiring">{{ sub.end_date|date:"d M" }}</span>
+                                    <div class="small text-danger mt-1 fw-bold">{{ sub.days_remaining }} days left</div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center py-5 text-muted">No nearing expirations</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

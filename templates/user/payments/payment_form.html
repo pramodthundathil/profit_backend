@@ -119,6 +119,15 @@
                         </div>
 
                         <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted mb-1">Assign Trainer (Optional)</label>
+                            {% render_field form.trainer class="form-select form-select-sm shadow-sm" %}
+                            {% if form.trainer.errors %}
+                                <div class="text-danger small mt-1">{{ form.trainer.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">Assigning a trainer will give them access to this member's profile.</small>
+                        </div>
+
+                        <div class="col-md-12">
                             <label class="form-label small fw-bold text-muted mb-1">Notes</label>
                             {% render_field form.notes class="form-control form-control-sm" %}
                         </div>

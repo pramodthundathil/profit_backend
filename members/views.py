@@ -48,7 +48,11 @@ def mobile_member_list(request):
     members = Member.objects.filter(gym=user.gym).select_related('branch')
 
     # Apply scope permissions (Gym Admin vs Branch Admin/Staff)
-    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+    if user.role == 'trainer':
+        # Trainer: ONLY see members assigned to them
+        members = members.filter(assigned_trainer=user)
+    elif user.role in ['branch_admin', 'staff'] and user.branch:
+        # Branch-specific: Restricted to their branch only
         members = members.filter(branch=user.branch)
     elif branch_filter:
         members = members.filter(branch_id=branch_filter)
@@ -493,7 +497,10 @@ def subscription_list_api(request):
 
     # 2. Apply Branch Permission/Filter
     branch_filter = request.GET.get('branch', '')
-    if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
+    if user.role == 'trainer':
+        # Trainer: ONLY see subscriptions for members assigned to them
+        subscriptions = subscriptions.filter(member__assigned_trainer=user)
+    elif user.role in ['branch_admin', 'staff'] and user.branch:
         subscriptions = subscriptions.filter(member__branch=user.branch)
     elif branch_filter:
         subscriptions = subscriptions.filter(member__branch_id=branch_filter)

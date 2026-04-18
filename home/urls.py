@@ -36,6 +36,7 @@ urlpatterns = [
 
     #user dashboard
     path('user/dashboard/', views_user.user_dashboard, name='user-dashboard'),
+    path('trainer/dashboard/', views_user.trainer_dashboard, name='trainer-dashboard'),
     path('user/branches/', views_user.branch_list, name='user-branch-list'),
     path('user/branches/<int:pk>/edit/', views_user.edit_branch, name='user-edit-branch'),
     path('user/branches/<int:pk>/delete/', views_user.delete_branch, name='user-delete-branch'),

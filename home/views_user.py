@@ -14,9 +14,49 @@ from .forms import GymBranchForm, GymUserForm, HikConfigurationForm, GymUserEdit
 
 
 @login_required
+def trainer_dashboard(request):
+    user = request.user
+    if user.role != 'trainer':
+        return redirect('user-dashboard')
+        
+    gym = user.gym
+    today = timezone.now().date()
+    
+    # Filter only assigned members
+    members_qs = Member.objects.filter(assigned_trainer=user, is_active=True).select_related('branch', 'gym')
+    
+    active_count = members_qs.filter(membership_status='Active').count()
+    
+    # Expiring subscriptions for assigned members
+    seven_days_later = today + timezone.timedelta(days=7)
+    expiring_soon = Subscription.objects.filter(
+        member__assigned_trainer=user,
+        status='Active',
+        end_date__range=[today, seven_days_later]
+    ).select_related('member')
+    
+    recent_members = members_qs.order_by('-date_added')[:5]
+    
+    context = {
+        'active_count': active_count,
+        'expiring_soon_count': expiring_soon.count(),
+        'expiring_soon_list': expiring_soon[:5],
+        'recent_members': recent_members,
+        'gym': gym,
+        'title': 'Trainer Dashboard',
+        'is_restricted': True # Trainers always restricted to their assigned data
+    }
+    
+    return render(request, "user/trainer_dashboard.html", context)
+
 @login_required
 def user_dashboard(request):
     user = request.user
+    
+    # Redirect trainers to their specific dashboard
+    if user.role == 'trainer':
+        return redirect('trainer-dashboard')
+        
     if not user.gym:
         return render(request, "user/dashboard.html", {})
 

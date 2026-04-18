@@ -2,6 +2,8 @@ from django import forms
 from .models import Payment, GymOffer
 from members.models import Member, Subscription, SubscriptionInstallment
 
+from home.models import CustomUser
+
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
@@ -15,6 +17,13 @@ class PaymentForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'rows': 3}),
         }
 
+    trainer = forms.ModelChoiceField(
+        queryset=CustomUser.objects.none(), 
+        required=False,
+        label="Assign Trainer",
+        empty_label="No Trainer (Optional)"
+    )
+
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
@@ -24,6 +33,12 @@ class PaymentForm(forms.ModelForm):
             self.fields['member'].queryset = Member.objects.filter(gym=user.gym, is_active=True)
             self.fields['subscription'].queryset = Subscription.objects.filter(member__gym=user.gym)
             self.fields['installment'].queryset = SubscriptionInstallment.objects.filter(subscription__member__gym=user.gym)
+            
+            # Filter trainers for assignment
+            trainer_qs = CustomUser.objects.filter(gym=user.gym, role='trainer', is_active=True)
+            if user.branch:
+                trainer_qs = trainer_qs.filter(branch=user.branch)
+            self.fields['trainer'].queryset = trainer_qs
             
             # Role-based filtering for branch staff
             if user.role in ['branch_admin', 'staff', 'trainer'] and user.branch:
