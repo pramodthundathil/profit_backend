@@ -155,6 +155,14 @@ class Member(models.Model):
         related_name='assigned_members',
         help_text="Trainer assigned to this member"
     )
+    user = models.OneToOneField(
+        'home.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='member_profile',
+        help_text="User account for member login"
+    )
     
     objects = SoftDeleteManager()
     all_objects = models.Manager()

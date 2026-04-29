@@ -72,6 +72,7 @@ urlpatterns = [
     path('v3/utils/', include('utils.urls')),
     path('v4/notifications/', include('notifications.urls')),
     path('enquiries/', include('enquiry.urls')),
+    path('v5/member-api/', include('member_api.urls')),
     
     # path('api/v1/reports/', include('reports.urls')),
 

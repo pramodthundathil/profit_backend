@@ -11,6 +11,8 @@ from members.models import Member, Subscription, SubscriptionInstallment
 from payments.models import Payment
 
 from .forms import GymBranchForm, GymUserForm, HikConfigurationForm, GymUserEditForm
+import requests
+from django.http import JsonResponse
 
 
 @login_required
@@ -571,3 +573,47 @@ def delete_hik_config(request, pk):
           messages.error(request, "Permission denied.")
           
     return redirect('user-hik-config-list')
+
+@login_required
+def test_hik_connection(request, pk):
+    user = request.user
+    
+    if user.role not in ['gym_admin', 'branch_admin']:
+        return JsonResponse({"status": "error", "message": "Access denied. Only administrators can test device connections."}, status=403)
+        
+    config = get_object_or_404(HikConfigurationDb, pk=pk)
+    
+    # Permission check for object access
+    has_permission = False
+    if user.role == 'gym_admin' and user.gym:
+        if config.gym == user.gym or (config.gym_branch and config.gym_branch.gym == user.gym):
+            has_permission = True
+    elif user.role == 'branch_admin' and user.branch:
+        if config.gym_branch == user.branch:
+            has_permission = True
+            
+    if not has_permission:
+        return JsonResponse({"status": "error", "message": "You do not have permission to test this configuration."}, status=403)
+        
+    middleware_url = config.middleware_url
+    if not middleware_url.startswith("http://") and not middleware_url.startswith("https://"):
+        middleware_url = f"http://{middleware_url}"
+        
+    # strip trailing slash if any
+    middleware_url = middleware_url.rstrip("/")
+    
+    # Construct the middle app test connection url
+    try:
+        url = f"{middleware_url}/call_connection/{config.device_ip}/{config.device_username}/{config.device_password}/"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                return JsonResponse({"status": "success", "data": data})
+            except ValueError:
+                # the middle app returned non-json string on success
+                return JsonResponse({"status": "success", "message": "Connection successful", "data": response.text})
+        else:
+            return JsonResponse({"status": "error", "message": f"Device returned status: {response.status_code}"}, status=response.status_code)
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({"status": "error", "message": f"Failed to connect to middleware: {str(e)}"}, status=500)

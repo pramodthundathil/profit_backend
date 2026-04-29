@@ -54,6 +54,9 @@
                                 </td>
                                 <td>
                                     <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-outline-success btn-sm test-conn-btn" data-url="{% url 'user-test-hik-connection' config.id %}" title="Test Connection">
+                                            <i class="bi bi-wifi"></i>
+                                        </button>
                                         <a href="{% url 'user-edit-hik-config' config.id %}" class="btn btn-outline-primary btn-sm" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
@@ -97,4 +100,67 @@
         </div>
     </div>
 </div>
+
+<!-- Result Modal -->
+<div class="modal fade" id="testResultModal" tabindex="-1" aria-labelledby="testResultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testResultModalLabel">Connection Test Result</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="testResultContent" class="bg-light p-3 rounded" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const testButtons = document.querySelectorAll('.test-conn-btn');
+        const resultModal = new bootstrap.Modal(document.getElementById('testResultModal'));
+        const resultContent = document.getElementById('testResultContent');
+        
+        testButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const url = this.getAttribute('data-url');
+                const originalHtml = this.innerHTML;
+                
+                // Show loading spinner in the button
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                this.disabled = true;
+                
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        this.innerHTML = originalHtml;
+                        this.disabled = false;
+                        
+                        let displayData = '';
+                        if (data.status === 'success') {
+                            displayData = typeof data.data === 'object' ? JSON.stringify(data.data, null, 2) : data.data;
+                        } else {
+                            displayData = data.message;
+                        }
+                        
+                        // Parse XML slightly to look better if it is XML but format basically
+                        resultContent.textContent = displayData;
+                        
+                        // Show Modal
+                        resultModal.show();
+                    })
+                    .catch(error => {
+                        this.innerHTML = originalHtml;
+                        this.disabled = false;
+                        resultContent.textContent = "Fetch failed: " + error;
+                        resultModal.show();
+                    });
+            });
+        });
+    });
+</script>
 {% endblock %}

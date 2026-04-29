@@ -120,6 +120,25 @@
                         <span class="text-muted">Access Token</span>
                         <span class="fw-medium font-monospace">{{ member.access_token|default:"-" }}</span>
                     </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 align-items-center">
+                        <span class="text-muted">App Login</span>
+                        {% if member.user %}
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge badge-premium badge-premium-success border border-success"><i class="bi bi-check-circle-fill me-1"></i> Enabled</span>
+                                <form action="{% url 'member-disable-login' member.pk %}" method="POST" class="m-0" onsubmit="return confirm('Are you sure you want to disable login for this member? This will delete their login credentials.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-light border p-1 rounded d-flex align-items-center justify-content-center text-danger submit-btn" title="Disable Login" style="width: 24px; height: 24px;">
+                                        <i class="bi bi-trash3" style="font-size: 0.8rem;"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <form action="{% url 'member-enable-login' member.pk %}" method="POST" class="d-inline" onsubmit="return confirm('Enable Mobile App Login for this member? They must have a valid email address.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill py-1 px-3 submit-btn" style="font-size: 0.75rem;"><i class="bi bi-phone me-1"></i>Enable Login</button>
+                            </form>
+                        {% endif %}
+                    </li>
                     <li class="list-group-item d-flex flex-column px-0 border-top mt-2 pt-2">
                          <div class="mb-2">
                             <span class="text-muted small text-uppercase fw-bold">Gym Access Status</span>
@@ -155,6 +174,15 @@
                             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#extendAccessModal">
                                 <i class="fas fa-calendar-plus me-1"></i> Manually Extend
                             </button>
+                        </div>
+                    <li class="list-group-item d-flex flex-column px-0 border-top mt-2 pt-3 pb-0 border-bottom-0">
+                         <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small text-uppercase fw-bold">Device Synchronization</span>
+                            <i class="bi bi-hdd-network text-primary"></i>
+                        </div>
+                        <div id="hikDeviceStatus" class="d-flex flex-column align-items-center justify-content-center py-3 px-2 rounded bg-light border text-center">
+                            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                            <span class="small text-muted">Checking device...</span>
                         </div>
                     </li>
                 </ul>
@@ -789,5 +817,102 @@
             btn.classList.add('btn-outline-dark');
         }, 2000);
     }
+
+    // Hikvision Device Sync Script
+    $(document).ready(function() {
+        const checkUrl = "{% url 'member-hik-check' member.pk %}";
+        const addUrl = "{% url 'member-hik-add' member.pk %}";
+        const statusContainer = $("#hikDeviceStatus");
+        
+        function checkHikStatus() {
+            $.ajax({
+                url: checkUrl,
+                type: 'GET',
+                success: function(response) {
+                    if(response.status === 'success') {
+                        if(response.exists) {
+                            const p = response.person || {};
+                            const v = p.Valid || {};
+                            const isEnabled = (v.enable === true || v.enable === 'true' || v.enable === 'True');
+                            
+                            statusContainer.html(`
+                                <div class="text-success mb-1"><i class="bi bi-check-circle-fill fs-5 d-block"></i></div>
+                                <div class="fw-bold small text-success mb-1">Configured</div>
+                                <div class="text-start w-100 mt-2 p-2 bg-white rounded shadow-sm border border-light" style="font-size: 0.70rem; line-height: 1.4;">
+                                    <div class="d-flex justify-content-between mb-1 pb-1 border-bottom border-light">
+                                        <span class="text-muted text-uppercase">ID</span>
+                                        <span class="fw-bold font-monospace">${p.employeeNo || '-'}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1 pb-1 border-bottom border-light">
+                                        <span class="text-muted text-uppercase">Access</span>
+                                        <span class="fw-bold ${isEnabled ? 'text-success' : 'text-danger'}">
+                                            ${isEnabled ? '<i class="bi bi-unlock-fill me-1"></i>Enabled' : '<i class="bi bi-lock-fill me-1"></i>Disabled'}
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted text-uppercase">Valid Till</span>
+                                        <span class="fw-bold text-dark">${(v.endTime || '').split('T')[0] || '-'}</span>
+                                    </div>
+                                </div>
+                            `);
+                        } else {
+                            statusContainer.html(`
+                                <div class="text-warning mb-1"><i class="bi bi-exclamation-triangle-fill fs-5 d-block"></i></div>
+                                <div class="fw-bold small text-dark mb-2">Not Configured</div>
+                                <button id="addHikBtn" class="btn btn-sm btn-outline-primary w-100 rounded-pill shadow-sm" style="font-size: 0.75rem;">
+                                    <i class="bi bi-plus-circle me-1"></i>Add to Device
+                                </button>
+                            `);
+                        }
+                    } else {
+                        statusContainer.html(`
+                            <div class="text-danger mb-1"><i class="bi bi-x-circle-fill"></i></div>
+                            <div class="small text-danger">${response.message || 'Error checking device'}</div>
+                        `);
+                    }
+                },
+                error: function() {
+                    statusContainer.html(`
+                        <div class="text-danger mb-1"><i class="bi bi-wifi-off"></i></div>
+                        <div class="small text-danger">Failed to connect to device server</div>
+                    `);
+                }
+            });
+        }
+
+        // Auto-check on load
+        checkHikStatus();
+
+        // Handle Add Button Click
+        $(document).on('click', '#addHikBtn', function() {
+            const btn = $(this);
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status"></span>Adding...');
+            
+            $.ajax({
+                url: addUrl,
+                type: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        // Re-check status to show success UI
+                        statusContainer.html(`
+                            <div class="spinner-border spinner-border-sm text-success mb-1" role="status"></div>
+                            <span class="small text-success">Verifying...</span>
+                        `);
+                        setTimeout(checkHikStatus, 1000);
+                    } else {
+                        btn.prop('disabled', false).html('<i class="bi bi-plus-circle me-1"></i>Add to Device');
+                        alert("Error adding to device: " + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    btn.prop('disabled', false).html('<i class="bi bi-plus-circle me-1"></i>Add to Device');
+                    alert("Failed to connect to device server.");
+                }
+            });
+        });
+    });
 </script>
 {% endblock %}

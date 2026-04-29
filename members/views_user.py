@@ -11,7 +11,9 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from .models import Member, Subscription, HealthHistory, Medication, ParqForm, SubscriptionInstallment
 from .forms import MemberForm, SubscriptionForm, HealthHistoryForm, MedicationFormSet, ParqFormModelForm, ParqUpdateForm
-from home.models import GymBranch, CustomUser
+from home.models import GymBranch, CustomUser, HikConfigurationDb
+import requests
+from django.http import JsonResponse
 from payments.models import Payment, GymOffer
 
 @login_required
@@ -280,6 +282,141 @@ def member_assign_trainer(request, pk):
     return redirect('member-detail', pk=pk)
 
 @login_required
+def member_enable_login(request, pk):
+    user = request.user
+    member = get_object_or_404(Member, pk=pk, gym=user.gym)
+    
+    if user.role == 'branch_admin' and member.branch != user.branch:
+        messages.error(request, "Access denied. You can only edit members of your branch.")
+        return redirect('member-detail', pk=pk)
+        
+    if not member.email:
+        messages.error(request, "Member must have an email address to enable login.")
+        return redirect('member-detail', pk=pk)
+
+    # Check if a CustomUser already exists for this email
+    custom_user = CustomUser.objects.filter(email=member.email).first()
+    generated_password = None
+    if not custom_user:
+        import secrets
+        generated_password = secrets.token_urlsafe(8) # Shorter password for easier typing
+        custom_user = CustomUser.objects.create_user(
+            email=member.email,
+            password=generated_password,
+            role='member',
+            gym=member.gym,
+            phone_number=member.mobile_number,
+            username=f"member_{member.member_id}"
+        )
+    
+    if not hasattr(member, 'user') or member.user != custom_user:
+        member.user = custom_user
+        member.save()
+        
+        # Send Email with credentials if we generated a new password
+        if generated_password:
+            try:
+                from django.core.mail import send_mail
+                from django.conf import settings
+                send_mail(
+                    'Your Gym App Login Credentials',
+                    f'Hello {member.first_name},\n\nYour mobile app login has been enabled!\n\nYou can login using:\nEmail: {member.email}\nTemporary Password: {generated_password}\n\nPlease change your password after logging in or use the OTP login method.',
+                    settings.EMAIL_HOST_USER,
+                    [member.email],
+                    fail_silently=False,
+                )
+                messages.success(request, f"Mobile App Login enabled for {member.full_name}. Credentials sent to their email.")
+            except Exception as e:
+                print(f"Error sending email: {e}")
+                messages.warning(request, f"Login enabled for {member.full_name}, but failed to send the email with the temporary password. They can still login via OTP.")
+        else:
+            messages.success(request, f"Mobile App Login enabled for {member.full_name}.")
+    else:
+        messages.info(request, f"Mobile App Login is already enabled for {member.full_name}.")
+        
+    return redirect('member-detail', pk=pk)
+
+@login_required
+def member_disable_login(request, pk):
+    user = request.user
+    member = get_object_or_404(Member, pk=pk, gym=user.gym)
+    
+    if user.role == 'branch_admin' and member.branch != user.branch:
+        messages.error(request, "Access denied. You can only edit members of your branch.")
+        return redirect('member-detail', pk=pk)
+        
+    if member.user:
+        # Delete the CustomUser entirely. 
+        # The OneToOneField on Member with SET_NULL will automatically set member.user to None
+        member.user.delete()
+        messages.success(request, f"Mobile App Login has been disabled and login user account deleted for {member.full_name}.")
+    else:
+        messages.info(request, f"Mobile App Login is not enabled for {member.full_name}.")
+        
+    return redirect('member-detail', pk=pk)
+
+def hik_sync_member_status(member):
+    """
+    Helper function to sync enable/disable and date changes to the Hikvision device
+    """
+    from django.utils import timezone
+    import requests
+    
+    # We delay load HikConfigurationDb just in case it's not loaded, though it should be
+    from home.models import HikConfigurationDb
+    
+    config = None
+    if member.branch:
+        config = HikConfigurationDb.objects.filter(gym_branch=member.branch).first()
+    else:
+        config = HikConfigurationDb.objects.filter(gym=member.gym, gym_branch__isnull=True).first()
+        
+    if not config:
+        return False, "No device configuration found for user."
+
+    middleware_url = config.middleware_url
+    if not middleware_url.startswith("http://") and not middleware_url.startswith("https://"):
+        middleware_url = f"http://{middleware_url}"
+    middleware_url = middleware_url.rstrip("/")
+    
+    url = f"{middleware_url}/disable_enable_user_setup/"
+    
+    beginTime = member.registration_date.strftime("%Y-%m-%d") + "T00:00:00"
+    today = timezone.now().date()
+    from datetime import timedelta
+    
+    # If the user's access should be disabled (blocked or expired), forcefully roll back the device timestamp
+    if not member.access_enabled:
+        yesterday = today - timedelta(days=1)
+        endTime = yesterday.strftime("%Y-%m-%d") + "T23:59:59"
+    else:
+        if member.access_expiry_date:
+            endTime = member.access_expiry_date.strftime("%Y-%m-%d") + "T23:59:59"
+        else:
+            endTime = today.strftime("%Y-%m-%d") + "T23:59:59"
+
+    person_data = {
+        "employee_no": str(member.id),
+        "userType": "normal",
+        "is_valid": True, # Always True, device block enforced purely by rolling back endTime
+        "beginTime": beginTime,
+        "endTime": endTime
+    }
+    
+    payload = {
+        "device_ip": config.device_ip,
+        "username": config.device_username,
+        "password": config.device_password,
+        "person_data": person_data
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        return response.status_code == 200, "Synced"
+    except Exception as e:
+        return False, str(e)
+
+@login_required
 def member_block_access(request, pk):
     user = request.user
     member = get_object_or_404(Member, pk=pk, gym=user.gym)
@@ -291,7 +428,14 @@ def member_block_access(request, pk):
     member.is_access_blocked = True
     member.save()
     member.update_access_status()
-    messages.warning(request, f"Access for {member.full_name} has been blocked.")
+    
+    # Sync to Hikvision device
+    success, msg = hik_sync_member_status(member)
+    if success:
+        messages.warning(request, f"Access for {member.full_name} has been blocked system-wide and on the physical device.")
+    else:
+        messages.warning(request, f"Access for {member.full_name} blocked on system, but device sync failed/skipped.")
+        
     return redirect('member-detail', pk=pk)
 
 @login_required
@@ -306,7 +450,14 @@ def member_unblock_access(request, pk):
     member.is_access_blocked = False
     member.save()
     member.update_access_status()
-    messages.success(request, f"Access for {member.full_name} has been unblocked.")
+    
+    # Sync to Hikvision device
+    success, msg = hik_sync_member_status(member)
+    if success:
+        messages.success(request, f"Access for {member.full_name} has been unblocked system-wide and on the physical device.")
+    else:
+        messages.success(request, f"Access for {member.full_name} unblocked on system, but device sync failed/skipped.")
+        
     return redirect('member-detail', pk=pk)
 
 @login_required
@@ -328,7 +479,13 @@ def member_extend_access(request, pk):
                 member.manual_access_expiry = date_obj
                 member.save()
                 member.update_access_status()
-                messages.success(request, f"Access for {member.full_name} manually extended to {expiry_date}.")
+                
+                # Sync to Hikvision device
+                success, msg = hik_sync_member_status(member)
+                if success:
+                    messages.success(request, f"Access for {member.full_name} manually extended to {expiry_date} and synced to device.")
+                else:
+                    messages.success(request, f"Access for {member.full_name} manually extended to {expiry_date}, but device sync failed.")
             except ValueError:
                 messages.error(request, "Invalid date format.")
         else:
@@ -799,9 +956,156 @@ def parq_form_update(request, pk):
     context = {
         'form': form,
         'member': parq.member,
-        'title': 'Update PAR-Q Form'
+        'title': 'Edit PAR-Q Form'
     }
-    return render(request, 'user/members/parq/parq_update_form.html', context)
+    return render(request, 'user/members/parq/parq_form.html', context)
+
+# ============================================================================
+# HIKVISION DEVICE INTEGRATION
+# ============================================================================
+
+@login_required
+def hik_check_member(request, pk):
+    member = get_object_or_404(Member, pk=pk, gym=request.user.gym)
+    
+    # Permission Check
+    if request.user.role == 'branch_admin' and member.branch != request.user.branch:
+        return JsonResponse({"status": "error", "message": "Access denied."}, status=403)
+        
+    # Get config for the branch or gym
+    config = None
+    if member.branch:
+        config = HikConfigurationDb.objects.filter(gym_branch=member.branch).first()
+        if not config:
+            return JsonResponse({"status": "error", "message": f"No device configured specifically for branch: {member.branch.name}."})
+    else:
+        config = HikConfigurationDb.objects.filter(gym=member.gym, gym_branch__isnull=True).first()
+        if not config:
+            return JsonResponse({"status": "error", "message": "No main gym device configuration found."})
+        
+    middleware_url = config.middleware_url
+    if not middleware_url.startswith("http://") and not middleware_url.startswith("https://"):
+        middleware_url = f"http://{middleware_url}"
+    middleware_url = middleware_url.rstrip("/")
+    
+    url = f"{middleware_url}/get_person_by_employee_no/"
+    payload = {
+        "device_ip": config.device_ip,
+        "username": config.device_username,
+        "password": config.device_password,
+        "employee_no": str(member.id)
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success":
+                return JsonResponse({"status": "success", "exists": True, "person": data.get("person")})
+            else:
+                return JsonResponse({"status": "success", "exists": False, "message": data.get("message", "User not found")})
+        elif response.status_code == 404:
+            # Middleware returns 404 when user is explicitly not found on the device
+            try:
+                data = response.json()
+                return JsonResponse({"status": "success", "exists": False, "message": data.get("message", "User not found")})
+            except:
+                return JsonResponse({"status": "success", "exists": False, "message": "User not found on device."})
+        else:
+            return JsonResponse({"status": "error", "message": f"Middleware returned status: {response.status_code}"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": f"Connection error: {str(e)}"})
+
+@login_required
+def hik_add_member(request, pk):
+    member = get_object_or_404(Member, pk=pk, gym=request.user.gym)
+    
+    # Permission Check
+    if request.user.role == 'branch_admin' and member.branch != request.user.branch:
+        return JsonResponse({"status": "error", "message": "Access denied."}, status=403)
+        
+    # Get config
+    config = None
+    if member.branch:
+        config = HikConfigurationDb.objects.filter(gym_branch=member.branch).first()
+        if not config:
+            return JsonResponse({"status": "error", "message": f"No device configured specifically for branch: {member.branch.name}."})
+    else:
+        config = HikConfigurationDb.objects.filter(gym=member.gym, gym_branch__isnull=True).first()
+        if not config:
+            return JsonResponse({"status": "error", "message": "No main gym device configuration found."})
+        
+    middleware_url = config.middleware_url
+    if not middleware_url.startswith("http://") and not middleware_url.startswith("https://"):
+        middleware_url = f"http://{middleware_url}"
+    middleware_url = middleware_url.rstrip("/")
+    
+    url = f"{middleware_url}/add_person_record/"
+    
+    beginTime = member.registration_date.strftime("%Y-%m-%d") + "T00:00:00"
+    beginTime = member.registration_date.strftime("%Y-%m-%d") + "T00:00:00"
+    from django.utils import timezone
+    from datetime import timedelta
+    today = timezone.now().date()
+    
+    if not member.access_enabled:
+        yesterday = today - timedelta(days=1)
+        endTime = yesterday.strftime("%Y-%m-%d") + "T23:59:59"
+    else:
+        if member.access_expiry_date:
+            endTime = member.access_expiry_date.strftime("%Y-%m-%d") + "T23:59:59"
+        else:
+            endTime = today.strftime("%Y-%m-%d") + "T23:59:59"
+
+    gender_norm = str(member.gender).strip().lower()
+    if gender_norm not in ["male", "female"]:
+        gender_norm = "male" # Default fallback
+        
+    person_data = {
+        "employeeNo": str(member.id),
+        "name": member.full_name,
+        "userType": "normal",
+        "gender": gender_norm,
+        "enable": True, # Always True, device block enforced purely by rolling back endTime
+        "beginTime": beginTime,
+        "endTime": endTime,
+        "doorRight": "1",
+        "RightPlan": [
+            {
+                "doorNo": 1,
+                "planTemplateNo": "1"
+            }
+        ]
+    }
+    
+    payload = {
+        "device_ip": config.device_ip,
+        "username": config.device_username,
+        "password": config.device_password,
+        "person_data": person_data
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success":
+                 return JsonResponse({"status": "success", "message": "Added to device successfully."})
+            else:
+                 error_msg = data.get("message", "Failed to add.")
+                 if "statusCode" in data:
+                      stcode = data.get("statusCode")
+                      subst = data.get("subStatusCode", "")
+                      ststr = data.get("statusString", "")
+                      if stcode == 6 and subst == 'employeeNoAlreadyExist':
+                          error_msg = "Device says employee number already exists."
+                      else:
+                          error_msg = f"{ststr} {subst} (Code: {stcode})"
+                 return JsonResponse({"status": "error", "message": error_msg})
+        else:
+            return JsonResponse({"status": "error", "message": f"Middleware returned status: {response.status_code}"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": f"Connection error: {str(e)}"})
 
 # ============================================================================
 # PUBLIC FORM VIEWS (NO LOGIN REQUIRED)

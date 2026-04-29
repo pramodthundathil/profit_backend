@@ -369,6 +369,7 @@ class CustomUser(SoftDeleteMixin, AbstractBaseUser, PermissionsMixin):
         ('branch_admin', 'Branch Manager'),
         ('staff', 'Staff'),
         ('trainer', 'Trainer'),
+        ('member', 'Gym Member'),
     )
 
     username = models.CharField(max_length=100, null=True, blank=True)
@@ -442,8 +443,8 @@ class CustomUser(SoftDeleteMixin, AbstractBaseUser, PermissionsMixin):
             if not self.branch:
                 raise ValidationError("Branch Manager must be assigned to a specific branch")
         
-        # Staff and Trainers must have gym, but branch is optional (Headquarters staff)
-        if self.role in ['staff', 'trainer']:
+        # Staff, Trainers and Members must have gym, but branch is optional
+        if self.role in ['staff', 'trainer', 'member']:
             if not self.gym:
                 raise ValidationError(f"{self.get_role_display()} must be assigned to a gym")
             

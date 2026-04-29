@@ -52,6 +52,7 @@ urlpatterns = [
     path('user/settings/hik/add/', views_user.add_hik_config, name='user-add-hik-config'),
     path('user/settings/hik/<int:pk>/edit/', views_user.edit_hik_config, name='user-edit-hik-config'),
     path('user/settings/hik/<int:pk>/delete/', views_user.delete_hik_config, name='user-delete-hik-config'),
+    path('user/settings/hik/<int:pk>/test/', views_user.test_hik_connection, name='user-test-hik-connection'),
 
     # Gym Configuration
 

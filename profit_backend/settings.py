@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'utils',
     'notifications',
     'enquiry',
+    'member_api',
 ]
 
 MIDDLEWARE = [
