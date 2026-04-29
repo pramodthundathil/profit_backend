@@ -1,3 +1,4 @@
+from rest_framework import serializers
 from members.models import Member, Subscription, SubscriptionInstallment
 from payments.models import Payment
 from home.models import CustomUser
