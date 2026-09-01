@@ -72,5 +72,6 @@ urlpatterns = [
     path('dashboard/gym-office/<int:gym_id>/add-license/', views_admin.add_license_key, name='add-license-key'),
     path('dashboard/gym-office/<int:gym_id>/edit-license/', views_admin.edit_license_key, name='edit-license-key'),
     path('dashboard/gym-office/<int:gym_id>/delete-license/', views_admin.delete_license_key, name='delete-license-key'),
+    path('dashboard/gym-office/<int:gym_id>/migrate-legacy/', views_admin.migrate_legacy_data, name='migrate-legacy-data'),
     path('dashboard/gym-office/<int:pk>/delete/', views_admin.gym_office_delete, name='gym-office-delete'),
 ]

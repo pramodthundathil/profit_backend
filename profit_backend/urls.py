@@ -78,6 +78,8 @@ urlpatterns = [
 
     #html pages rendering for admin and page users 
     path("",views_admin.signin, name="signin"),
+    path("terms-and-conditions/", views_admin.terms_and_conditions, name="terms-and-conditions"),
+    path("privacy-policy/", views_admin.privacy_policy, name="privacy-policy"),
 
 ]
 

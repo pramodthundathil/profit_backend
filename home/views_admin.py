@@ -52,6 +52,15 @@ def signout(request):
     return redirect('signin')
 
 
+def terms_and_conditions(request):
+    return render(request, "terms.html")
+
+
+def privacy_policy(request):
+    return render(request, "privacy.html")
+
+
+
 @login_required
 @admin_only
 def admin_dashboard(request):
@@ -82,12 +91,14 @@ def admin_dashboard(request):
 from .forms import GymOfficeForm, GymBranchForm, GymUserForm, GymOfficeCreationForm
 
 @login_required
+@admin_only
 def gym_office_list(request):
     # Only show non-deleted gyms
     gym_offices = GymOffice.objects.filter(is_deleted=False).prefetch_related('gym_branches')
     return render(request, "admin/gym/gym_office_list.html", {'gym_offices': gym_offices})
 
 @login_required
+@admin_only
 def add_gym_office(request):
     if request.method == 'POST':
         form = GymOfficeCreationForm(request.POST, request.FILES)
@@ -123,6 +134,7 @@ def add_gym_office(request):
     return render(request, "admin/gym/add_gym_office.html", {'form': form})
 
 @login_required
+@admin_only
 def gym_office_detail(request, pk):
     try:
         gym = GymOffice.objects.get(pk=pk, is_deleted=False)
@@ -145,6 +157,7 @@ def gym_office_detail(request, pk):
     return render(request, "admin/gym/gym_office_detail.html", context)
 
 @login_required
+@admin_only
 def gym_office_edit(request, pk):
     try:
         gym = GymOffice.objects.get(pk=pk, is_deleted=False)
@@ -164,6 +177,7 @@ def gym_office_edit(request, pk):
     return render(request, "admin/gym/gym_office_form.html", {'form': form, 'gym': gym})
 
 @login_required
+@admin_only
 def add_gym_branch(request, gym_id):
     try:
         gym = GymOffice.objects.get(pk=gym_id, is_deleted=False)
@@ -186,6 +200,7 @@ def add_gym_branch(request, gym_id):
     return render(request, "admin/gym/add_branch_form.html", {'form': form, 'gym': gym})
 
 @login_required
+@admin_only
 def add_gym_user(request, gym_id):
     try:
         gym = GymOffice.objects.get(pk=gym_id, is_deleted=False)
@@ -208,6 +223,7 @@ def add_gym_user(request, gym_id):
     return render(request, "admin/gym/add_user_form.html", {'form': form, 'gym': gym})
 
 @login_required
+@admin_only
 def gym_office_delete(request, pk):
     if request.method == "POST":
         try:
@@ -223,6 +239,7 @@ from .forms import LicenseKeyForm
 from .models import LicenseKey
 
 @login_required
+@admin_only
 def add_license_key(request, gym_id):
     try:
         gym = GymOffice.objects.get(pk=gym_id, is_deleted=False)
@@ -265,6 +282,7 @@ def add_license_key(request, gym_id):
     })
 
 @login_required
+@admin_only
 def edit_license_key(request, gym_id):
     try:
         gym = GymOffice.objects.get(pk=gym_id, is_deleted=False)
@@ -294,6 +312,7 @@ def edit_license_key(request, gym_id):
     })
 
 @login_required
+@admin_only
 def delete_license_key(request, gym_id):
     if request.method == "POST":
         try:
@@ -314,3 +333,51 @@ def delete_license_key(request, gym_id):
             messages.error(request, "Gym Office not found.")
             
     return redirect('gym-office-detail', pk=gym_id)
+
+import os
+import threading
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+from django.core.management import call_command
+from .forms import LegacyMigrationForm
+
+@login_required
+@admin_only
+def migrate_legacy_data(request, gym_id):
+    try:
+        gym = GymOffice.objects.get(pk=gym_id, is_deleted=False)
+    except GymOffice.DoesNotExist:
+        messages.error(request, "Gym Office not found.")
+        return redirect('gym-office-list')
+        
+    if request.method == 'POST':
+        form = LegacyMigrationForm(request.POST, request.FILES)
+        if form.is_valid():
+            uploaded_file = request.FILES['sqlite_db']
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'migrations'))
+            # Save file with safe name
+            filename = fs.save(f"gym_{gym.id}_legacy.sqlite3", uploaded_file)
+            file_path = fs.path(filename)
+            
+            # Run migration in background thread
+            def run_migration():
+                try:
+                    call_command('migrate_legacy_gym', legacy_db=file_path, gym_id=gym.id)
+                except Exception as e:
+                    print(f"Migration failed for Gym {gym.id}: {str(e)}")
+                    
+            thread = threading.Thread(target=run_migration)
+            thread.daemon = True
+            thread.start()
+            
+            messages.success(request, f"Legacy data migration for '{gym.name}' has started in the background. Please check back in a few minutes.")
+            return redirect('gym-office-detail', pk=gym_id)
+        else:
+            messages.error(request, "Please upload a valid SQLite database file.")
+    else:
+        form = LegacyMigrationForm()
+        
+    return render(request, "admin/gym/migrate_legacy.html", {
+        'form': form,
+        'gym': gym
+    })

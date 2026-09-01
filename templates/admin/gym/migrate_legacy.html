@@ -1,0 +1,68 @@
+{% extends 'admin/dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'gym-office-list' %}" class="text-decoration-none text-muted">Gym Offices</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'gym-office-detail' gym.pk %}" class="text-decoration-none text-muted">{{ gym.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Migrate Legacy Data</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-bottom px-4 py-3">
+                    <h5 class="mb-0 fw-bold">Migrate Legacy Data for {{ gym.name }}</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info rounded-3 mb-4">
+                        <div class="d-flex">
+                            <div class="me-3 mt-1">
+                                <i class="bi bi-info-circle-fill fs-4 text-info"></i>
+                            </div>
+                            <div>
+                                <h6 class="alert-heading fw-bold mb-1">About Data Migration</h6>
+                                <p class="mb-0 small">
+                                    Upload the legacy <code>db.sqlite3</code> file to migrate Branches, Members, Subscriptions, Payments, and Finance records directly into this Gym Office. 
+                                    <br><br>
+                                    <strong>Note:</strong> Due to automatic email notifications, large databases can take several minutes to process. The migration will be initiated in the background, and you can monitor the imported data directly in the dashboard after a few minutes.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.sqlite_db.id_for_label }}" class="form-label fw-medium">{{ form.sqlite_db.label }}</label>
+                            {{ form.sqlite_db }}
+                            {% if form.sqlite_db.help_text %}
+                                <div class="form-text mt-2">{{ form.sqlite_db.help_text }}</div>
+                            {% endif %}
+                            {% if form.sqlite_db.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.sqlite_db.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                            <a href="{% url 'gym-office-detail' gym.pk %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                <i class="bi bi-database-up me-2"></i> Start Background Migration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -280,3 +280,9 @@ class HikConfigurationForm(forms.ModelForm):
                 self.fields['gym_branch'].empty_label = f"Main Office ({user.gym.name})"
                 self.fields['gym_branch'].required = False
 
+class LegacyMigrationForm(forms.Form):
+    sqlite_db = forms.FileField(
+        label="Legacy SQLite Database (.sqlite3)",
+        help_text="Upload the db.sqlite3 file from your legacy system. The migration will run in the background.",
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.sqlite3,.db'})
+    )
