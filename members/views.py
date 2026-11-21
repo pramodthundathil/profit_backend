@@ -561,3 +561,34 @@ def subscription_list_api(request):
         "stats": stats,
         "subscriptions": serializer.data
     })
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Manually trigger Meta WhatsApp expiry reminder for a member",
+    responses={
+        200: openapi.Response(description="WhatsApp message sent successfully"),
+        400: openapi.Response(description="Failed to send message")
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def member_send_expiry_whatsapp_api(request, pk):
+    user = request.user
+    if not user.gym:
+        return Response({'detail': 'No gym associated.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    member = get_object_or_404(Member, pk=pk, gym=user.gym)
+    sub_id = request.data.get('subscription_id') or request.query_params.get('subscription_id')
+    subscription = None
+    if sub_id:
+        subscription = member.subscriptions.filter(pk=sub_id).first()
+
+    from utils.whatsapp import send_member_expiry_whatsapp
+    success, msg = send_member_expiry_whatsapp(member=member, subscription=subscription, force=True)
+
+    if success:
+        return Response({'success': True, 'message': msg}, status=status.HTTP_200_OK)
+    else:
+        return Response({'success': False, 'message': msg}, status=status.HTTP_400_BAD_REQUEST)
+

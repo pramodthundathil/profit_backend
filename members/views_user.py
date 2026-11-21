@@ -1252,3 +1252,46 @@ def pending_fee_list(request):
         'currency_symbol': user.gym.currency_symbol if hasattr(user.gym, 'currency_symbol') else '₹'
     }
     return render(request, 'user/members/pending_fee_list.html', context)
+
+
+@login_required
+def member_send_expiry_whatsapp(request, pk):
+    """
+    Manually triggers sending a WhatsApp subscription expiry reminder
+    to the customer using the Meta WhatsApp Cloud API template.
+    """
+    user = request.user
+    if not user.gym:
+        messages.error(request, "Access denied. No gym associated.")
+        return redirect('user-dashboard')
+
+    member = get_object_or_404(Member, pk=pk, gym=user.gym)
+
+    if user.role == 'branch_admin' and member.branch and user.branch and member.branch != user.branch:
+        messages.error(request, "Access denied for this branch.")
+        return redirect('member-list')
+
+    sub_id = request.GET.get('subscription_id') or request.POST.get('subscription_id')
+    subscription = None
+    if sub_id:
+        subscription = member.subscriptions.filter(pk=sub_id).first()
+
+    from utils.whatsapp import send_member_expiry_whatsapp
+    success, msg = send_member_expiry_whatsapp(member=member, subscription=subscription, force=True)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
+        return JsonResponse({
+            'success': success,
+            'message': msg
+        })
+
+    if success:
+        messages.success(request, msg)
+    else:
+        messages.error(request, f"WhatsApp Expiry Alert Failed: {msg}")
+
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
+    return redirect('member-detail', pk=pk)
+

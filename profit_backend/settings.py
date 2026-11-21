@@ -281,3 +281,40 @@ EMAIL_HOST_USER = 'profitgym.management@gmail.com'
 EMAIL_HOST_PASSWORD = 'psoovwzscskarabv'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ============================================================================
+# Meta WhatsApp Cloud API Configuration
+# ============================================================================
+def _load_whatsapp_env():
+    possible_paths = [
+        BASE_DIR / '.env',
+        Path('/Users/pramodgopinath/Desktop/meta_whatapp/.env'),
+    ]
+    for p in possible_paths:
+        if p.exists():
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#') or '=' not in line:
+                            continue
+                        k, v = line.split('=', 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+            except Exception:
+                pass
+
+_load_whatsapp_env()
+
+META_WHATSAPP_PHONE_NUMBER_ID = os.getenv('PHONE_NUMBER_ID', '1375961362274999')
+META_WHATSAPP_TEMPLATE_ID = os.getenv('TEMPLATE_ID', '2513786222482854')
+META_WHATSAPP_ACCESS_TOKEN = os.getenv(
+    'ACCESS_TOKEN',
+    'EABC9uZAx26yABTKaMeRXmxH5nVMuonynxZB75tEHqsN2yrbyUcH9jpeCY5dKwYc7KU4HaZAAjK8sNnPwGGkC4F2TZAPkOau53dLHNC6mdlV5XLsXlXOVzZBOTYXzdBAy3zcM2LP6t7hNf3zw2ySZC4ZAlIn9nCCJsRUcpb46WtOM4yWTt9Ib4eAn9LDO0ZCl3gZDZD'
+)
+META_WHATSAPP_TEMPLATE_NAME = os.getenv('TEMPLATE_NAME', 'subscription_end')
+META_WHATSAPP_TEMPLATE_LANG = os.getenv('TEMPLATE_LANG', 'en')
+META_WHATSAPP_GRAPH_API_VERSION = os.getenv('GRAPH_API_VERSION', 'v21.0')
+

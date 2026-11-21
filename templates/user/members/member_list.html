@@ -130,7 +130,13 @@
                         </td>
                         <td>
                             <div class="btn-group">
-                                <a href="{% url 'member-detail' member.id %}" class="btn btn-sm btn-outline-dark " title="View Details"><i class="bi bi-eye"></i></a>
+                                <a href="{% url 'member-detail' member.id %}" class="btn btn-sm btn-outline-dark" title="View Details"><i class="bi bi-eye"></i></a>
+                                <form action="{% url 'member-send-expiry-whatsapp' member.id %}" method="post" class="d-inline" onsubmit="return confirm('Send WhatsApp subscription expiry reminder to {{ member.full_name }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Send Expiry WhatsApp">
+                                        <i class="bi bi-whatsapp"></i>
+                                    </button>
+                                </form>
                                 <form action="{% url 'member-delete' member.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this member?');">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger text-dark" title="Delete"><i class="bi bi-trash"></i></button>

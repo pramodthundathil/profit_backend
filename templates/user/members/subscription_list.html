@@ -109,8 +109,14 @@
                                     <span class="badge bg-secondary">{{ sub.status }}</span>
                                 {% endif %}
                             </td>
-                            <td class="text-end">
+                            <td class="text-end" onclick="event.stopPropagation();">
                                 <div class="btn-group btn-group-sm">
+                                    <form action="{% url 'member-send-expiry-whatsapp' sub.member.id %}?subscription_id={{ sub.pk }}" method="post" class="d-inline" onsubmit="return confirm('Send WhatsApp expiry reminder to {{ sub.member.full_name }}?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-success" title="Send Expiry WhatsApp">
+                                            <i class="bi bi-whatsapp"></i>
+                                        </button>
+                                    </form>
                                     <a href="{% url 'subscription-detail' sub.pk %}" class="btn btn-outline-primary" title="View Details">
                                         <i class="bi bi-eye"></i>
                                     </a>

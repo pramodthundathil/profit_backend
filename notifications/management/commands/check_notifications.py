@@ -38,7 +38,46 @@ class Command(BaseCommand):
             if old_status != member.membership_status:
                  self.stdout.write(f'Member {member.full_name} status updated from {old_status} to {member.membership_status}.')
 
-        # 3. EXPIRY REMINDERS: 3 days before expiry
+        # 3. EXPIRY REMINDERS: 5 days before expiry (WhatsApp + Email + In-App)
+        reminder_date_5 = today + timedelta(days=5)
+        expiring_5_days = Subscription.objects.filter(status='Active', end_date=reminder_date_5)
+        self.stdout.write(f'Checking 5-day expiry reminders for {reminder_date_5} (found {expiring_5_days.count()})...')
+        for sub in expiring_5_days:
+            # Create in-app notification
+            Notification.objects.create(
+                member=sub.member,
+                title="Subscription Expiring Soon (5 Days)",
+                message=f"Subscription for {sub.member.full_name} (ID: {sub.member.member_id}) will expire in 5 days on {sub.end_date}.",
+                notification_type='EXPIRY_REMINDER'
+            )
+            send_notification_email(
+                sub.member,
+                "Subscription Expiring Soon",
+                f"Your subscription will expire in 5 days on {sub.end_date}."
+            )
+
+            # Send Meta WhatsApp expiry template message
+            from utils.whatsapp import send_member_expiry_whatsapp
+            already_sent_whatsapp = Notification.objects.filter(
+                member=sub.member,
+                title="WhatsApp Expiry Reminder",
+                created_at__date=today
+            ).exists()
+
+            if not already_sent_whatsapp:
+                wa_success, wa_msg = send_member_expiry_whatsapp(sub.member, subscription=sub)
+                if wa_success:
+                    self.stdout.write(self.style.SUCCESS(
+                        f"  [WhatsApp] 5-day expiry reminder sent to {sub.member.full_name} ({sub.member.mobile_number})."
+                    ))
+                else:
+                    self.stdout.write(self.style.WARNING(
+                        f"  [WhatsApp] Could not send to {sub.member.full_name}: {wa_msg}"
+                    ))
+            else:
+                self.stdout.write(f"  [WhatsApp] Already sent today for {sub.member.full_name}, skipping.")
+
+        # 4. EXPIRY REMINDERS: 3 days before expiry
         expiring_soon = Subscription.objects.filter(status='Active', end_date=reminder_date)
         for sub in expiring_soon:
             Notification.objects.create(
@@ -49,7 +88,7 @@ class Command(BaseCommand):
             )
             send_notification_email(sub.member, "Subscription Expiring Soon", f"Your subscription will expire in 3 days on {sub.end_date}.")
 
-        # 4. OVERDUE INSTALLMENTS: Any installment due before today that is not paid
+        # 5. OVERDUE INSTALLMENTS: Any installment due before today that is not paid
         overdue_installments = SubscriptionInstallment.objects.filter(
             due_date__lt=today
         ).exclude(status__in=['Paid', 'Overdue'])

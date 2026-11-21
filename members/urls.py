@@ -11,6 +11,7 @@ urlpatterns = [
     path('user/members/<int:pk>/block/', views_user.member_block_access, name='member-block-access'),
     path('user/members/<int:pk>/unblock/', views_user.member_unblock_access, name='member-unblock-access'),
     path('user/members/<int:pk>/extend/', views_user.member_extend_access, name='member-extend-access'),
+    path('user/members/<int:pk>/send-expiry-whatsapp/', views_user.member_send_expiry_whatsapp, name='member-send-expiry-whatsapp'),
     path('user/members/<int:pk>/assign-trainer/', views_user.member_assign_trainer, name='member-assign-trainer'),
     path('user/members/<int:pk>/enable-login/', views_user.member_enable_login, name='member-enable-login'),
     path('user/members/<int:pk>/disable-login/', views_user.member_disable_login, name='member-disable-login'),
@@ -54,6 +55,7 @@ urlpatterns = [
     path('api/members/<int:pk>/block/', views.member_block_access_api, name='api-member-block-access'),
     path('api/members/<int:pk>/unblock/', views.member_unblock_access_api, name='api-member-unblock-access'),
     path('api/members/<int:pk>/extend/', views.member_extend_access_api, name='api-member-extend-access'),
+    path('api/members/<int:pk>/send-expiry-whatsapp/', views.member_send_expiry_whatsapp_api, name='api-member-send-expiry-whatsapp'),
     
     # Subscription API CRUD
     path('api/members/<int:member_id>/subscription/create/', views.subscription_create_api, name='api-subscription-create'),
