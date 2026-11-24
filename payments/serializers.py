@@ -20,7 +20,8 @@ class GymOfferSerializer(serializers.ModelSerializer):
             'discount_percentage', 'start_date', 
             'end_date', 'is_active', 'created_at'
         ]
-        read_only_fields = ['created_at']
+        # gym always comes from the signed-in user
+        read_only_fields = ['gym', 'created_at']
 
 class PaymentSerializer(serializers.ModelSerializer):
     member_details = MemberShortSerializer(source='member', read_only=True)

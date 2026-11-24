@@ -1,4 +1,5 @@
-from rest_framework import viewsets, permissions, status
+from django.db import IntegrityError, transaction
+from rest_framework import serializers, viewsets, permissions, status
 from rest_framework.response import Response
 from .models import Batch_DB, TypeSubscription, SubscriptionPeriod
 from .serializers import BatchSerializer, TypeSubscriptionSerializer, SubscriptionPeriodSerializer
@@ -32,7 +33,26 @@ class GymConfigPermission(permissions.BasePermission):
         # Strict isolation: object gym must match user gym
         return obj.gym == request.user.gym
 
-class BatchViewSet(viewsets.ModelViewSet):
+class GymUniqueMixin:
+    """Saves under the user's gym and reports duplicates as a 400 instead of a 500."""
+    duplicate_message = 'This already exists.'
+
+    def _save(self, serializer, **kwargs):
+        try:
+            with transaction.atomic():
+                serializer.save(**kwargs)
+        except IntegrityError:
+            raise serializers.ValidationError({'detail': self.duplicate_message})
+
+    def perform_create(self, serializer):
+        self._save(serializer, gym=self.request.user.gym)
+
+    def perform_update(self, serializer):
+        self._save(serializer)
+
+
+class BatchViewSet(GymUniqueMixin, viewsets.ModelViewSet):
+    duplicate_message = 'A batch with this name and time already exists.'
     serializer_class = BatchSerializer
     permission_classes = [GymConfigPermission]
 
@@ -65,10 +85,8 @@ class BatchViewSet(viewsets.ModelViewSet):
             return Batch_DB.objects.none()
         return Batch_DB.objects.filter(gym=self.request.user.gym)
 
-    def perform_create(self, serializer):
-        serializer.save(gym=self.request.user.gym)
-
-class TypeSubscriptionViewSet(viewsets.ModelViewSet):
+class TypeSubscriptionViewSet(GymUniqueMixin, viewsets.ModelViewSet):
+    duplicate_message = 'A subscription type with this name already exists.'
     serializer_class = TypeSubscriptionSerializer
     permission_classes = [GymConfigPermission]
 
@@ -101,10 +119,8 @@ class TypeSubscriptionViewSet(viewsets.ModelViewSet):
             return TypeSubscription.objects.none()
         return TypeSubscription.objects.filter(gym=self.request.user.gym)
 
-    def perform_create(self, serializer):
-        serializer.save(gym=self.request.user.gym)
-
-class SubscriptionPeriodViewSet(viewsets.ModelViewSet):
+class SubscriptionPeriodViewSet(GymUniqueMixin, viewsets.ModelViewSet):
+    duplicate_message = 'This subscription period already exists.'
     serializer_class = SubscriptionPeriodSerializer
     permission_classes = [GymConfigPermission]
 
@@ -136,9 +152,6 @@ class SubscriptionPeriodViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return SubscriptionPeriod.objects.none()
         return SubscriptionPeriod.objects.filter(gym=self.request.user.gym)
-
-    def perform_create(self, serializer):
-        serializer.save(gym=self.request.user.gym)
 
 
 # --- Super Admin ViewSets ---
