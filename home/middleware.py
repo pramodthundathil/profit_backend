@@ -10,7 +10,8 @@ class LicenseValidationMiddleware:
         self.get_response = get_response
         self.exempt_paths = [
             '/admin/', 
-            '/static/', 
+            '/static/',
+            '/assets/',
             '/media/', 
             # '/auth/', # REMOVED: Too broad, allows dashboard access
             '/favicon.ico'
