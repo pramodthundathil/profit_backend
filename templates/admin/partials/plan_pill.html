@@ -1,0 +1,7 @@
+{% with status=gym.get_subscription_status %}
+{% if not gym.is_active %}<span class="pill neutral">Disabled</span>
+{% elif status.is_subscription_active %}<span class="pill success">Active</span>
+{% elif status.is_trial_active %}<span class="pill warning">Trial</span>
+{% else %}<span class="pill danger">Expired</span>{% endif %}
+{% if gym.is_active and status.days_remaining is not None %}<div class="cell-sub mt-1">{{ status.days_remaining }} day{{ status.days_remaining|pluralize }} left</div>{% endif %}
+{% endwith %}

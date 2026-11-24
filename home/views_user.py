@@ -6,6 +6,7 @@ from django.db.models.functions import TruncDay
 
 from django.utils import timezone
 from datetime import datetime, date
+from .plans import available_plans, has_completed_first_year, upcoming_plans
 from .models import GymOffice, CustomUser, PaymentTransaction, SubscriptionHistory, HikConfigurationDb, GymBranch
 from members.models import Member, Subscription, SubscriptionInstallment
 from payments.models import Payment
@@ -248,13 +249,10 @@ def subscription_expired(request):
         context['gym'] = gym
         context['status'] = gym.get_subscription_status()
         
-        # Placeholder for plans - in a real app, fetch from Plan model
-        context['plans'] = [
-            {'name': 'Monthly Plan', 'price': 2999, 'duration': '1 Month', 'id': 'plan_monthly'},
-            {'name': 'Quarterly Plan', 'price': 7999, 'duration': '3 Months', 'id': 'plan_quarterly'},
-            {'name': 'Annual Plan', 'price': 24999, 'duration': '12 Months', 'id': 'plan_annual'},
-        ]
-        
+        context['plans'] = available_plans(gym)
+        context['upcoming_plans'] = upcoming_plans(gym)
+        context['is_first_year'] = not has_completed_first_year(gym)
+
     return render(request, "user/subscription_expired.html", context)
 
 @login_required

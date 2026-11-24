@@ -34,6 +34,7 @@ class PaymentHistorySerializer(serializers.ModelSerializer):
 class SubscriptionInstallmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionInstallment
+        ref_name = 'MemberApiSubscriptionInstallment'  # distinct from members.serializers in the API docs
         fields = ['id', 'installment_number', 'due_date', 'amount', 'status']
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -43,6 +44,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Subscription
+        ref_name = 'MemberApiSubscription'  # distinct from members.serializers in the API docs
         fields = [
             'id', 'type_name', 'duration', 'duration_unit', 
             'start_date', 'end_date', 'final_amount', 'amount_paid', 

@@ -1,0 +1,8 @@
+<a class="alert-row" href="{{ alert.url }}">
+    <span class="alert-ico {{ alert.level }}"><i class="bi {{ alert.icon }}"></i></span>
+    <span class="alert-text">
+        <strong>{{ alert.gym.name }}</strong>
+        <span>{{ alert.title }}. {{ alert.message }}</span>
+    </span>
+    {% if alert.date and not compact %}<span class="alert-date">{{ alert.date|date:"M d, Y" }}</span>{% endif %}
+</a>

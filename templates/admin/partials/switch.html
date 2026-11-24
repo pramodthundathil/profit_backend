@@ -1,0 +1,7 @@
+<div class="switch-card">
+    <div class="form-check form-switch">
+        {{ field }}
+        <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ label }}</label>
+    </div>
+    {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+</div>

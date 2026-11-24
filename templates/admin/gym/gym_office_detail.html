@@ -1,339 +1,161 @@
-{% extends 'admin/dashboard.html' %}
-{% load static %}
+{% extends 'admin/console_base.html' %}
+
+{% block title %}{{ gym.name }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 mt-4">
-    <!-- Breadcrumb & Header -->
-    <div class="row mb-4 align-items-center">
-        <div class="col">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a href="{% url 'gym-office-list' %}" class="text-decoration-none text-muted">Gym Offices</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">{{ gym.name }}</li>
-                </ol>
-            </nav>
-            <h4 class="fw-bold mb-0">{{ gym.name }}</h4>
-        </div>
-        <div class="col-auto">
-             <a href="{% url 'migrate-legacy-data' gym.pk %}" class="btn btn-info-subtle text-info fw-bold ms-2">
-                <i class="bi bi-database-up me-2"></i>Migrate Legacy
-            </a>
-             <a href="{% url 'gym-office-edit' gym.pk %}" class="btn btn-warning-subtle text-warning fw-bold ms-2">
-                <i class="bi bi-pencil me-2"></i>Edit
-            </a>
-             <button class="btn btn-danger-subtle text-danger fw-bold ms-2 delete-gym" data-gym-id="{{ gym.pk }}" data-gym-name="{{ gym.name }}">
-                <i class="bi bi-trash me-2"></i>Delete Gym
-            </button>
-        </div>
+<div class="page-head">
+    <div>
+        <nav aria-label="breadcrumb"><ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'gym-office-list' %}">Gyms</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ gym.name }}</li>
+        </ol></nav>
+        <div class="d-flex align-items-center gap-3">{% include "admin/partials/gym_avatar.html" %}<h1>{{ gym.name }}</h1></div>
     </div>
-
-    <!-- Gym Overview Cards -->
-    <div class="row g-4 mb-4">
-        <!-- Contact Info -->
-        <div class="col-12 col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <h6 class="text-muted text-uppercase small fw-bold mb-3">Contact Information</h6>
-                    <div class="mb-3">
-                        <label class="small text-muted d-block">Email Address</label>
-                        <span class="fw-medium">{{ gym.email }}</span>
-                    </div>
-                    <div class="mb-3">
-                        <label class="small text-muted d-block">Phone Number</label>
-                        <span class="fw-medium">{{ gym.phone }}</span>
-                    </div>
-                    <div>
-                        <label class="small text-muted d-block">Address</label>
-                        <span class="fw-medium">{{ gym.address }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Subscription Info -->
-        <div class="col-12 col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <h6 class="text-muted text-uppercase small fw-bold mb-3">Subscription Status</h6>
-                    {% with status=gym.get_subscription_status %}
-                    <div class="mb-3">
-                         <span class="badge {% if status.is_subscription_active %}bg-success{% elif status.is_trial_active %}bg-warning{% else %}bg-danger{% endif %} rounded-pill px-3 py-2">
-                             {{ status.status_text }}
-                         </span>
-                    </div>
-                    {% if gym.subscription_valid_until %}
-                    <div class="mb-3">
-                        <label class="small text-muted d-block">Valid Until</label>
-                        <span class="fw-medium">{{ gym.subscription_valid_until|date:"M d, Y" }}</span>
-                    </div>
-                    {% endif %}
-                    {% if gym.trial_ends_at %}
-                    <div>
-                        <label class="small text-muted d-block">Trial Ends</label>
-                        <span class="fw-medium">{{ gym.trial_ends_at|date:"M d, Y" }}</span>
-                    </div>
-                    {% endif %}
-                    {% endwith %}
-                </div>
-            </div>
-        </div>
-        
-        <!-- License Info -->
-        <div class="col-12 col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                         <h6 class="text-muted text-uppercase small fw-bold mb-0">License & Limits</h6>
-                         {% if not gym.license_key %}
-                            <a href="{% url 'add-license-key' gym.pk %}" class="btn btn-sm btn-primary py-0 rounded-pill" style="font-size: 0.75rem;">+ Add</a>
-                         {% else %}
-                            <div>
-                                <a href="{% url 'edit-license-key' gym.pk %}" class="btn btn-link p-0 text-warning me-2" title="Edit License"><i class="bi bi-pencil-square"></i></a>
-                                <button class="btn btn-link p-0 text-danger delete-license" data-gym-id="{{ gym.pk }}" title="Delete License" style="border:none; background:none;"><i class="bi bi-trash"></i></button>
-                            </div>
-                         {% endif %}
-                    </div>
-                    {% if gym.license_key %}
-                    <div class="mb-3">
-                        <span class="badge bg-secondary-subtle text-secondary small w-100">{{ gym.license_key.key }}</span>
-                    </div>
-                   
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted small">Max Branches</span>
-                            <span class="fw-bold">{% if gym.license_key.max_branches == 0 %}∞{% else %}{{ gym.license_key.max_branches }}{% endif %}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted small">Max Members</span>
-                             <span class="fw-bold">{% if gym.license_key.max_members == 0 %}∞{% else %}{{ gym.license_key.max_members }}{% endif %}</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="text-muted small">Max Staff</span>
-                             <span class="fw-bold">{% if gym.license_key.max_staff == 0 %}∞{% else %}{{ gym.license_key.max_staff }}{% endif %}</span>
-                        </div>
-                    {% else %}
-                        <div class="alert alert-warning small mb-0">No active license key assigned.</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Details Tabs -->
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-header bg-white border-bottom px-4 pt-4">
-            <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active fw-medium" data-bs-toggle="tab" href="#branches" role="tab">Branches</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-medium" data-bs-toggle="tab" href="#users" role="tab">Users</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-medium" data-bs-toggle="tab" href="#subscriptions" role="tab">Subscription History</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link fw-medium" data-bs-toggle="tab" href="#payments" role="tab">Payments</a>
-                </li>
-            </ul>
-        </div>
-        <div class="card-body p-4 bg-light-subtle">
-            <div class="tab-content">
-                <!-- Branches Tab -->
-                <div class="tab-pane fade show active" id="branches" role="tabpanel">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0">Registered Branches</h6>
-                        <a href="{% url 'add-gym-branch' gym.pk %}" class="btn btn-sm btn-primary rounded-pill px-3">
-                            <i class="bi bi-plus-lg me-1"></i> Add Branch
-                        </a>
-                    </div>
-                    {% if branches %}
-                    <div class="table-responsive bg-white rounded-3 shadow-sm">
-                        <table class="table table-hover mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th class="ps-4">Name</th>
-                                    <th>Address</th>
-                                    <th>Phone</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for branch in branches %}
-                                <tr>
-                                    <td class="ps-4 fw-medium">{{ branch.name }}</td>
-                                    <td>{{ branch.address }}</td>
-                                    <td>{{ branch.phone }}</td>
-                                    <td>
-                                        {% if branch.is_active %}
-                                            <span class="badge bg-success-subtle text-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-danger-subtle text-danger">Inactive</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-shop fs-1 mb-3 d-block opacity-25"></i>
-                            No branches found for this gym.
-                        </div>
-                    {% endif %}
-                </div>
-
-                <!-- Users Tab -->
-                <div class="tab-pane fade" id="users" role="tabpanel">
-                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0">Associated Users</h6>
-                        <a href="{% url 'add-gym-user' gym.pk %}" class="btn btn-sm btn-primary rounded-pill px-3">
-                            <i class="bi bi-person-plus me-1"></i> Add User
-                        </a>
-                    </div>
-                    {% if users %}
-                    <div class="table-responsive bg-white rounded-3 shadow-sm">
-                        <table class="table table-hover mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th class="ps-4">User</th>
-                                    <th>Role</th>
-                                    <th>Branch</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for user in users %}
-                                <tr>
-                                    <td class="ps-4">
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-light rounded-circle p-1 me-2" style="width:32px;height:32px;text-align:center;">
-                                                <i class="bi bi-person text-secondary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="fw-medium">{{ user.get_full_name }}</div>
-                                                <small class="text-muted">{{ user.email }}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-info-subtle text-info text-capitalize">{{ user.role }}</span></td>
-                                    <td>{{ user.branch.name|default:"-" }}</td>
-                                    <td>
-                                        {% if user.is_active %}
-                                            <span class="badge bg-success-subtle text-success">Active</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-people fs-1 mb-3 d-block opacity-25"></i>
-                            No users found for this gym.
-                        </div>
-                    {% endif %}
-                </div>
-
-                <!-- Subscriptions Tab -->
-                <div class="tab-pane fade" id="subscriptions" role="tabpanel">
-                    {% if subscriptions %}
-                    <div class="table-responsive bg-white rounded-3 shadow-sm">
-                        <table class="table table-hover mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th class="ps-4">Plan</th>
-                                    <th>Started</th>
-                                    <th>Expires</th>
-                                    <th>Amount</th>
-                                    <th>Type</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for sub in subscriptions %}
-                                <tr>
-                                    <td class="ps-4 fw-medium">{{ sub.plan_name }}</td>
-                                    <td>{{ sub.started_at|date:"M d, Y" }}</td>
-                                    <td>{{ sub.expires_at|date:"M d, Y" }}</td>
-                                    <td>{{ gym.currency_symbol|default:"₹" }}{{ sub.amount_paid }}</td>
-                                    <td>
-                                        {% if sub.is_extension %}
-                                            <span class="badge bg-primary-subtle text-primary">Extension</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary-subtle text-secondary">Initial</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-card-checklist fs-1 mb-3 d-block opacity-25"></i>
-                            No subscription history found.
-                        </div>
-                    {% endif %}
-                </div>
-
-                 <!-- Payments Tab -->
-                <div class="tab-pane fade" id="payments" role="tabpanel">
-                    {% if payments %}
-                    <div class="table-responsive bg-white rounded-3 shadow-sm">
-                        <table class="table table-hover mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th class="ps-4">ID</th>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                    <th>Method</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for pay in payments %}
-                                <tr>
-                                    <td class="ps-4 text-muted small">#{{ pay.id }}</td>
-                                    <td>{{ pay.created_at|date:"M d, Y H:i" }}</td>
-                                    <td class="fw-bold">{{ gym.currency_symbol|default:"₹" }}{{ pay.amount }}</td>
-                                    <td>
-                                        {% if pay.status == 'completed' %}
-                                            <span class="badge bg-success-subtle text-success">Completed</span>
-                                        {% elif pay.status == 'pending' %}
-                                            <span class="badge bg-warning-subtle text-warning">Pending</span>
-                                        {% elif pay.status == 'failed' %}
-                                            <span class="badge bg-danger-subtle text-danger">Failed</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary-subtle text-secondary">{{ pay.status }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>Razorpay</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-wallet2 fs-1 mb-3 d-block opacity-25"></i>
-                            No payment transactions found.
-                        </div>
-                    {% endif %}
-                </div>
-
-            </div>
-        </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'migrate-legacy-data' gym.pk %}" class="btn btn-soft"><i class="bi bi-database-up me-1"></i> Migrate legacy</a>
+        <a href="{% url 'gym-office-edit' gym.pk %}" class="btn btn-soft"><i class="bi bi-pencil me-1"></i> Edit</a>
+        <button type="button" class="btn btn-soft danger delete-gym" data-gym-id="{{ gym.pk }}" data-gym-name="{{ gym.name }}"><i class="bi bi-trash me-1"></i> Delete gym</button>
     </div>
 </div>
 
-<!-- Delete Confirmation Form (Hidden) -->
-<form id="deleteForm" method="POST" style="display: none;">
-    {% csrf_token %}
-</form>
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-4"><section class="panel">
+        <div class="panel-head"><h2>Contact</h2></div>
+        <div class="panel-body"><dl class="facts">
+            <dt>Email address</dt><dd>{{ gym.email }}</dd>
+            <dt>Phone number</dt><dd>{{ gym.phone|default:"-" }}</dd>
+            <dt>Address</dt><dd>{{ gym.address }}</dd>
+        </dl></div>
+    </section></div>
+    <div class="col-12 col-md-6 col-xl-4"><section class="panel">
+        <div class="panel-head"><h2>Plan</h2></div>
+        <div class="panel-body">
+            <div class="mb-3">{% include "admin/partials/plan_pill.html" %}</div>
+            <dl class="facts">
+                {% if gym.license_key.valid_until %}<dt>License valid until</dt><dd>{{ gym.license_key.valid_until|date:"M d, Y" }}</dd>{% endif %}
+                {% if gym.subscription_valid_until %}<dt>Subscription valid until</dt><dd>{{ gym.subscription_valid_until|date:"M d, Y" }}</dd>{% endif %}
+                {% if gym.trial_ends_at %}<dt>Trial end date</dt><dd>{{ gym.trial_ends_at|date:"M d, Y" }}</dd>{% endif %}
+            </dl>
+        </div>
+    </section></div>
+    <div class="col-12 col-xl-4"><section class="panel">
+        <div class="panel-head"><h2>License and limits</h2>
+            {% if gym.license_key %}<div class="text-nowrap">
+                <a href="{% url 'edit-license-key' gym.pk %}" class="btn btn-soft btn-sm" title="Edit license" aria-label="Edit license"><i class="bi bi-pencil"></i></a>
+                <button type="button" class="btn btn-soft btn-sm danger delete-license" data-gym-id="{{ gym.pk }}" title="Delete license" aria-label="Delete license"><i class="bi bi-trash"></i></button>
+            </div>{% else %}<a href="{% url 'add-license-key' gym.pk %}" class="btn btn-brand btn-sm">Add license</a>{% endif %}
+        </div>
+        <div class="panel-body">
+            {% if gym.license_key %}
+                <code class="key-chip text-dark">{{ gym.license_key.key }}</code>
+                {% for item in limits %}
+                <div class="bar-row">
+                    <span class="bar-top"><span class="bar-name">{{ item.label }}</span><span>{{ item.used }} of {{ item.limit|default:"unlimited" }}{% if item.full %} (limit reached){% endif %}</span></span>
+                    {% if item.limit %}<span class="bar-track"><span class="bar-fill {% if item.full %}warning{% else %}series{% endif %}" style="width: {{ item.percent }}%"></span></span>{% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="note"><i class="bi bi-key"></i><div>No license key assigned to this gym.</div></div>
+            {% endif %}
+        </div>
+    </section></div>
+</div>
 
+<section class="panel h-auto">
+    <ul class="nav seg" role="tablist">
+        <li class="nav-item" role="presentation"><button type="button" class="nav-link active" data-bs-toggle="tab" data-bs-target="#branches" role="tab">Branches ({{ branches|length }})</button></li>
+        <li class="nav-item" role="presentation"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#users" role="tab">Users ({{ users|length }})</button></li>
+        <li class="nav-item" role="presentation"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#subscriptions" role="tab">Subscription history ({{ subscriptions|length }})</button></li>
+        <li class="nav-item" role="presentation"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#payments" role="tab">Payments ({{ payments|length }})</button></li>
+    </ul>
+    <div class="tab-content">
+    <div class="tab-pane fade show active" id="branches" role="tabpanel">
+        <div class="tab-tools"><a href="{% url 'add-gym-branch' gym.pk %}" class="btn btn-brand btn-sm"><i class="bi bi-plus-lg me-1"></i> Add branch</a></div>
+        {% if branches %}
+        <div class="table-responsive"><table class="table table-hover table-stack">
+            <thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for item in branches %}
+                <tr>
+                    <td><span class="cell-main">{{ item.name }}</span></td>
+                    <td data-label="Address">{{ item.address }}</td>
+                    <td data-label="Phone">{{ item.phone }}</td>
+                    <td data-label="Status">{% if item.is_active %}<span class="pill success">Active</span>{% else %}<span class="pill neutral">Inactive</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty"><i class="bi bi-shop"></i>No branches for this gym yet.</div>
+        {% endif %}
+    </div>
+    <div class="tab-pane fade" id="users" role="tabpanel">
+        <div class="tab-tools"><a href="{% url 'add-gym-user' gym.pk %}" class="btn btn-brand btn-sm"><i class="bi bi-person-plus me-1"></i> Add user</a></div>
+        {% if users %}
+        <div class="table-responsive"><table class="table table-hover table-stack">
+            <thead><tr><th>User</th><th>Role</th><th>Branch</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for item in users %}
+                <tr>
+                    <td><span class="cell-main">{{ item.get_full_name }}</span><div class="cell-sub">{{ item.email }}</div></td>
+                    <td data-label="Role">{{ item.get_role_display }}</td>
+                    <td data-label="Branch">{{ item.branch.name|default:"-" }}</td>
+                    <td data-label="Status">{% if item.is_active %}<span class="pill success">Active</span>{% else %}<span class="pill neutral">Inactive</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty"><i class="bi bi-people"></i>No users for this gym yet.</div>
+        {% endif %}
+    </div>
+    <div class="tab-pane fade" id="subscriptions" role="tabpanel">
+        {% if subscriptions %}
+        <div class="table-responsive"><table class="table table-hover table-stack">
+            <thead><tr><th>Plan</th><th>Started</th><th>Expires</th><th>Amount</th><th>Type</th></tr></thead>
+            <tbody>
+                {% for item in subscriptions %}
+                <tr>
+                    <td><span class="cell-main">{{ item.plan_name }}</span></td>
+                    <td data-label="Started">{{ item.started_at|date:"M d, Y" }}</td>
+                    <td data-label="Expires">{{ item.expires_at|date:"M d, Y" }}</td>
+                    <td data-label="Amount">₹{{ item.amount_paid }}</td>
+                    <td data-label="Type"><span class="pill neutral">{% if item.is_extension %}Extension{% else %}Initial{% endif %}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty"><i class="bi bi-card-checklist"></i>No subscription history yet.</div>
+        {% endif %}
+    </div>
+    <div class="tab-pane fade" id="payments" role="tabpanel">
+        {% if payments %}
+        <div class="table-responsive"><table class="table table-hover table-stack">
+            <thead><tr><th>ID</th><th>Date</th><th>Amount</th><th>Status</th><th>Method</th></tr></thead>
+            <tbody>
+                {% for item in payments %}
+                <tr>
+                    <td>#{{ item.id }}</td>
+                    <td data-label="Date">{{ item.created_at|date:"M d, Y H:i" }}</td>
+                    <td data-label="Amount"><b>₹{{ item.amount }}</b></td>
+                    <td data-label="Status"><span class="pill {% if item.status == 'completed' %}success{% elif item.status == 'pending' %}warning{% elif item.status == 'failed' %}danger{% else %}neutral{% endif %}">{{ item.get_status_display }}</span></td>
+                    <td data-label="Method">Razorpay</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty"><i class="bi bi-wallet2"></i>No payments yet.</div>
+        {% endif %}
+    </div>
+    </div>
+</section>
+
+<form id="deleteForm" method="POST" hidden>{% csrf_token %}</form>
+{% endblock %}
+
+{% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
          // Delete Confirmation

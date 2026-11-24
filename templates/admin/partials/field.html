@@ -1,0 +1,5 @@
+{% load widget_tweaks %}
+<label for="{{ field.id_for_label }}" class="form-label">{{ label|default:field.label }}</label>
+{% if field.errors %}{{ field|add_class:"is-invalid" }}{% else %}{{ field }}{% endif %}
+{% if help %}<div class="form-text">{{ help }}</div>{% endif %}
+{% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}

@@ -4,7 +4,7 @@ from django.test import TestCase, SimpleTestCase, Client
 from django.utils import timezone
 from django.urls import reverse
 
-from home.models import GymOffice, CustomUser
+from home.models import GymBranch, GymOffice, CustomUser, PaymentTransaction
 from members.models import Member, Subscription
 from notifications.models import Notification
 from utils.whatsapp import format_phone_number, send_whatsapp_template, send_member_expiry_whatsapp
@@ -190,3 +190,50 @@ class WhatsAppExpiryTests(TestCase):
             title="WhatsApp Expiry Reminder"
         ).first()
         self.assertIsNotNone(notif_wa)
+
+
+class SuperAdminAlertTests(TestCase):
+    def setUp(self):
+        self.gym = GymOffice.objects.create(name="Gym A", address="x", email="a@example.com", phone="9876543210")
+        self.other = GymOffice.objects.create(name="Gym B", address="x", email="b@example.com", phone="9876543211")
+        self.admin = CustomUser.objects.create_user(
+            email="root@example.com", password="x", role="admin", phone_number="9876543212")
+        self.owner = CustomUser.objects.create_user(
+            email="own@example.com", password="x", role="gym_admin", gym=self.gym, phone_number="9876543213")
+        branch = GymBranch.objects.create(name="B", address="x", email="br@example.com", gym=self.other)
+        member = Member.objects.create(
+            gym=self.other, branch=branch, first_name="Other", last_name="Member",
+            mobile_number="9876543214", email="m@example.com")
+        self.notif = Notification.objects.create(
+            member=member, title="Member receipt", message="x", notification_type="PAYMENT_CONFIRMATION")
+
+    def test_admin_sees_gym_alerts_not_member_notifications(self):
+        now = timezone.now()
+        GymOffice.objects.filter(pk=self.gym.pk).update(trial_ends_at=now - timedelta(days=2))
+        PaymentTransaction.objects.create(gym=self.other, amount=100, plan_name="1 Month", status="completed")
+        self.client.force_login(self.admin)
+        html = self.client.get(reverse('notification-list')).content.decode()
+        self.assertIn("Trial expired", html)
+        self.assertIn("Recharge received", html)
+        self.assertNotIn("Member receipt", html)
+        self.client.post(reverse('notification-clear-all'))
+        self.assertTrue(Notification.objects.filter(pk=self.notif.pk).exists())
+
+    def test_renewed_or_disabled_gym_has_no_expiry_alert(self):
+        GymOffice.objects.filter(pk=self.gym.pk).update(
+            trial_ends_at=timezone.now() - timedelta(days=2),
+            subscription_valid_until=timezone.now().date() + timedelta(days=200))
+        GymOffice.objects.filter(pk=self.other.pk).update(
+            trial_ends_at=timezone.now() - timedelta(days=2), is_active=False)
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse('notification-list') + '?type=expiry')
+        self.assertEqual(response.context['alerts'], [])
+
+    def test_gym_admin_cannot_touch_other_gyms_notifications(self):
+        self.client.force_login(self.owner)
+        self.assertNotContains(self.client.get(reverse('notification-list')), "Member receipt")
+        self.assertEqual(self.client.post(reverse('notification-delete', args=[self.notif.pk])).status_code, 404)
+        self.client.post(reverse('notification-mark-all-read'))
+        self.client.post(reverse('notification-clear-all'))
+        self.notif.refresh_from_db()
+        self.assertFalse(self.notif.is_read)

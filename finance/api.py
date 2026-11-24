@@ -38,6 +38,8 @@ class FinanceTransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return FinanceTransaction.objects.none()
         user = self.request.user
         start_date, end_date = get_date_range(self.request)
 

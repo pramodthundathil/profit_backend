@@ -124,12 +124,13 @@
         .plan-card.featured::before {
             content: 'POPULAR';
             position: absolute;
-            top: 15px;
-            right: -30px;
+            top: 0;
+            left: 50%;
             background: var(--secondary-color);
             color: white;
-            padding: 5px 40px;
-            transform: rotate(45deg);
+            padding: 2px 14px;
+            border-radius: 0 0 8px 8px;
+            transform: translateX(-50%);
             font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 1px;
@@ -158,6 +159,35 @@
             font-weight: 800;
             color: var(--secondary-color);
             margin: 1rem 0;
+        }
+
+        .info-plan {
+            background: var(--bg-light);
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 1.25rem;
+            text-align: center;
+            height: 100%;
+        }
+
+        .info-price {
+            font-size: 1.75rem;
+            font-weight: 800;
+        }
+
+        .info-note {
+            margin-top: 0.75rem;
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .plan-extra {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .plan-price {
+            margin-bottom: 0.25rem !important;
         }
 
         .plan-duration {
@@ -285,11 +315,11 @@
                         <div class="mt-5">
                             <h4 class="section-title text-center">
                                 <i class="fas fa-crown me-2" style="color: var(--primary-color);"></i>
-                                Renew Plan to Continue Access
+                                {% if is_first_year %}Activate Your First Year{% else %}Renew Plan to Continue Access{% endif %}
                             </h4>
-                            <p class="section-subtitle text-center">Choose a plan below to reactivate your gym's access immediately</p>
+                            <p class="section-subtitle text-center">{% if is_first_year %}Start with the first year plan. Monthly, quarterly and yearly renewal plans are available after one year.{% else %}Choose a plan below to renew your gym's access{% endif %}</p>
 
-                            <div class="row g-4">
+                            <div class="row g-4 justify-content-center">
                                 {% for plan in plans %}
                                 <div class="col-lg-4 col-md-6">
                                     <div class="plan-card {% if forloop.counter == 2 %}featured{% endif %}">
@@ -297,7 +327,8 @@
                                             <h5>{{ plan.name }}</h5>
                                         </div>
                                         <div class="plan-body">
-                                            <div class="plan-price">{{ currency_symbol }}{{ plan.price }}</div>
+                                            <div class="plan-price">₹{{ plan.price_display }}</div>
+                                            <div class="plan-extra">{{ plan.extra }}</div>
                                             <div class="plan-duration">{{ plan.duration }}</div>
                                             <button class="select-btn" onclick="alert('Payment integration pending for {{ plan.name }}')">
                                                 <i class="fas fa-check-circle me-2"></i>Select Plan
@@ -309,6 +340,26 @@
                             </div>
                         </div>
                     </div>
+
+                    {% if upcoming_plans %}
+                    <div class="px-4 px-md-5 pb-5">
+                        <h5 class="section-title text-center fs-4">Plans After One Year</h5>
+                        <p class="section-subtitle text-center">For your information. These renewal plans become available once your first year is complete.</p>
+                        <div class="row g-3 justify-content-center">
+                            {% for plan in upcoming_plans %}
+                            <div class="col-md-4 col-sm-6">
+                                <div class="info-plan">
+                                    <div class="fw-bold">{{ plan.name }}</div>
+                                    <div class="info-price">₹{{ plan.price_display }}</div>
+                                    <div class="fw-semibold">{{ plan.extra }}</div>
+                                    <div class="text-muted">{{ plan.duration }}</div>
+                                    <div class="info-note"><i class="fas fa-lock me-2"></i>Available after one year</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <!-- Footer -->
                     <div class="footer-custom">

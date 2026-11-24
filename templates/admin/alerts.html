@@ -1,0 +1,24 @@
+{% extends 'admin/console_base.html' %}
+
+{% block title %}Alerts{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Alerts</h1>
+        <p>Gym plan expiry, and recharges from the last 90 days. Expiry alerts clear when the gym is renewed.</p>
+    </div>
+</div>
+<section class="panel h-auto">
+    <nav class="seg" aria-label="Filter alerts">
+        <a class="nav-link {% if category == 'all' %}active{% endif %}" href="{% url 'notification-list' %}">All ({{ platform_alerts.all|length }})</a>
+        <a class="nav-link {% if category == 'expiry' %}active{% endif %}" href="?type=expiry">Expiry ({{ platform_alerts.expiry|length }})</a>
+        <a class="nav-link {% if category == 'recharge' %}active{% endif %}" href="?type=recharge">Recharges ({{ platform_alerts.recharge|length }})</a>
+    </nav>
+    {% for alert in alerts %}
+        {% include "admin/partials/alert_row.html" %}
+    {% empty %}
+        <div class="empty"><i class="bi bi-check2-circle"></i>Nothing to show here.</div>
+    {% endfor %}
+</section>
+{% endblock %}

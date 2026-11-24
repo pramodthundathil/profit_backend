@@ -2,6 +2,7 @@ from django.shortcuts import render,redirect
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
+from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
 
@@ -14,8 +15,8 @@ from django.contrib.auth.decorators import login_required
 
 # self imports 
 
+from .platform_alerts import plan_state
 from .decorators import is_authenticated_user, admin_only
-from notifications.models import Notification
 
 
 
@@ -64,25 +65,53 @@ def privacy_policy(request):
 @login_required
 @admin_only
 def admin_dashboard(request):
-    # Fetch Counts
-    gym_offices_count = GymOffice.objects.count()
-    active_branches_count = GymBranch.objects.filter(is_active=True).count()
-    users_count = CustomUser.objects.exclude(role='admin', is_superuser = True).count()
-    
-    # Recent Gym Offices
-    recent_gyms = GymOffice.objects.order_by('-created_at')[:5]
-    
-    # Recent Notifications (Global for Super Admin)
-    recent_notifications = Notification.objects.order_by('-created_at')[:10]
-    unread_notifications_count = Notification.objects.filter(is_read=False).count()
-    
+    gyms = list(
+        GymOffice.objects.filter(is_deleted=False)
+        .select_related('license_key')
+        .annotate(member_count=Count('members', filter=Q(members__is_deleted=False), distinct=True))
+        .order_by('-created_at')
+    )
+
+    plan_counts = {'active': 0, 'trial': 0, 'expired': 0, 'disabled': 0}
+    for gym in gyms:
+        if not gym.is_active:
+            plan_counts['disabled'] += 1
+        elif gym.is_subscription_active():
+            plan_counts['active'] += 1
+        elif gym.is_trial_active():
+            plan_counts['trial'] += 1
+        else:
+            plan_counts['expired'] += 1
+
+    today = timezone.now().date()
+    validity = []
+    for gym in gyms:
+        end = plan_state(gym)[1]
+        days = (end - today).days if end else 0
+        if gym.is_active and end and gym.can_access_service():
+            validity.append({
+                'gym': gym, 'days': days, 'end': end,
+                'percent': max(2, min(100, round(days * 100 / 365))),
+                'level': 'danger' if days <= 7 else 'warning' if days <= 30 else 'success',
+            })
+    validity.sort(key=lambda row: row['days'])
+
+    top_gyms = sorted(gyms, key=lambda g: g.member_count, reverse=True)[:6]
+    most = max((g.member_count for g in top_gyms), default=0)
+    for gym in top_gyms:
+        gym.member_percent = round(gym.member_count * 100 / most) if most else 0
+
     context = {
-        'gym_offices_count': gym_offices_count,
-        'active_branches_count': active_branches_count,
-        'users_count': users_count,
-        'recent_gyms': recent_gyms,
-        'notifications': recent_notifications,
-        'unread_notifications_count': unread_notifications_count,
+        'validity': validity[:6],
+        'top_gyms': top_gyms,
+        'members_count': sum(g.member_count for g in gyms),
+        'gym_offices_count': len(gyms),
+        'active_branches_count': GymBranch.objects.filter(
+            is_active=True, is_deleted=False, gym__is_deleted=False
+        ).count(),
+        'users_count': CustomUser.objects.filter(is_deleted=False).exclude(role='admin').count(),
+        'plan_counts': plan_counts,
+        'recent_gyms': gyms[:5],
     }
     return render(request, "admin/dashboard.html", context)
 
@@ -147,7 +176,23 @@ def gym_office_detail(request, pk):
     subscriptions = gym.subscription_history.filter(is_deleted=False).order_by('-created_at')
     payments = gym.payment_transactions.filter(is_deleted=False).order_by('-created_at')
     
+    def usage(label, used, limit):
+        return {
+            'label': label, 'used': used, 'limit': limit,
+            'percent': min(100, round(used * 100 / limit)) if limit else 0,
+            'full': bool(limit) and used >= limit,
+        }
+
+    limits = []
+    if gym.license_key:
+        limits = [
+            usage('Branches', branches.filter(is_active=True).count(), gym.license_key.max_branches),
+            usage('Members', gym.members.filter(is_deleted=False).count(), gym.license_key.max_members),
+            usage('Staff', users.filter(role__in=['staff', 'trainer'], is_active=True).count(), gym.license_key.max_staff),
+        ]
+
     context = {
+        'limits': limits,
         'gym': gym,
         'branches': branches,
         'users': users,

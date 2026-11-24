@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from home.platform_alerts import get_platform_alerts
 from .models import Notification
 from .serializers import NotificationSerializer
 from django.shortcuts import render, get_object_or_404, redirect
@@ -45,34 +46,38 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
 # --- Web Interface Views ---
 
+def _web_notifications(user):
+    """Member notifications the user may manage on the web: own gym only.
+
+    Do not use user.is_staff here: gym and branch admins are is_staff too.
+    The super admin works with platform alerts instead (home.platform_alerts).
+    """
+    if user.role != 'admin' and user.gym:
+        return Notification.objects.filter(member__gym=user.gym)
+    return Notification.objects.none()
+
 @login_required
 def notification_list_web(request):
     user = request.user
-    if user.is_staff:
-        # Super Admin - see all notifications
-        notifications = Notification.objects.all().order_by('-created_at')
-    elif user.gym:
-        # Gym Admin - see gym's notifications
-        notifications = Notification.objects.filter(member__gym=user.gym).order_by('-created_at')
-    else:
-        notifications = Notification.objects.none()
-        
+    if user.role == 'admin':
+        alerts = get_platform_alerts(request)
+        category = request.GET.get('type')
+        if category not in ('expiry', 'recharge'):
+            category = 'all'
+        return render(request, "admin/alerts.html", {
+            'alerts': alerts[category],
+            'category': category,
+        })
+
     return render(request, "notifications/list.html", {
-        'all_notifications': notifications,
+        'all_notifications': _web_notifications(user).order_by('-created_at'),
         'title': 'Notification History'
     })
 
 @login_required
 @require_POST
 def mark_notification_as_read(request, pk):
-    notification = get_object_or_404(Notification, pk=pk)
-    
-    # Simple permissions check
-    if not request.user.is_staff:
-        # Ensure the notification belongs to the user's gym
-        if not notification.member.gym == request.user.gym:
-            return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
-            
+    notification = get_object_or_404(_web_notifications(request.user), pk=pk)
     notification.is_read = True
     notification.save()
     return JsonResponse({'status': 'success'})
@@ -80,34 +85,17 @@ def mark_notification_as_read(request, pk):
 @login_required
 @require_POST
 def mark_all_notifications_as_read(request):
-    user = request.user
-    if user.is_staff:
-        Notification.objects.filter(is_read=False).update(is_read=True)
-    elif user.gym:
-        Notification.objects.filter(member__gym=user.gym, is_read=False).update(is_read=True)
-    
+    _web_notifications(request.user).filter(is_read=False).update(is_read=True)
     return JsonResponse({'status': 'success'})
 
 @login_required
 @require_POST
 def delete_notification(request, pk):
-    notification = get_object_or_404(Notification, pk=pk)
-    
-    # Permission check
-    if not request.user.is_staff:
-        if not notification.member.gym == request.user.gym:
-            return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
-            
-    notification.delete()
+    get_object_or_404(_web_notifications(request.user), pk=pk).delete()
     return JsonResponse({'status': 'success'})
 
 @login_required
 @require_POST
 def clear_all_notifications(request):
-    user = request.user
-    if user.is_staff:
-        Notification.objects.all().delete()
-    elif user.gym:
-        Notification.objects.filter(member__gym=user.gym).delete()
-    
+    _web_notifications(request.user).delete()
     return JsonResponse({'status': 'success'})

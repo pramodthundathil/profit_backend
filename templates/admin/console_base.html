@@ -1,0 +1,120 @@
+{# Not named admin/base.html: that would override Django's built-in admin site. #}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Super Admin{% endblock %} | ProFit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'css/admin_dashboard.css' %}?v={{ admin_css_version }}">
+    <script>try { if (localStorage.getItem('railMini')) document.documentElement.classList.add('rail-mini'); } catch (e) {}</script>
+</head>
+<body>
+{% with current=request.resolver_match.url_name %}
+<aside class="rail" id="rail" aria-label="Main menu">
+    <div class="rail-top">
+        <a class="rail-brand" href="{% url 'admin-dashboard' %}" aria-label="ProFit dashboard"><i class="bi bi-activity"></i><span class="rail-text">PRO<b>FIT</b></span></a>
+        <button type="button" class="rail-close" data-rail-close aria-label="Close menu"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <nav class="rail-nav">
+        <div class="rail-label rail-text">Manage</div>
+        <a class="rail-link {% if current == 'admin-dashboard' %}active{% endif %}" {% if current == 'admin-dashboard' %}aria-current="page"{% endif %} href="{% url 'admin-dashboard' %}" title="Dashboard"><i class="bi bi-grid-1x2"></i><span class="rail-text">Dashboard</span></a>
+        <a class="rail-link {% if current != 'admin-dashboard' and current != 'add-gym-office' and current != 'notification-list' %}active{% endif %}" href="{% url 'gym-office-list' %}" title="Gyms"><i class="bi bi-buildings"></i><span class="rail-text">Gyms</span></a>
+        <a class="rail-link {% if current == 'add-gym-office' %}active{% endif %}" href="{% url 'add-gym-office' %}" title="Add gym"><i class="bi bi-plus-square"></i><span class="rail-text">Add gym</span></a>
+        <div class="rail-label rail-text">Alerts</div>
+        <a class="rail-link {% if current == 'notification-list' and request.GET.type != 'recharge' and request.GET.type != 'expiry' %}active{% endif %}" href="{% url 'notification-list' %}" title="All alerts"><i class="bi bi-bell"></i><span class="rail-text">All alerts</span>{% if platform_alerts.attention_count %}<span class="count">{{ platform_alerts.attention_count }}</span>{% endif %}</a>
+        <a class="rail-link {% if current == 'notification-list' and request.GET.type == 'expiry' %}active{% endif %}" href="{% url 'notification-list' %}?type=expiry" title="Expiry"><i class="bi bi-calendar-x"></i><span class="rail-text">Expiry</span></a>
+        <a class="rail-link {% if current == 'notification-list' and request.GET.type == 'recharge' %}active{% endif %}" href="{% url 'notification-list' %}?type=recharge" title="Recharges"><i class="bi bi-wallet2"></i><span class="rail-text">Recharges</span></a>
+        <div class="rail-label rail-text">Developer</div>
+        <a class="rail-link" href="{% url 'swagger' %}" target="_blank" rel="noopener noreferrer" title="API docs"><i class="bi bi-code-slash"></i><span class="rail-text">API docs</span></a>
+    </nav>
+    <div class="rail-foot">
+        <a class="rail-link" href="{% url 'signout' %}" title="Log out"><i class="bi bi-box-arrow-right"></i><span class="rail-text">Log out</span></a>
+    </div>
+</aside>
+{% endwith %}
+<div class="rail-shade" data-rail-close></div>
+
+<div class="main">
+    <header class="topbar">
+        <button class="icon-btn" type="button" id="railToggle" aria-controls="rail" aria-label="Toggle menu"><i class="bi bi-list fs-5"></i></button>
+        <form class="top-search" action="{% url 'gym-office-list' %}" method="get" role="search">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search gyms" aria-label="Search gyms">
+        </form>
+        <div class="ms-auto dropdown">
+            <button class="icon-btn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="Alerts, {{ platform_alerts.attention_count }} need attention">
+                <i class="bi bi-bell fs-5"></i>
+                {% if platform_alerts.attention_count %}<span class="count">{{ platform_alerts.attention_count }}</span>{% endif %}
+            </button>
+            <div class="dropdown-menu dropdown-menu-end alert-menu">
+                <div class="panel-head"><h2>Expiry and recharge alerts</h2></div>
+                <div class="scroll">
+                    {% for alert in platform_alerts.all|slice:":8" %}
+                        {% include "admin/partials/alert_row.html" with compact=True %}
+                    {% empty %}
+                        <div class="empty"><i class="bi bi-check2-circle"></i>No expiry or recharge alerts.</div>
+                    {% endfor %}
+                </div>
+                <div class="p-2 border-top"><a class="btn btn-soft w-100" href="{% url 'notification-list' %}">View all alerts</a></div>
+            </div>
+        </div>
+        <span class="avatar gold" aria-hidden="true">{{ request.user.get_full_name|slice:":1"|upper }}</span>
+        <div class="d-none d-md-block">
+            <div class="fw-bold lh-sm">{{ request.user.get_full_name }}</div>
+            <div class="cell-sub">Super admin</div>
+        </div>
+    </header>
+    <main class="content">{% block content %}{% endblock %}</main>
+    <footer class="foot">Copyright &copy; {% now "Y" %} Byteboot Techno Solutions Pvt Ltd. All rights reserved.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+(() => {
+    const root = document.documentElement, rail = document.getElementById('rail'), toggle = document.getElementById('railToggle');
+    const mobile = window.matchMedia('(max-width: 991.98px)');
+    const sync = () => {
+        rail.inert = mobile.matches && !root.classList.contains('rail-open');
+        toggle.setAttribute('aria-expanded', mobile.matches ? root.classList.contains('rail-open') : !root.classList.contains('rail-mini'));
+    };
+    const close = () => {
+        if (!root.classList.contains('rail-open')) return;
+        root.classList.remove('rail-open'); sync(); toggle.focus();
+    };
+    toggle.addEventListener('click', () => {
+        if (mobile.matches) {
+            root.classList.add('rail-open'); sync(); rail.querySelector('.rail-close').focus();
+        } else {
+            const mini = root.classList.toggle('rail-mini');
+            try { localStorage.setItem('railMini', mini ? '1' : ''); } catch (e) {}
+            sync();
+        }
+    });
+    document.querySelectorAll('[data-rail-close]').forEach(el => el.addEventListener('click', close));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    mobile.addEventListener('change', () => { root.classList.remove('rail-open'); sync(); });
+    sync();
+})();
+</script>
+{% if messages %}
+<script>
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 4000, timerProgressBar: true });
+    (async () => {
+        {% for message in messages %}
+        await Toast.fire({
+            icon: '{% if message.level_tag == "error" %}error{% elif message.level_tag == "warning" %}warning{% else %}success{% endif %}',
+            titleText: '{{ message|escapejs }}'
+        });
+        {% endfor %}
+    })();
+</script>
+{% endif %}
+{% block extra_js %}{% endblock %}
+</body>
+</html>
