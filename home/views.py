@@ -25,6 +25,8 @@ from .serializers import (
     PaymentTransactionSerializer, GymRegistrationSerializer, HikConfigurationDbSerializer,
     CustomTokenObtainPairSerializer
 )
+from .authentication import has_platform_access
+from .plans import available_plans, has_completed_first_year, upcoming_plans
 from .permissions import (
     IsSuperAdmin, IsGymAdmin, IsBranchAdmin, CanManageGym,
     CanManageBranch, CanCreateBranch, CanManageUsers, IsOwnerOrReadOnly,
@@ -709,6 +711,34 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
             'message': 'Payment verified and subscription extended',
             'transaction': PaymentTransactionSerializer(transaction).data
         })
+
+
+class SubscriptionStatusView(APIView):
+    """
+    The gym's platform subscription status and the plans it can buy.
+    Reachable after expiry so the app can show the recharge screen.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(tags=['Auth/Public'])
+    def get(self, request):
+        gym = request.user.gym
+        data = {
+            'can_access': has_platform_access(request.user),
+            'gym_name': gym.name if gym else None,
+            'status_text': 'No subscription',
+            'is_first_year': False,
+            'plans': [],
+            'upcoming_plans': [],
+        }
+        if gym:
+            data.update({
+                'status_text': gym.get_subscription_status()['status_text'],
+                'is_first_year': not has_completed_first_year(gym),
+                'plans': available_plans(gym),
+                'upcoming_plans': upcoming_plans(gym),
+            })
+        return Response(data)
 
 
 class DashboardStatsView(APIView):

@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.test import TestCase, SimpleTestCase, Client
 from django.utils import timezone
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from home.models import GymBranch, GymOffice, CustomUser, PaymentTransaction
 from members.models import Member, Subscription
@@ -79,15 +80,6 @@ class WhatsAppExpiryTests(TestCase):
         self.client = Client()
         self.client.force_login(self.user)
 
-        body_component = next(c for c in components if c['type'] == 'body')
-        params = body_component['parameters']
-        
-        # Verify {{1}} customer name, {{2}} expiry date, {{3}} gym name
-        self.assertEqual(len(params), 3)
-        self.assertEqual(params[0]['text'], 'Rahul')
-        self.assertEqual(params[1]['text'], '26/11/2026')
-        self.assertEqual(params[2]['text'], 'PowerFitness Gym')
-
     @patch('utils.whatsapp.requests.post')
     def test_send_member_expiry_whatsapp(self, mock_post):
         mock_response = MagicMock()
@@ -149,6 +141,42 @@ class WhatsAppExpiryTests(TestCase):
         # Verify message was logged
         notif = Notification.objects.filter(member=self.member, notification_type='EXPIRY_REMINDER').first()
         self.assertIsNotNone(notif)
+
+    @patch('utils.whatsapp.requests.post')
+    def test_mobile_api_sends_chosen_subscription(self, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, content=b'{}')
+        today = timezone.now().date()
+        subs = [
+            Subscription.objects.create(
+                member=self.member, duration=30, duration_unit="Days",
+                start_date=today, end_date=today + timedelta(days=days),
+                base_amount=1000, final_amount=1000, amount_paid=1000, status='Active'
+            ) for days in (5, 40)
+        ]
+        api = APIClient()
+        api.force_authenticate(self.user)
+        url = reverse('api-member-send-expiry-whatsapp', kwargs={'pk': self.member.pk})
+        for sub in subs:
+            response = api.post(url, {'subscription_id': sub.pk}, format='json')
+            self.assertEqual(response.status_code, 200)
+            params = mock_post.call_args.kwargs['json']['template']['components'][0]['parameters']
+            self.assertEqual(params[1]['text'], sub.end_date.strftime('%d/%m/%Y'))
+
+    @patch('utils.whatsapp.requests.post')
+    def test_mobile_api_blocks_other_branch(self, mock_post):
+        own, other = [
+            GymBranch.objects.create(gym=self.gym, name=n, address="x", email=f"{n}@example.com") for n in ("A", "B")
+        ]
+        self.member.branch = other
+        self.member.save()
+        self.user.role = 'branch_admin'
+        self.user.branch = own
+        self.user.save()
+        api = APIClient()
+        api.force_authenticate(self.user)
+        url = reverse('api-member-send-expiry-whatsapp', kwargs={'pk': self.member.pk})
+        self.assertEqual(api.post(url).status_code, 403)
+        mock_post.assert_not_called()
 
     @patch('utils.whatsapp.requests.post')
     def test_management_command_5_days_check(self, mock_post):

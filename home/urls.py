@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     GymRegistrationView, GymOfficeViewSet, GymBranchViewSet,
     CustomUserViewSet, LicenseKeyViewSet, SubscriptionHistoryViewSet,
-    PaymentTransactionViewSet, DashboardStatsView, HikConfigurationDbViewSet,
+    PaymentTransactionViewSet, DashboardStatsView, SubscriptionStatusView, HikConfigurationDbViewSet,
     CustomTokenObtainPairView
 )
 
@@ -31,6 +31,9 @@ urlpatterns = [
     # Dashboard stats
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     
+    # Platform subscription status (also available when expired)
+    path('subscription/status/', SubscriptionStatusView.as_view(), name='subscription-status'),
+
     # Router URLs
     path('', include(router.urls)),
 

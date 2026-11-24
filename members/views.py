@@ -579,6 +579,10 @@ def member_send_expiry_whatsapp_api(request, pk):
         return Response({'detail': 'No gym associated.'}, status=status.HTTP_400_BAD_REQUEST)
 
     member = get_object_or_404(Member, pk=pk, gym=user.gym)
+
+    if user.role == 'branch_admin' and member.branch and user.branch and member.branch != user.branch:
+        return Response({'detail': 'Access denied for this branch.'}, status=status.HTTP_403_FORBIDDEN)
+
     sub_id = request.data.get('subscription_id') or request.query_params.get('subscription_id')
     subscription = None
     if sub_id:
