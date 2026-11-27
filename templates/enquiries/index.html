@@ -15,133 +15,193 @@
 {% endblock %}
 
 {% block content %}
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon icon-blue"><i class="bi bi-people"></i></div>
-            <div class="stat-value">{{ total_enquiries }}</div>
-            <div class="stat-label">Total Enquiries</div>
+{% include 'enquiries/_crm_styles.html' %}
+
+<!-- Actions -->
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{% url 'enquiries:todays_followups' %}" class="crm-btn crm-btn-dark">
+        <i class="bi bi-telephone-outbound"></i> Today's Follow-ups
+        {% if needs_followup > 0 %}<span class="count-pill">{{ needs_followup }}</span>{% endif %}
+    </a>
+    <a href="{% url 'enquiries:enquiry_list' %}" class="crm-btn crm-btn-dark">
+        <i class="bi bi-list-ul"></i> All Enquiries
+    </a>
+    <a href="{% url 'enquiries:enquiry_create' %}" class="crm-btn crm-btn-gold ms-md-auto">
+        <i class="bi bi-plus-lg"></i> New Enquiry
+    </a>
+</div>
+
+<!-- KPI cards -->
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat">
+            <i class="bi bi-people-fill bg-icon"></i>
+            <div class="label">Total Enquiries</div>
+            <div class="value">{{ total_enquiries }}</div>
+            <div class="sub"><b>{{ this_month_enquiries }}</b> this month · <b>{{ recent_enquiries_count }}</b> in 30 days</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon icon-green"><i class="bi bi-check-circle"></i></div>
-            <div class="stat-value">{{ converted_enquiries }}</div>
-            <div class="stat-label">Converted</div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat accent-green">
+            <i class="bi bi-person-check-fill bg-icon"></i>
+            <div class="label">Converted</div>
+            <div class="value">{{ converted_enquiries }}</div>
+            <div class="sub">Leads turned into members</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon icon-warning" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;"><i class="bi bi-hourglass-split"></i></div>
-            <div class="stat-value">{{ pending_enquiries }}</div>
-            <div class="stat-label">Pending</div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat accent-orange">
+            <i class="bi bi-hourglass-split bg-icon"></i>
+            <div class="label">Open Leads</div>
+            <div class="value">{{ pending_enquiries }}</div>
+            <div class="sub">Avg <b>{{ avg_followups }}</b> follow-ups per lead</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon icon-gold"><i class="bi bi-graph-up-arrow"></i></div>
-            <div class="stat-value">{{ conversion_rate }}%</div>
-            <div class="stat-label">Conversion Rate</div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat accent-gold">
+            <i class="bi bi-graph-up-arrow bg-icon"></i>
+            <div class="label">Conversion Rate</div>
+            <div class="value">{{ conversion_rate }}%</div>
+            <div class="crm-ring"><span style="width: {{ conversion_rate }}%"></span></div>
         </div>
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-12 d-flex gap-2">
-        <a href="{% url 'enquiries:todays_followups' %}" class="btn btn-warning position-relative px-4 py-2 fw-semibold">
-            <i class="bi bi-telephone-outbound me-2"></i>Today's Follow-ups
-            {% if today_followups > 0 %}
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                {{ today_followups }}
-            </span>
-            {% endif %}
+<!-- Follow-up alerts -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'enquiries:todays_followups' %}" class="crm-alert">
+            <div class="ic ic-red"><i class="bi bi-exclamation-octagon"></i></div>
+            <div><div class="num">{{ overdue_followups }}</div><div class="txt">Overdue</div></div>
         </a>
-        <a href="{% url 'enquiries:enquiry_list' %}" class="btn btn-primary px-4 py-2 fw-semibold">
-            <i class="bi bi-list-ul me-2"></i>All Enquiries
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'enquiries:todays_followups' %}" class="crm-alert">
+            <div class="ic ic-orange"><i class="bi bi-alarm"></i></div>
+            <div><div class="num">{{ today_followups }}</div><div class="txt">Due Today</div></div>
         </a>
-        <a href="{% url 'enquiries:enquiry_create' %}" class="btn btn-success px-4 py-2 fw-semibold ms-auto">
-            <i class="bi bi-plus-lg me-2"></i>New Enquiry
-        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="crm-alert">
+            <div class="ic ic-gold"><i class="bi bi-person-plus"></i></div>
+            <div><div class="num">{{ today_enquiries }}</div><div class="txt">New Today</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="crm-alert">
+            <div class="ic ic-dark"><i class="bi bi-chat-dots"></i></div>
+            <div><div class="num">{{ total_followups }}</div><div class="txt">Total Follow-ups</div></div>
+        </div>
     </div>
 </div>
 
-<div class="row g-4 border-top pt-4">
-    <div class="col-md-6">
-        <div class="table-card">
-            <h5 class="mb-3">Recent Enquiries</h5>
+<!-- Trend + Pipeline -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="crm-panel">
+            <div class="crm-panel-head">
+                <span><i class="bi bi-bar-chart-line me-2"></i>Enquiries vs Conversions · Last 6 Months</span>
+            </div>
+            <div class="crm-panel-body">
+                <div class="chart-box"><canvas id="crmTrendChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="crm-panel">
+            <div class="crm-panel-head"><span><i class="bi bi-funnel me-2"></i>Lead Pipeline</span></div>
+            <div class="crm-panel-body">
+                {% for s in status_breakdown %}
+                <div class="bd-row">
+                    <div class="bd-top">
+                        <span class="l"><span class="chip chip-{{ s.key }} me-1">{{ s.label }}</span></span>
+                        <span class="r">{{ s.count }} · {{ s.pct }}%</span>
+                    </div>
+                    <div class="bd-track"><div class="bd-fill" style="width: {{ s.pct }}%"></div></div>
+                </div>
+                {% empty %}
+                <div class="crm-empty"><i class="bi bi-funnel"></i>No leads yet</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending action + Recent enquiries -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="crm-panel">
+            <div class="crm-panel-head">
+                <span><i class="bi bi-lightning-charge me-2"></i>Needs Action</span>
+                <a href="{% url 'enquiries:todays_followups' %}">View all <i class="bi bi-arrow-right"></i></a>
+            </div>
             <div class="table-responsive">
-                <table class="table custom-table mb-0">
-                    <thead>
+                <table class="table">
+                    <thead><tr><th>Lead</th><th>Due</th><th class="text-end">Action</th></tr></thead>
+                    <tbody>
+                        {% for item in todays_pending_followups %}
                         <tr>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Status</th>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="crm-avatar">{{ item.name|slice:":1" }}</span>
+                                    <div>
+                                        <a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="crm-name">{{ item.name }}</a>
+                                        <div class="crm-meta">{{ item.phone_number }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if item.next_follow_up_date < today %}
+                                <span class="chip chip-overdue"><i class="bi bi-exclamation-circle me-1"></i>{{ item.next_follow_up_date|timesince:today }} overdue</span>
+                                {% else %}
+                                <span class="chip chip-today"><i class="bi bi-clock me-1"></i>Today</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="tel:{{ item.phone_number }}" class="btn btn-sm btn-light border me-1" title="Call"><i class="bi bi-telephone"></i></a>
+                                <a href="{% url 'enquiries:add_status_update' item.pk %}" class="btn btn-sm btn-dark" style="color:#FFD700">Update</a>
+                            </td>
                         </tr>
-                    </thead>
+                        {% empty %}
+                        <tr><td colspan="3"><div class="crm-empty"><i class="bi bi-check2-circle"></i>All caught up — no pending follow-ups</div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="crm-panel">
+            <div class="crm-panel-head">
+                <span><i class="bi bi-clock-history me-2"></i>Recent Enquiries</span>
+                <a href="{% url 'enquiries:enquiry_list' %}">View all <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Lead</th><th>Added</th><th class="text-end">Status</th></tr></thead>
                     <tbody>
                         {% for enquiry in recent_enquiries_list %}
                         <tr>
                             <td>
-                                <a href="{% url 'enquiries:enquiry_detail' enquiry.pk %}" class="text-decoration-none fw-medium text-dark">
-                                    {{ enquiry.name }}
-                                </a>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="crm-avatar">{{ enquiry.name|slice:":1" }}</span>
+                                    <div>
+                                        <a href="{% url 'enquiries:enquiry_detail' enquiry.pk %}" class="crm-name">{{ enquiry.name }}</a>
+                                        <div class="crm-meta">{{ enquiry.phone_number }}</div>
+                                    </div>
+                                </div>
                             </td>
-                            <td>{{ enquiry.phone_number }}</td>
-                            <td>
-                                {% if enquiry.status == 'completed' %}
-                                <span class="badge bg-success">Completed</span>
-                                {% elif enquiry.status == 'rejected' %}
-                                <span class="badge bg-danger">Rejected</span>
+                            <td class="crm-meta">{{ enquiry.date_created|date:"d M Y" }}</td>
+                            <td class="text-end">
+                                {% if enquiry.conversion %}
+                                <span class="chip chip-converted">Converted</span>
                                 {% else %}
-                                <span class="badge bg-warning text-dark">{{ enquiry.status|title }}</span>
+                                <span class="chip chip-{{ enquiry.status }}">{{ enquiry.get_status_display }}</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center py-4 text-muted">No recent enquiries.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="table-card h-100">
-            <h5 class="mb-3">Pending Action</h5>
-            <div class="table-responsive">
-                <table class="table custom-table mb-0">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Follow-up Due</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in todays_pending_followups %}
-                        <tr>
-                            <td>{{ item.name }}</td>
-                            <td>
-                                {% if item.next_follow_up_date < today %}
-                                <span class="text-danger fw-bold"><i class="bi bi-exclamation-circle me-1"></i>Overdue</span>
-                                {% elif item.next_follow_up_date == today %}
-                                <span class="text-warning fw-bold text-dark"><i class="bi bi-clock me-1"></i>Today</span>
-                                {% else %}
-                                {{ item.next_follow_up_date }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="{% url 'enquiries:add_status_update' item.pk %}" class="btn btn-sm btn-outline-primary">
-                                    Update
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center py-4 text-muted">No pending follow-ups!</td>
-                        </tr>
+                        <tr><td colspan="3"><div class="crm-empty"><i class="bi bi-inbox"></i>No enquiries yet</div></td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -149,4 +209,98 @@
         </div>
     </div>
 </div>
+
+<!-- Call outcomes + Activity -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="crm-panel">
+            <div class="crm-panel-head"><span><i class="bi bi-telephone me-2"></i>Call Outcomes</span></div>
+            <div class="crm-panel-body">
+                {% for c in call_status_breakdown %}
+                <div class="bd-row">
+                    <div class="bd-top">
+                        <span class="l">{{ c.label }}</span>
+                        <span class="r">{{ c.count }} · {{ c.pct }}%</span>
+                    </div>
+                    <div class="bd-track"><div class="bd-fill {% if forloop.counter|divisibleby:2 %}dark{% endif %}" style="width: {{ c.pct }}%"></div></div>
+                </div>
+                {% empty %}
+                <div class="crm-empty"><i class="bi bi-telephone-x"></i>No calls logged yet</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="crm-panel">
+            <div class="crm-panel-head"><span><i class="bi bi-activity me-2"></i>Latest Follow-up Activity</span></div>
+            <div class="crm-panel-body">
+                {% if recent_followups %}
+                <ul class="tl">
+                    {% for f in recent_followups %}
+                    <li>
+                        <div class="d-flex justify-content-between flex-wrap gap-1">
+                            <span class="tl-title">
+                                <a href="{% url 'enquiries:enquiry_detail' f.enquiry.pk %}" class="crm-name">{{ f.enquiry.name }}</a>
+                                <span class="chip {% if f.call_status == 'converted' %}chip-converted{% elif f.call_status == 'interested' %}chip-completed{% elif f.call_status == 'not_interested' or f.call_status == 'closed' %}chip-rejected{% else %}chip-pending{% endif %} ms-1">{{ f.get_call_status_display }}</span>
+                            </span>
+                            <span class="crm-meta">{{ f.date_of_status|timesince }} ago</span>
+                        </div>
+                        {% if f.description %}<div class="tl-desc">{{ f.description|truncatechars:110 }}</div>{% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="crm-empty"><i class="bi bi-activity"></i>No follow-up activity yet</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const el = document.getElementById('crmTrendChart');
+        if (!el) return;
+        new Chart(el.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: [{% for m in monthly_data %}"{{ m.month }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                datasets: [
+                    {
+                        label: 'Enquiries',
+                        data: [{% for m in monthly_data %}{{ m.enquiries }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        backgroundColor: '#1a1a1a',
+                        borderRadius: 6,
+                        maxBarThickness: 34
+                    },
+                    {
+                        label: 'Conversions',
+                        data: [{% for m in monthly_data %}{{ m.conversions }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        backgroundColor: '#FFD700',
+                        borderRadius: 6,
+                        maxBarThickness: 34
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top', align: 'end',
+                        labels: { usePointStyle: true, pointStyle: 'rectRounded', font: { weight: '600' } }
+                    },
+                    tooltip: { backgroundColor: '#000', titleColor: '#FFD700', padding: 10 }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0, font: { weight: '600' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { grid: { display: false }, ticks: { font: { weight: '600' } } }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}

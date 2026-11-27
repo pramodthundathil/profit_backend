@@ -1,0 +1,59 @@
+<!-- Quick follow-up modal (posts to todays_followups, which holds the quick-update logic) -->
+<div class="modal fade crm-modal" id="quickUpdateModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'enquiries:todays_followups' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-telephone-outbound me-2"></i>Log Follow-up · <span id="modalEnquiryName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="enquiry_id" id="modalEnquiryId">
+                    <label class="form-label">Call Outcome</label>
+                    <div class="outcome-grid">
+                        <input type="radio" name="quick_status" id="oc-rnr" value="rnr" checked><label for="oc-rnr"><i class="bi bi-telephone-x"></i> No Response</label>
+                        <input type="radio" name="quick_status" id="oc-callback" value="callback"><label for="oc-callback"><i class="bi bi-arrow-repeat"></i> Call Back</label>
+                        <input type="radio" name="quick_status" id="oc-interested" value="interested"><label for="oc-interested"><i class="bi bi-hand-thumbs-up"></i> Interested</label>
+                        <input type="radio" name="quick_status" id="oc-follow_up" value="follow_up"><label for="oc-follow_up"><i class="bi bi-calendar-plus"></i> Follow Up</label>
+                        <input type="radio" name="quick_status" id="oc-not_interested" value="not_interested"><label for="oc-not_interested"><i class="bi bi-hand-thumbs-down"></i> Not Interested</label>
+                        <input type="radio" name="quick_status" id="oc-closed" value="closed"><label for="oc-closed"><i class="bi bi-x-circle"></i> Closed / Drop</label>
+                        <input type="radio" name="quick_status" id="oc-converted" value="converted"><label for="oc-converted" style="grid-column: span 2; justify-content:center"><i class="bi bi-trophy"></i> Converted — Joins Gym</label>
+                    </div>
+                    <div class="outcome-hint" id="outcomeHint"></div>
+                    <label class="form-label mt-3">Notes <span class="text-lowercase fw-normal">(optional)</span></label>
+                    <textarea name="quick_notes" class="form-control" rows="3" placeholder="Brief summary of the call..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="crm-btn crm-btn-gold border-0"><i class="bi bi-check2"></i> Save Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    (function () {
+        const hints = {
+            rnr: 'Next follow-up set for 2 days from today.',
+            callback: 'Next follow-up set for tomorrow.',
+            interested: 'Next follow-up set for 2 days from today.',
+            follow_up: 'Next follow-up set for 3 days from today.',
+            not_interested: 'Lead will be marked Rejected.',
+            closed: 'Lead will be marked Not Required.',
+            converted: 'A new member will be created from this enquiry.'
+        };
+        function syncHint() {
+            const c = document.querySelector('#quickUpdateModal input[name="quick_status"]:checked');
+            document.getElementById('outcomeHint').textContent = c ? hints[c.value] : '';
+        }
+        document.querySelectorAll('#quickUpdateModal input[name="quick_status"]').forEach(r => r.addEventListener('change', syncHint));
+        window.openQuickUpdate = function (id, name) {
+            document.getElementById('modalEnquiryId').value = id;
+            document.getElementById('modalEnquiryName').textContent = name;
+            document.getElementById('oc-rnr').checked = true;
+            syncHint();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('quickUpdateModal')).show();
+        };
+    })();
+</script>

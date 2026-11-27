@@ -84,6 +84,30 @@ def enquiries_dashboard(request):
             'conversions': month_conversions
         })
     
+    # Labelled breakdowns with percentages for progress bars
+    status_labels = dict(EnquiryData.STATUS_CHOICES)
+    status_breakdown = [
+        {
+            'key': row['status'],
+            'label': status_labels.get(row['status'], row['status']),
+            'count': row['count'],
+            'pct': round(row['count'] / total_enquiries * 100) if total_enquiries else 0,
+        }
+        for row in status_breakdown
+    ]
+    call_labels = dict(EnquiryStatus.LEAD_STATUS_CHOICES)
+    call_rows = list(call_status_breakdown)
+    call_total = sum(r['count'] for r in call_rows)
+    call_status_breakdown = [
+        {
+            'key': row['call_status'],
+            'label': call_labels.get(row['call_status'], row['call_status']),
+            'count': row['count'],
+            'pct': round(row['count'] / call_total * 100) if call_total else 0,
+        }
+        for row in call_rows
+    ]
+
     context = {
         'total_enquiries': total_enquiries,
         'converted_enquiries': converted_enquiries,
@@ -220,7 +244,8 @@ def enquiry_list(request):
     context = {
         'enquiries': enquiries,
         'filter_form': filter_form,
-        'total_enquiries': enquiries.count()
+        'total_enquiries': enquiries.count(),
+        'today': timezone.now().date(),
     }
     
     return render(request, 'enquiries/enquiry_list.html', context)

@@ -2,163 +2,175 @@
 
 {% block title %}Today's Follow-ups | {{ gym.name }}{% endblock %}
 {% block header_title %}Today's Follow-ups{% endblock %}
+{% block header_subtitle %}Call your leads and log the outcome{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'enquiries:dashboard' %}" class="text-decoration-none text-muted">CRM</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Follow-ups</li>
+    </ol>
+</nav>
+{% endblock %}
 
 {% block content %}
-<ul class="nav nav-pills mb-4" id="followup-tabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active fw-medium fs-6" id="today-tab" data-bs-toggle="pill" data-bs-target="#today-content" type="button" role="tab">
-            Due Today <span class="badge bg-warning text-dark ms-2">{{ today_count }}</span>
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-medium fs-6 position-relative" id="overdue-tab" data-bs-toggle="pill" data-bs-target="#overdue-content" type="button" role="tab">
-            Overdue 
-            {% if overdue_count > 0 %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">{{ overdue_count }}</span>{% endif %}
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-medium fs-6" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming-content" type="button" role="tab">
-            Upcoming (Next 7 Days) <span class="badge bg-secondary ms-2">{{ upcoming_count }}</span>
-        </button>
-    </li>
-</ul>
+{% include 'enquiries/_crm_styles.html' %}
 
-<!-- Quick update modal -->
-<div class="modal fade" id="quickUpdateModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST">
-                {% csrf_token %}
-                <div class="modal-header">
-                    <h5 class="modal-title">Quick Update for <span id="modalEnquiryName" class="text-primary"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" name="enquiry_id" id="modalEnquiryId">
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-semibold">Outcome</label>
-                        <select name="quick_status" class="form-select" required>
-                            <option value="rnr">Ring No Response (RNR)</option>
-                            <option value="callback">Asked to call back</option>
-                            <option value="interested">Interested</option>
-                            <option value="follow_up">Needs Follow Up</option>
-                            <option value="converted" class="fw-bold text-success">Converted (Joins Gym)</option>
-                            <option value="not_interested">Not Interested</option>
-                            <option value="closed">Closed / Drop</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-semibold">Quick Notes (Optional)</label>
-                        <textarea name="quick_notes" class="form-control" rows="2" placeholder="Brief summary of the call..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Update</button>
-                </div>
-            </form>
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat accent-gold">
+            <i class="bi bi-telephone-outbound bg-icon"></i>
+            <div class="label">To Call Now</div>
+            <div class="value">{{ total_due }}</div>
+            <div class="sub">Due today + overdue</div>
         </div>
     </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat accent-orange">
+            <i class="bi bi-alarm bg-icon"></i>
+            <div class="label">Due Today</div>
+            <div class="value">{{ today_count }}</div>
+            <div class="sub">{{ today|date:"l, d M" }}</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat" style="border-bottom-color:#dc3545">
+            <i class="bi bi-exclamation-octagon bg-icon"></i>
+            <div class="label">Overdue</div>
+            <div class="value">{{ overdue_count }}</div>
+            <div class="sub">Missed follow-up dates</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="crm-stat">
+            <i class="bi bi-calendar-week bg-icon"></i>
+            <div class="label">Next 7 Days</div>
+            <div class="value">{{ upcoming_count }}</div>
+            <div class="sub">Upcoming follow-ups</div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <ul class="nav crm-tabs" id="followup-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#today-content" type="button" role="tab">
+                <i class="bi bi-alarm"></i> Due Today <span class="tab-count">{{ today_count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#overdue-content" type="button" role="tab">
+                <i class="bi bi-exclamation-triangle"></i> Overdue <span class="tab-count {% if overdue_count > 0 %}red{% endif %}">{{ overdue_count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#upcoming-content" type="button" role="tab">
+                <i class="bi bi-calendar-week"></i> Upcoming <span class="tab-count">{{ upcoming_count }}</span>
+            </button>
+        </li>
+    </ul>
+    <a href="{% url 'enquiries:enquiry_create' %}" class="crm-btn crm-btn-gold"><i class="bi bi-plus-lg"></i> New Enquiry</a>
 </div>
 
 <div class="tab-content">
+    <!-- Today -->
     <div class="tab-pane fade show active" id="today-content" role="tabpanel">
         <div class="row g-3">
             {% for item in todays_followups %}
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 border-start border-4 border-warning shadow-sm stat-card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <h6 class="card-title mb-1 text-truncate"><a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="text-decoration-none text-dark">{{ item.name }}</a></h6>
-                            <span class="badge bg-light text-dark border">{{ item.get_status_display }}</span>
+            <div class="col-md-6 col-xl-4">
+                <div class="lead-card">
+                    <div class="d-flex align-items-start gap-2">
+                        <span class="crm-avatar">{{ item.name|slice:":1" }}</span>
+                        <div class="flex-grow-1 min-w-0">
+                            <a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="crm-name d-block text-truncate">{{ item.name }}</a>
+                            <div class="crm-meta">Added {{ item.date_created|date:"d M Y" }}</div>
                         </div>
-                        <p class="mb-2 fs-7 text-muted">
-                            <i class="bi bi-telephone text-primary me-1"></i> <a href="tel:{{ item.phone_number }}" class="text-decoration-none">{{ item.phone_number }}</a>
-                        </p>
-                        
-                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                            <small class="text-muted"><i class="bi bi-headset me-1"></i> {{ item.number_of_followup }} calls made</small>
-                            <button class="btn btn-sm btn-warning fw-semibold px-3" onclick="openQuickUpdate({{ item.pk }}, '{{ item.name|escapejs }}')">Action</button>
-                        </div>
+                        <span class="chip chip-{{ item.status }}">{{ item.get_status_display }}</span>
+                    </div>
+                    <div class="lead-info">
+                        <div><i class="bi bi-telephone"></i><a href="tel:{{ item.phone_number }}">{{ item.phone_number }}</a></div>
+                        <div><i class="bi bi-headset"></i>{{ item.number_of_followup }} call{{ item.number_of_followup|pluralize }} made{% if item.last_follow_up_date %} · last {{ item.last_follow_up_date|date:"d M" }}{% endif %}</div>
+                    </div>
+                    <div class="lead-foot">
+                        <a href="tel:{{ item.phone_number }}" class="btn-call" title="Call"><i class="bi bi-telephone-fill"></i></a>
+                        <button type="button" class="btn-action-gold" onclick="openQuickUpdate({{ item.pk }}, '{{ item.name|escapejs }}')"><i class="bi bi-pencil-square me-1"></i> Log Call</button>
                     </div>
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 py-5 text-center text-muted bg-white rounded shadow-sm">
-                <i class="bi bi-emoji-smile fs-1 d-block mb-3 text-success"></i>
-                <p class="fs-5 mb-0">All caught up for today!</p>
+            <div class="col-12">
+                <div class="crm-empty-lg"><i class="bi bi-emoji-smile"></i><div class="t">All caught up for today!</div>No follow-ups are due today.</div>
             </div>
             {% endfor %}
         </div>
     </div>
-    
+
+    <!-- Overdue -->
     <div class="tab-pane fade" id="overdue-content" role="tabpanel">
         <div class="row g-3">
             {% for item in overdue_followups %}
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 border-start border-4 border-danger shadow-sm stat-card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <h6 class="card-title mb-1 text-truncate"><a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="text-decoration-none text-dark">{{ item.name }}</a></h6>
-                            <small class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Missed</small>
+            <div class="col-md-6 col-xl-4">
+                <div class="lead-card overdue">
+                    <div class="d-flex align-items-start gap-2">
+                        <span class="crm-avatar">{{ item.name|slice:":1" }}</span>
+                        <div class="flex-grow-1 min-w-0">
+                            <a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="crm-name d-block text-truncate">{{ item.name }}</a>
+                            <div class="crm-meta">Added {{ item.date_created|date:"d M Y" }}</div>
                         </div>
-                        <p class="mb-1 fs-7 text-muted">
-                            <i class="bi bi-telephone text-primary me-1"></i> <a href="tel:{{ item.phone_number }}" class="text-decoration-none">{{ item.phone_number }}</a>
-                        </p>
-                        <p class="mb-2 fs-7 text-danger">Was due: {{ item.next_follow_up_date }}</p>
-                        
-                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                            <button class="btn btn-sm btn-danger fw-semibold px-3 w-100" onclick="openQuickUpdate({{ item.pk }}, '{{ item.name|escapejs }}')">Follow up Now</button>
-                        </div>
+                        <span class="chip chip-overdue">{{ item.next_follow_up_date|timesince:today }} late</span>
+                    </div>
+                    <div class="lead-info">
+                        <div><i class="bi bi-telephone"></i><a href="tel:{{ item.phone_number }}">{{ item.phone_number }}</a></div>
+                        <div><i class="bi bi-calendar-x"></i><span class="due-overdue">Was due {{ item.next_follow_up_date|date:"d M Y" }}</span></div>
+                        <div><i class="bi bi-headset"></i>{{ item.number_of_followup }} call{{ item.number_of_followup|pluralize }} made</div>
+                    </div>
+                    <div class="lead-foot">
+                        <a href="tel:{{ item.phone_number }}" class="btn-call" title="Call"><i class="bi bi-telephone-fill"></i></a>
+                        <button type="button" class="btn-action-red" onclick="openQuickUpdate({{ item.pk }}, '{{ item.name|escapejs }}')"><i class="bi bi-lightning-charge me-1"></i> Follow up Now</button>
                     </div>
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 py-5 text-center text-muted bg-white rounded shadow-sm">
-                <i class="bi bi-check2-circle fs-1 d-block mb-3 text-success"></i>
-                <p class="fs-5 mb-0">No overdue follow-ups. Great job!</p>
+            <div class="col-12">
+                <div class="crm-empty-lg"><i class="bi bi-check2-circle"></i><div class="t">No overdue follow-ups</div>Great job staying on top of your leads.</div>
             </div>
             {% endfor %}
         </div>
     </div>
-    
+
+    <!-- Upcoming -->
     <div class="tab-pane fade" id="upcoming-content" role="tabpanel">
         <div class="row g-3">
             {% for item in upcoming_followups %}
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 border-start border-4 border-secondary shadow-sm stat-card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <h6 class="card-title mb-1 text-truncate"><a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="text-decoration-none text-dark">{{ item.name }}</a></h6>
-                            <span class="badge bg-light text-dark border">{{ item.get_status_display }}</span>
+            <div class="col-md-6 col-xl-4">
+                <div class="lead-card upcoming">
+                    <div class="d-flex align-items-start gap-2">
+                        <span class="crm-avatar">{{ item.name|slice:":1" }}</span>
+                        <div class="flex-grow-1 min-w-0">
+                            <a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="crm-name d-block text-truncate">{{ item.name }}</a>
+                            <div class="crm-meta">Added {{ item.date_created|date:"d M Y" }}</div>
                         </div>
-                        <p class="mb-2 fs-7 text-muted">
-                            <i class="bi bi-calendar-event text-primary me-1"></i> Due: {{ item.next_follow_up_date }}
-                        </p>
-                        
-                        <div class="d-flex justify-content-end mt-3 pt-3 border-top">
-                            <a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="btn btn-sm btn-outline-secondary px-3">View Details</a>
-                        </div>
+                        <span class="chip chip-{{ item.status }}">{{ item.get_status_display }}</span>
+                    </div>
+                    <div class="lead-info">
+                        <div><i class="bi bi-telephone"></i><a href="tel:{{ item.phone_number }}">{{ item.phone_number }}</a></div>
+                        <div><i class="bi bi-calendar-event"></i>Due {{ item.next_follow_up_date|date:"D, d M" }} · in {{ item.next_follow_up_date|timeuntil:today }}</div>
+                    </div>
+                    <div class="lead-foot">
+                        <a href="tel:{{ item.phone_number }}" class="btn-call" title="Call"><i class="bi bi-telephone-fill"></i></a>
+                        <a href="{% url 'enquiries:enquiry_detail' item.pk %}" class="btn-action-dark"><i class="bi bi-eye me-1"></i> View Details</a>
                     </div>
                 </div>
             </div>
             {% empty %}
-            <div class="col-12 py-5 text-center text-muted bg-white rounded shadow-sm">
-                <p class="fs-5 mb-0">No upcoming follow-ups in the next 7 days.</p>
+            <div class="col-12">
+                <div class="crm-empty-lg"><i class="bi bi-calendar2-check"></i><div class="t">Nothing scheduled</div>No follow-ups in the next 7 days.</div>
             </div>
             {% endfor %}
         </div>
     </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
-<script>
-    function openQuickUpdate(id, name) {
-        document.getElementById('modalEnquiryId').value = id;
-        document.getElementById('modalEnquiryName').textContent = name;
-        new bootstrap.Modal(document.getElementById('quickUpdateModal')).show();
-    }
-</script>
+{% include 'enquiries/_quick_update_modal.html' %}
 {% endblock %}
