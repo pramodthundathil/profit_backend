@@ -1,136 +1,195 @@
-<!DOCTYPE html>
-<html lang="en">
+{% load static %}<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profit Gym Admin Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sign in | ProFit Gym Console</title>
+    {% include "partials/_theme_head.html" %}
     <style>
-        body {
-            background-color: #000000;
-            color: #FFD700;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
+        body { min-height: 100vh; background: var(--pf-bg); }
+        .auth { display: grid; grid-template-columns: 1.1fr 1fr; min-height: 100vh; }
+
+        /* Brand panel */
+        .auth-hero {
+            position: relative; overflow: hidden; color: #fff;
+            background:
+                radial-gradient(60% 50% at 85% 10%, rgba(255, 215, 0, .28) 0%, transparent 60%),
+                radial-gradient(50% 50% at 0% 100%, rgba(255, 140, 0, .22) 0%, transparent 60%),
+                #0D0D0E;
+            padding: 48px 56px; display: flex; flex-direction: column;
         }
-        .login-card {
-            background-color: #111;
-            padding: 2.5rem;
-            border-radius: 10px;
-            border: 2px solid #FF8C00;
-            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2);
-            width: 100%;
-            max-width: 380px;
+        .auth-hero::before {
+            content: ""; position: absolute; inset: 0; opacity: .5; pointer-events: none;
+            background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(80% 70% at 50% 40%, #000 30%, transparent 80%);
         }
-        h2 {
-            text-align: center;
-            color: #FFD700;
-            margin-bottom: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #FF8C00;
-            font-weight: bold;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #FF8C00;
-            background-color: #000;
-            color: #fff;
-            border-radius: 5px;
-            box-sizing: border-box;
-            outline: none;
-        }
-        input:focus {
-            border-color: #FFD700;
-            box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #FF8C00;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 1rem;
-        }
-        button:hover {
-            background-color: #FFD700;
-            transform: translateY(-2px);
+        .auth-hero > * { position: relative; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-mark { width: 46px; height: 46px; border-radius: 14px; background: var(--pf-gradient); color: #141414; display: grid; place-items: center; font-size: 22px; box-shadow: 0 10px 28px -8px rgba(255, 170, 0, .7); }
+        .brand-name { font-family: var(--pf-font-display); font-weight: 800; font-size: 1.3rem; letter-spacing: -.02em; }
+        .brand-name span { color: var(--pf-gold); }
+        .hero-copy { margin-top: auto; margin-bottom: auto; max-width: 520px; padding: 40px 0; }
+        .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 30px; background: rgba(255, 215, 0, .1); color: var(--pf-gold); font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; border: 1px solid rgba(255, 215, 0, .2); }
+        .hero-title { font-family: var(--pf-font-display); font-size: clamp(2rem, 3.4vw, 3.1rem); font-weight: 800; line-height: 1.08; letter-spacing: -.035em; margin: 20px 0 16px; color: #fff; }
+        .hero-title em { font-style: normal; background: var(--pf-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .hero-text { color: rgba(255, 255, 255, .62); font-size: 1.02rem; line-height: 1.6; }
+        .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 32px; }
+        .feature { display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07); font-size: .88rem; font-weight: 600; color: rgba(255,255,255,.88); }
+        .feature i { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(255, 215, 0, .12); color: var(--pf-gold); flex-shrink: 0; }
+        .hero-foot { color: rgba(255, 255, 255, .4); font-size: .78rem; }
+
+        /* Form panel */
+        .auth-form { display: flex; flex-direction: column; padding: 28px 40px; background: var(--pf-bg); }
+        .auth-top { display: flex; justify-content: flex-end; }
+        .auth-card { width: 100%; max-width: 410px; margin: auto; padding: 24px 0; }
+        .auth-card h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 6px; }
+        .auth-card .lead-sub { color: var(--pf-text-2); margin-bottom: 30px; }
+        .field { margin-bottom: 18px; }
+        .field label { display: block; font-size: .82rem; font-weight: 600; color: var(--pf-text-2); margin-bottom: 7px; }
+        .input-wrap { position: relative; }
+        .input-wrap > i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--pf-text-3); font-size: 1.05rem; pointer-events: none; transition: color .15s; }
+        .input-wrap .form-control { height: 52px; padding-left: 44px; border-radius: 12px; font-size: .95rem; background: var(--pf-surface); }
+        .input-wrap:focus-within > i { color: var(--pf-orange); }
+        .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--pf-text-3); }
+        .pw-toggle:hover { color: var(--pf-text); background: var(--pf-surface-3); }
+        .input-wrap .form-control[type="password"], .input-wrap .form-control.has-toggle { padding-right: 50px; }
+        .caps-hint { display: none; font-size: .76rem; color: var(--pf-warning); margin-top: 6px; }
+        .btn-signin { height: 52px; width: 100%; border-radius: 12px; font-size: 1rem; margin-top: 8px; }
+        .auth-alert { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--pf-danger-soft); color: var(--pf-danger); font-size: .88rem; font-weight: 500; margin-bottom: 20px; border: 1px solid color-mix(in srgb, var(--pf-danger) 25%, transparent); animation: shake .4s ease; }
+        .auth-alert.ok { background: var(--pf-success-soft); color: var(--pf-success); border-color: color-mix(in srgb, var(--pf-success) 25%, transparent); animation: none; }
+        @keyframes shake { 0%,100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .legal { color: var(--pf-text-3); font-size: .8rem; text-align: center; margin-top: 22px; line-height: 1.6; }
+        .legal a { color: var(--pf-accent-text); font-weight: 600; }
+        .auth-foot { text-align: center; color: var(--pf-text-3); font-size: .75rem; }
+        .mobile-brand { display: none; }
+
+        @media (max-width: 991.98px) {
+            .auth { grid-template-columns: 1fr; }
+            .auth-hero { display: none; }
+            .auth-form { padding: 20px; min-height: 100vh; }
+            .auth-top { justify-content: space-between; align-items: center; }
+            .mobile-brand { display: flex; }
+            .mobile-brand .brand-name { color: var(--pf-text); font-size: 1.1rem; }
+            .mobile-brand .brand-mark { width: 38px; height: 38px; font-size: 18px; border-radius: 11px; }
+            .auth-card h1 { font-size: 1.6rem; }
         }
     </style>
 </head>
 <body>
-    {% block content %}
-    <div class="login-card">
-        <h2>Profit Gym Admin</h2>
-        <form  method="POST">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="email">Email ID</label>
-                <input type="email" id="email" name="email" placeholder="admin@profitgym.com" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="••••••••" required>
-            </div>
-            <button type="submit">LOGIN</button>
-            <div style="margin-top: 1.25rem; text-align: center; font-size: 0.8rem; color: #888888;">
-                By signing in, you agree to our <br>
-                <a href="{% url 'terms-and-conditions' %}" style="color: #FFD700; text-decoration: none;">Terms & Conditions</a> & 
-                <a href="{% url 'privacy-policy' %}" style="color: #FFD700; text-decoration: none;">Privacy Policy</a>
-            </div>
-        </form>
-    </div>
-{% endblock %}
-    <footer style="position: absolute; bottom: 20px; width: 100%; text-align: center; color: #FF8C00; font-size: 0.85rem; opacity: 0.9;">
-        <p style="margin-bottom: 6px;">
-            <a href="{% url 'terms-and-conditions' %}" style="color: #FFD700; text-decoration: none; margin: 0 8px;">Terms & Conditions</a> | 
-            <a href="{% url 'privacy-policy' %}" style="color: #FFD700; text-decoration: none; margin: 0 8px;">Privacy Policy</a>
-        </p>
-        Developed and Maintained &copy; Copyright by ByteBoot Techno Solutions Pvt Ltd
-    </footer>
+<div class="auth">
+    <!-- Brand / marketing panel -->
+    <section class="auth-hero" aria-hidden="true">
+        <div class="brand">
+            <div class="brand-mark"><i class="bi bi-lightning-charge-fill"></i></div>
+            <div class="brand-name">Pro<span>Fit</span> Gym</div>
+        </div>
 
+        <div class="hero-copy">
+            <span class="eyebrow"><i class="bi bi-stars"></i> Gym management console</span>
+            <h2 class="hero-title">Run your gym like a <em>champion.</em></h2>
+            <p class="hero-text">Memberships, payments, leads and access control in one fast dashboard, built for owners, managers and trainers.</p>
+            <div class="feature-grid">
+                <div class="feature"><i class="bi bi-people-fill"></i> Member lifecycle</div>
+                <div class="feature"><i class="bi bi-receipt-cutoff"></i> Payments &amp; receipts</div>
+                <div class="feature"><i class="bi bi-funnel-fill"></i> CRM &amp; follow-ups</div>
+                <div class="feature"><i class="bi bi-fingerprint"></i> Biometric access</div>
+            </div>
+        </div>
 
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        // Check for Django messages
-        {% if messages %}
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                background: '#111',
-                color: '#FFD700',
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            })
+        <div class="hero-foot">&copy; {% now "Y" %} ByteBoot Techno Solutions Pvt Ltd</div>
+    </section>
 
-            {% for message in messages %}
-                Toast.fire({
-                    icon: '{{ message.tags }}' === 'error' ? 'error' : 'success',
-                    title: '{{ message }}'
-                })
-            {% endfor %}
-        {% endif %}
-    </script>
+    <!-- Sign-in panel -->
+    <section class="auth-form">
+        <div class="auth-top">
+            <div class="brand mobile-brand">
+                <div class="brand-mark"><i class="bi bi-lightning-charge-fill"></i></div>
+                <div class="brand-name">ProFit Gym</div>
+            </div>
+            <button class="pf-icon-btn pf-theme-toggle" type="button" onclick="pfToggleTheme()" aria-label="Toggle dark mode" title="Toggle light / dark">
+                <i class="bi bi-moon-stars-fill"></i><i class="bi bi-sun-fill"></i>
+            </button>
+        </div>
+
+        <div class="auth-card">
+            <h1>Welcome back</h1>
+            <p class="lead-sub">Sign in to your gym console to continue.</p>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="auth-alert {% if message.tags != 'error' %}ok{% endif %}" role="alert">
+                    <i class="bi {% if message.tags == 'error' %}bi-exclamation-circle-fill{% else %}bi-check-circle-fill{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" id="loginForm" novalidate>
+                {% csrf_token %}
+                <div class="field">
+                    <label for="email">Email address</label>
+                    <div class="input-wrap">
+                        <i class="bi bi-envelope"></i>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="you@yourgym.com" value="{{ request.POST.email|default:'' }}" autocomplete="username" autofocus required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <div class="input-wrap">
+                        <i class="bi bi-lock"></i>
+                        <input type="password" class="form-control has-toggle" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                        <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <div class="caps-hint" id="capsHint"><i class="bi bi-capslock-fill"></i> Caps Lock is on</div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-signin" id="signinBtn">
+                    Sign in <i class="bi bi-arrow-right"></i>
+                </button>
+            </form>
+
+            <p class="legal">
+                By signing in, you agree to our
+                <a href="{% url 'terms-and-conditions' %}">Terms &amp; Conditions</a> and
+                <a href="{% url 'privacy-policy' %}">Privacy Policy</a>.
+            </p>
+        </div>
+
+        <div class="auth-foot">Developed &amp; maintained by ByteBoot Techno Solutions Pvt Ltd</div>
+    </section>
+</div>
+
+<script src="{% static 'js/profit-theme.js' %}?v={{ theme_version }}"></script>
+<script>
+    (function () {
+        var pw = document.getElementById('password');
+        var toggle = document.getElementById('pwToggle');
+        toggle.addEventListener('click', function () {
+            var show = pw.type === 'password';
+            pw.type = show ? 'text' : 'password';
+            toggle.innerHTML = show ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+            toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            pw.focus();
+        });
+        pw.addEventListener('keyup', function (e) {
+            if (e.getModifierState) document.getElementById('capsHint').style.display = e.getModifierState('CapsLock') ? 'block' : 'none';
+        });
+
+        var form = document.getElementById('loginForm');
+        form.addEventListener('submit', function (e) {
+            var email = document.getElementById('email');
+            [email, pw].forEach(function (el) { el.classList.toggle('is-invalid', !el.value || (el.type === 'email' && !el.checkValidity())); });
+            if (form.querySelector('.is-invalid')) { e.preventDefault(); form.querySelector('.is-invalid').focus(); return; }
+            var btn = document.getElementById('signinBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Signing in…';
+        });
+        form.querySelectorAll('input').forEach(function (el) {
+            el.addEventListener('input', function () { el.classList.remove('is-invalid'); });
+        });
+        // If the email is prefilled after a failed attempt, jump to password
+        if (document.getElementById('email').value) pw.focus();
+    })();
+</script>
 </body>
 </html>

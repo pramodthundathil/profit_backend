@@ -672,6 +672,7 @@ def subscription_list(request):
 
     branch_filter = request.GET.get('branch', '')
     status_filter = request.GET.get('status', '')
+    member_filter = request.GET.get('member', '')
     
     # Base QuerySet: Subscriptions of members in the user's gym
     subscriptions = Subscription.objects.filter(member__gym=user.gym).select_related('member', 'member__branch', 'subscription_type')
@@ -691,6 +692,12 @@ def subscription_list(request):
     # Status filtering
     if status_filter:
         subscriptions = subscriptions.filter(status=status_filter)
+
+    # Single-member filtering (e.g. coming from the member detail page)
+    filter_member = None
+    if member_filter.isdigit():
+        filter_member = Member.objects.filter(pk=member_filter, gym=user.gym).first()
+        subscriptions = subscriptions.filter(member_id=member_filter)
     
     # Sorting
     subscriptions = subscriptions.order_by('-created_at')
@@ -703,6 +710,7 @@ def subscription_list(request):
         'branches': branches,
         'selected_branch': branch_filter,
         'selected_status': status_filter,
+        'filter_member': filter_member,
         'title': 'Subscription Management'
     }
     return render(request, "user/members/subscription_list.html", context)

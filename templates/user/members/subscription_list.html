@@ -13,11 +13,24 @@
 {% endblock %}
 
 {% block header_title %}Subscription Management{% endblock %}
-{% block header_subtitle %}Manage and track all member subscriptions{% endblock %}
+{% block header_subtitle %}{% if filter_member %}Subscriptions for {{ filter_member.full_name }}{% else %}Manage and track all member subscriptions{% endif %}{% endblock %}
+{% block header_actions %}
+{% if filter_member %}
+<a href="{% url 'member-detail' filter_member.pk %}" class="btn btn-light"><i class="bi bi-person"></i> Member profile</a>
+<a href="{% url 'member-subscription-add' filter_member.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New subscription</a>
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
+        {% if filter_member %}
+        <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-3">
+            <i class="bi bi-funnel-fill"></i>
+            <span>Showing subscriptions for <strong>{{ filter_member.full_name }}</strong> ({{ filter_member.member_id }})</span>
+            <a href="{% url 'subscription-list' %}" class="btn btn-sm btn-light ms-auto"><i class="bi bi-x-lg"></i> Show all members</a>
+        </div>
+        {% endif %}
         <div class="table-card">
             <div class="table-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <h5 class="fw-bold fs-6 mb-0">Member Subscriptions</h5>
@@ -26,6 +39,7 @@
                     <!-- Branch Filter (Gym Admin Only) -->
                     {% if branches %}
                     <form method="GET" class="d-flex gap-2">
+                        {% if filter_member %}<input type="hidden" name="member" value="{{ filter_member.pk }}">{% endif %}
                         <select name="branch" class="form-select form-select-sm" onchange="this.form.submit()">
                             <option value="">All Branches</option>
                             {% for branch in branches %}
@@ -42,7 +56,7 @@
                         </select>
                         
                         {% if selected_branch or selected_status %}
-                        <a href="{% url 'subscription-list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                        <a href="{% url 'subscription-list' %}{% if filter_member %}?member={{ filter_member.pk }}{% endif %}" class="btn btn-sm btn-outline-secondary">Clear</a>
                         {% endif %}
                     </form>
                     {% endif %}

@@ -159,7 +159,7 @@
                             </td>
                             <td class="text-end">
                                 <a href="tel:{{ item.phone_number }}" class="btn btn-sm btn-light border me-1" title="Call"><i class="bi bi-telephone"></i></a>
-                                <a href="{% url 'enquiries:add_status_update' item.pk %}" class="btn btn-sm btn-dark" style="color:#FFD700">Update</a>
+                                <a href="{% url 'enquiries:add_status_update' item.pk %}" class="btn btn-sm btn-dark">Update</a>
                             </td>
                         </tr>
                         {% empty %}
@@ -264,6 +264,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         const el = document.getElementById('crmTrendChart');
         if (!el) return;
+        const C = window.pfChartColors();
         new Chart(el.getContext('2d'), {
             type: 'bar',
             data: {
@@ -272,14 +273,15 @@
                     {
                         label: 'Enquiries',
                         data: [{% for m in monthly_data %}{{ m.enquiries }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                        backgroundColor: '#1a1a1a',
+                        pfNeutral: true,
+                        backgroundColor: C.neutral,
                         borderRadius: 6,
                         maxBarThickness: 34
                     },
                     {
                         label: 'Conversions',
                         data: [{% for m in monthly_data %}{{ m.conversions }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-                        backgroundColor: '#FFD700',
+                        backgroundColor: '#FFB800',
                         borderRadius: 6,
                         maxBarThickness: 34
                     }
@@ -291,13 +293,13 @@
                 plugins: {
                     legend: {
                         position: 'top', align: 'end',
-                        labels: { usePointStyle: true, pointStyle: 'rectRounded', font: { weight: '600' } }
+                        labels: { usePointStyle: true, pointStyle: 'rectRounded', color: C.text }
                     },
-                    tooltip: { backgroundColor: '#000', titleColor: '#FFD700', padding: 10 }
+                    tooltip: { displayColors: true }
                 },
                 scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0, font: { weight: '600' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-                    x: { grid: { display: false }, ticks: { font: { weight: '600' } } }
+                    y: { beginAtZero: true, border: { display: false }, ticks: { precision: 0, color: C.text }, grid: { color: C.grid } },
+                    x: { border: { display: false }, grid: { display: false }, ticks: { color: C.text } }
                 }
             }
         });

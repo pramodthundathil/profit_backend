@@ -28,7 +28,7 @@
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <h3>{{ enquiry.name }}</h3>
                     {% if enquiry.conversion %}
-                        <span class="chip" style="background:#FFD700;color:#000"><i class="bi bi-trophy me-1"></i>Converted</span>
+                        <span class="chip chip-converted"><i class="bi bi-trophy me-1"></i>Converted</span>
                     {% else %}
                         <span class="chip chip-{{ enquiry.status }}">{{ enquiry.get_status_display }}</span>
                     {% endif %}
@@ -130,7 +130,7 @@
     <div class="col-lg-8">
         <div class="crm-panel">
             <div class="crm-panel-head">
-                <span><i class="bi bi-clock-history me-2"></i>Follow-up History <span class="ms-1" style="color:#fff">({{ statuses|length }})</span></span>
+                <span><i class="bi bi-clock-history me-2"></i>Follow-up History <span class="ms-1 text-muted">({{ statuses|length }})</span></span>
                 {% if not enquiry.conversion %}
                 <a href="{% url 'enquiries:add_status_update' enquiry.pk %}"><i class="bi bi-plus-lg me-1"></i>Add Update</a>
                 {% endif %}
