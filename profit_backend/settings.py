@@ -107,6 +107,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'notifications.context_processors.notifications_processor',
                 'home.context_processors.currency_context',
+                'home.context_processors.theme_assets',
             ],
         },
     },

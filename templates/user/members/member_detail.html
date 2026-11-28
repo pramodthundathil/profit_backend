@@ -17,6 +17,16 @@
     Member Profile & History
 {% endblock %}
 
+{% block header_actions %}
+<a href="{% url 'subscription-list' %}?member={{ member.pk }}" class="btn btn-light">
+    <i class="bi bi-calendar2-check"></i> Subscriptions
+    {% with n=member.subscriptions.count %}{% if n %}<span class="badge bg-secondary rounded-pill">{{ n }}</span>{% endif %}{% endwith %}
+</a>
+<a href="{% url 'member-subscription-add' member.pk %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> New Subscription
+</a>
+{% endblock %}
+
 {% block content %}
 <!-- Payment Status Banner for Current Subscription -->
 {% with sub=member.current_subscription %}

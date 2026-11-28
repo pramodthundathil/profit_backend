@@ -1,23 +1,30 @@
 {% extends 'user/base.html' %}
 {% load static %}
 
-{% block content %}
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Finance Settings</h1>
-        <div>
+{% block title %}Finance | {% firstof gym.name request.user.gym.name "ProFit" %}{% endblock %}
+{% block header_title %}Finance{% endblock %}
+{% block header_subtitle %}Income, expenses and balance for the selected period{% endblock %}
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'user-dashboard' %}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Finance</li>
+    </ol>
+</nav>
+{% endblock %}
+{% block header_actions %}
             {% if role == 'gym_admin' %}
-            <button type="button" class="btn btn-success shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#addIncomeModal">
+            <button type="button" class="btn btn-success " data-bs-toggle="modal" data-bs-target="#addIncomeModal">
                 <i class="bi bi-plus-lg me-1"></i> Record Income
             </button>
             {% endif %}
-            <button type="button" class="btn btn-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
                 <i class="bi bi-dash-lg me-1"></i> Record Expense
             </button>
-        </div>
-    </div>
+{% endblock %}
 
+{% block content %}
+<div class="container-fluid px-0">
     <!-- Date Filter Form -->
     <div class="card shadow mb-4">
         <div class="card-body py-3">
