@@ -242,6 +242,13 @@
                                     </td>
                                 </tr>
 
+
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                        {# Pay modals live outside the table: a <div>/<form> inside <tbody> is invalid HTML and the browser splits the form from its button. #}
+                        {% for item in installments %}{% if item.status != 'Paid' %}
                                 <!-- Pay Modal -->
                                 <div class="modal fade" id="payModal{{ item.pk }}" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered">
@@ -322,10 +329,7 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                        {% endif %}{% endfor %}
                     </div>
                 </div>
 
@@ -389,25 +393,11 @@
     // Handle Form Protection
 
     $(document).ready(function() {
-        // Global delegate for all forms
-        $(document).on('submit', 'form', function(e) {
-            const $form = $(this);
-            const $btn = $form.find('.submit-btn');
-            
-            if ($btn.length && !$btn.hasClass('is-processing')) {
-                // Check validity first
-                if (this.checkValidity()) {
-                    // Mark as processing
-                    $btn.addClass('is-processing');
-                    
-                    // Small delay to let browser start submission before the UI 'locks'
-                    setTimeout(function() {
-                        $btn.prop('disabled', true);
-                        $btn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...');
-                    }, 50);
-                }
-            }
-        });
+        // Modals are rendered inside the installments table/card, which sits in a
+        // stacking context below the Bootstrap backdrop. Move them to <body> so
+        // they render above the backdrop and stay clickable.
+        $('.modal[id^="payModal"]').appendTo('body');
+        // Confirm Payment double-submit protection lives in user/base.html.
     });
 
     function toggleFields(pk, show) {

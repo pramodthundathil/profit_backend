@@ -257,6 +257,50 @@
     })();
 </script>
 {% endif %}
+<script>
+    // Global double-submit guard: any form with a .submit-btn locks on its first
+    // real submission. Further submits of that form are blocked immediately (no
+    // timing gap), and the button is disabled with a spinner.
+    (function () {
+        // Use form.elements (the form's associated controls) rather than
+        // querySelector, so the button is found even if markup isn't nested cleanly.
+        function findSubmitBtn(form, submitter) {
+            if (submitter && submitter.classList && submitter.classList.contains('submit-btn')) return submitter;
+            return Array.prototype.find.call(form.elements, function (el) {
+                return el.classList && el.classList.contains('submit-btn');
+            }) || form.querySelector('.submit-btn');
+        }
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            var btn = findSubmitBtn(form, e.submitter);
+            if (!btn) return;
+            if (form.dataset.submitting === '1') { e.preventDefault(); return; }
+            // A confirm() cancel or page-level validation already stopped it.
+            if (e.defaultPrevented) return;
+            form.dataset.submitting = '1';
+            if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+            // Defer the visual disable so the submitter's value is still sent.
+            setTimeout(function () {
+                btn.disabled = true;
+                btn.classList.add('is-processing');
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            }, 0);
+        });
+        // Restore buttons if the page is shown again from the back/forward cache.
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            document.querySelectorAll('form[data-submitting="1"]').forEach(function (form) {
+                delete form.dataset.submitting;
+                var btn = findSubmitBtn(form, null);
+                if (btn && btn.dataset.originalHtml) {
+                    btn.disabled = false;
+                    btn.classList.remove('is-processing');
+                    btn.innerHTML = btn.dataset.originalHtml;
+                }
+            });
+        });
+    })();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 {% endwith %}
