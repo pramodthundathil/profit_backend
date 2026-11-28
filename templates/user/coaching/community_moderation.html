@@ -1,0 +1,76 @@
+{% extends 'user/base.html' %}
+
+{% block title %}Community | {% firstof request.user.gym.name "ProFit" %}{% endblock %}
+{% block header_title %}Community{% endblock %}
+{% block header_subtitle %}Review your members' posts{% endblock %}
+
+{% block extra_head %}
+<style>
+    .post-photo { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not features.community_feed_enabled and not features.public_feed_enabled %}
+<div class="alert alert-warning">The community feeds are turned off. Turn them on in <a href="{% url 'member-app-settings' %}">Member App settings</a>.</div>
+{% endif %}
+
+<ul class="nav nav-pills gap-2 mb-4">
+    <li class="nav-item"><a class="nav-link {% if filter == 'pending' %}active{% endif %}" href="?filter=pending">Waiting for approval <span class="badge bg-secondary ms-1">{{ counts.pending }}</span></a></li>
+    <li class="nav-item"><a class="nav-link {% if filter == 'reported' %}active{% endif %}" href="?filter=reported">Reported <span class="badge bg-secondary ms-1">{{ counts.reported }}</span></a></li>
+    <li class="nav-item"><a class="nav-link {% if filter == 'hidden' %}active{% endif %}" href="?filter=hidden">Hidden <span class="badge bg-secondary ms-1">{{ counts.hidden }}</span></a></li>
+    <li class="nav-item"><a class="nav-link {% if filter == 'all' %}active{% endif %}" href="?filter=all">All posts</a></li>
+</ul>
+
+{% for post in posts %}
+{% with m=post.author.member_profile %}
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+            <div>
+                <strong>{% if m %}{{ m.full_name }}{% else %}{{ post.author.email }}{% endif %}</strong>
+                {% if m %}<a href="{% url 'member-detail' m.pk %}" class="small text-muted ms-1">{{ m.member_id }}</a>{% endif %}
+                <div class="small text-muted">
+                    {{ post.get_visibility_display }} · {{ post.created_at|timesince }} ago · {{ post.like_count }} like{{ post.like_count|pluralize }} · {{ post.comment_count }} comment{{ post.comment_count|pluralize }}
+                </div>
+            </div>
+            <div>
+                {% if post.status == 'pending' %}<span class="badge bg-warning text-dark">Waiting for approval</span>
+                {% elif post.status == 'hidden' %}<span class="badge bg-secondary">Hidden</span>
+                {% else %}<span class="badge bg-success">Published</span>{% endif %}
+            </div>
+        </div>
+        {% if post.text %}<p class="mt-2 mb-2">{{ post.text|linebreaksbr }}</p>{% endif %}
+        {% if post.media.all %}
+        <div class="d-flex gap-2 flex-wrap mb-2">
+            {% for media in post.media.all %}<a href="{{ media.image.url }}" target="_blank" rel="noopener"><img src="{{ media.image.url }}" class="post-photo" alt="Post photo" loading="lazy"></a>{% endfor %}
+        </div>
+        {% endif %}
+        {% if post.hidden_reason %}<div class="small text-muted mb-2"><i class="bi bi-eye-slash me-1"></i>{{ post.hidden_reason }}</div>{% endif %}
+        {% for report in post.reports.all %}{% if not report.resolved %}
+        <div class="small text-danger"><i class="bi bi-flag-fill me-1"></i>Reported: {{ report.get_reason_display }}{% if report.details %} – {{ report.details }}{% endif %}</div>
+        {% endif %}{% endfor %}
+
+        <form method="post" class="d-flex gap-2 mt-3 flex-wrap">
+            {% csrf_token %}
+            <input type="hidden" name="post_id" value="{{ post.pk }}">
+            <input type="hidden" name="filter" value="{{ filter }}">
+            {% if post.status != 'published' %}
+            <button name="action" value="approve" class="btn btn-sm btn-success"><i class="bi bi-check2 me-1"></i>{% if post.status == 'pending' %}Approve{% else %}Publish again{% endif %}</button>
+            {% elif post.open_reports %}
+            <button name="action" value="restore" class="btn btn-sm btn-outline-success"><i class="bi bi-check2 me-1"></i>Keep (dismiss reports)</button>
+            {% endif %}
+            {% if post.status != 'hidden' %}
+            <button name="action" value="hide" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye-slash me-1"></i>Hide</button>
+            {% endif %}
+            <button name="action" value="delete" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this post for everyone?');"><i class="bi bi-trash3 me-1"></i>Delete</button>
+        </form>
+    </div>
+</div>
+{% endwith %}
+{% empty %}
+<div class="card border-0 shadow-sm"><div class="card-body text-center text-muted py-5">
+    <i class="bi bi-check2-all fs-1 d-block mb-2 opacity-25"></i>Nothing here.
+</div></div>
+{% endfor %}
+{% endblock %}

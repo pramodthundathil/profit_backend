@@ -47,6 +47,11 @@
         <a href="{% url 'member-list' %}" class="pf-nav-link {% if 'member' in un and 'pending-fee' not in un or 'health-history' in un or 'parq' in un %}active{% endif %}" title="Members">
             <i class="bi bi-people-fill pf-ico"></i><span>Members</span>
         </a>
+        {% if role == 'trainer' or role == 'gym_admin' or role == 'branch_admin' %}
+        <a href="{% url 'community-moderation' %}" class="pf-nav-link {% if un == 'community-moderation' %}active{% endif %}" title="Community">
+            <i class="bi bi-chat-square-heart-fill pf-ico"></i><span>Community</span>
+        </a>
+        {% endif %}
         <a href="{% url 'subscription-list' %}" class="pf-nav-link {% if 'subscription' in un and 'config' not in un and 'member-subscription' not in un %}active{% endif %}" title="Subscriptions">
             <i class="bi bi-calendar2-check-fill pf-ico"></i><span>Subscriptions</span>
         </a>

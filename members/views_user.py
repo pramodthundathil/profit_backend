@@ -819,9 +819,11 @@ def subscription_detail(request, pk):
 def health_history_form_view(request, member_id):
     member = get_object_or_404(Member, id=member_id, gym=request.user.gym)
     
-    # Check if health history already exists
-    health_history = getattr(member, 'health_history', None)
-    
+    # A submitted form is locked for the member; staff correct it from the member's profile.
+    health_history = HealthHistory.objects.filter(member=member).first()
+    if health_history:
+        return redirect('public-success')
+
     if request.method == 'POST':
         form = HealthHistoryForm(request.POST, instance=health_history)
         if form.is_valid():
@@ -1098,9 +1100,11 @@ def hik_add_member(request, pk):
 def public_health_history_form(request, token):
     member = get_object_or_404(Member, public_token=token)
     
-    # Check if health history already exists
-    health_history = getattr(member, 'health_history', None)
-    
+    # A submitted form is locked for the member; staff correct it from the member's profile.
+    health_history = HealthHistory.objects.filter(member=member).first()
+    if health_history:
+        return redirect('public-success')
+
     if request.method == 'POST':
         form = HealthHistoryForm(request.POST, instance=health_history)
         medication_formset = MedicationFormSet(request.POST, instance=health_history)

@@ -269,3 +269,49 @@ def coaching_instruction_form(request, pk, instruction_id=None):
         'error': error,
     }
     return render(request, 'user/coaching/instruction_form.html', context)
+
+
+# --- Community moderation ------------------------------------------------------
+
+from community.moderation import filtered as moderation_filtered, FILTERS as MODERATION_FILTERS
+from community.models import Post as CommunityPost, PostReport
+
+
+@login_required
+def community_moderation(request):
+    if request.user.role not in COACH_ROLES or not request.user.gym:
+        messages.error(request, "Only trainers and admins can moderate the community.")
+        return redirect('user-dashboard')
+
+    if request.method == 'POST':
+        post = get_object_or_404(CommunityPost, pk=request.POST.get('post_id'), gym=request.user.gym)
+        action = request.POST.get('action')
+        if action in ('approve', 'restore'):
+            post.status, post.hidden_reason = CommunityPost.PUBLISHED, ''
+            post.save(update_fields=['status', 'hidden_reason', 'updated_at'])
+            PostReport.objects.filter(post=post).update(resolved=True)
+            messages.success(request, "Post published.")
+        elif action == 'hide':
+            post.status, post.hidden_reason = CommunityPost.HIDDEN, 'Hidden by the gym team'
+            post.save(update_fields=['status', 'hidden_reason', 'updated_at'])
+            PostReport.objects.filter(post=post).update(resolved=True)
+            messages.success(request, "Post hidden.")
+        elif action == 'delete':
+            for media in post.media.all():
+                media.delete()
+            post.delete()
+            messages.success(request, "Post deleted.")
+        return redirect(f"{reverse('community-moderation')}?filter={request.POST.get('filter', 'pending')}")
+
+    current = request.GET.get('filter', 'pending')
+    if current not in MODERATION_FILTERS:
+        current = 'pending'
+    posts = moderation_filtered(request.user, current).select_related('author__member_profile').prefetch_related('reports')[:60]
+    context = {
+        'title': 'Community',
+        'filter': current,
+        'counts': {key: moderation_filtered(request.user, key).count() for key in ('pending', 'reported', 'hidden')},
+        'posts': posts,
+        'features': MemberAppSettings.for_gym(request.user.gym),
+    }
+    return render(request, 'user/coaching/community_moderation.html', context)

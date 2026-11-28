@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'enquiry',
     'member_api',
     'training',
+    'community',
 ]
 
 MIDDLEWARE = [
@@ -206,6 +207,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'member_auth': '10/min',
         'member_otp': '5/hour',
+        'community_post': '30/hour',
+        'community_comment': '120/hour',
     },
 }
 

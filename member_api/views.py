@@ -258,7 +258,45 @@ class MemberAppConfigView(APIView):
             'member': MemberSummarySerializer(member, context={'request': request}).data,
             'must_change_password': get_account(member).must_change_password,
             'features': MemberAppSettingsSerializer(MemberAppSettings.for_gym(member.gym)).data,
+            'trainer': _trainer_card(member),
+            'membership': _membership_card(member),
+            'social_profile': _social_card(member, request),
         })
+
+
+def _trainer_card(member):
+    trainer = member.assigned_trainer
+    if trainer is None or not trainer.is_active:
+        return None
+    return {
+        'name': trainer.username or trainer.email.split('@')[0],
+        'phone': trainer.phone_number or None,
+        'email': trainer.email,
+        'branch_name': trainer.branch.name if trainer.branch_id else None,
+    }
+
+
+def _membership_card(member):
+    current = member.current_subscription
+    end = current.end_date if current else member.access_expiry_date
+    days_left = (end - timezone.localdate()).days if end else None
+    return {
+        'status': member.membership_status,
+        'plan_name': (current.subscription_type.name if current and current.subscription_type_id else None) if current else None,
+        'end_date': end.isoformat() if end else None,
+        'days_left': max(days_left, 0) if days_left is not None else None,
+        'access_enabled': member.access_enabled,
+    }
+
+
+def _social_card(member, request):
+    from community.models import SocialProfile
+    profile = SocialProfile.for_member(member)
+    return {
+        'id': profile.pk,
+        'display_name': profile.display_name,
+        'avatar': request.build_absolute_uri(profile.avatar.url) if profile.avatar else None,
+    }
 
 
 class MemberProfileView(APIView):
