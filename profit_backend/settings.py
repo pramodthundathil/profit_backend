@@ -201,6 +201,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    # Only views that set throttle_scope are rate limited.
+    'DEFAULT_THROTTLE_RATES': {
+        'member_auth': '10/min',
+        'member_otp': '5/hour',
+    },
 }
 
 from datetime import timedelta
@@ -298,11 +303,18 @@ WHITENOISE_USE_FINDERS = True
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 # email configuration 
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_USE_TLS = True
-EMAIL_PORT = 587
-EMAIL_HOST_USER = 'profitgym.management@gmail.com'
-EMAIL_HOST_PASSWORD = 'psoovwzscskarabv'
+# For local testing set EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend to print emails instead.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '20'))
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').strip().lower() in ('1', 'true', 'yes')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f'ProFit <{EMAIL_HOST_USER}>' if EMAIL_HOST_USER else 'webmaster@localhost')
+
+# Shown in the member app welcome email when set
+MEMBER_APP_DOWNLOAD_URL = os.getenv('MEMBER_APP_DOWNLOAD_URL', '')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

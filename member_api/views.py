@@ -1,199 +1,273 @@
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.mail import send_mail
-from django.conf import settings
-from django.contrib.auth import authenticate
-import random
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
+import logging
+import secrets
+from datetime import timedelta
 
-from .models import EmailOTP
-from home.models import CustomUser
+from django.conf import settings
+from django.contrib.auth.models import update_last_login
+from django.core.mail import send_mail
+from django.utils import timezone
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from members.models import Member
+from .models import EmailOTP, MemberAppAccount, MemberAppSettings
+from .permissions import IsAppMember, MEMBER_APP_DISABLED
 from .serializers import (
-    SendOTPSerializer, VerifyOTPSerializer, 
-    EmailPasswordLoginSerializer, SetPasswordSerializer,
-    MemberProfileSerializer
+    LogoutSerializer, MemberAppSettingsSerializer, MemberLoginSerializer, MemberProfileSerializer,
+    MemberSummarySerializer, SendOTPSerializer, SetPasswordSerializer, VerifyOTPSerializer,
 )
+from .services import _revoke_sessions, get_account, validate_new_password
+
+logger = logging.getLogger(__name__)
+
+TAG = 'Member App API'
+OTP_RESEND_INTERVAL = timedelta(seconds=60)
+
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
+    return {'refresh': str(refresh), 'access': str(refresh.access_token)}
 
-class SendEmailOTPView(APIView):
-    permission_classes = [AllowAny]
 
-    @swagger_auto_schema(
-        tags=['Member App API'],
-        operation_description="Send OTP to member's email",
-        request_body=SendOTPSerializer,
-        responses={200: "OTP sent successfully", 400: "Bad Request", 404: "Member not found"}
+def _login_member_by_email(email):
+    """The member whose app login uses this email, if any."""
+    return (
+        Member.objects.select_related('user', 'gym', 'branch')
+        .filter(user__isnull=False, user__role='member', user__email__iexact=email.strip())
+        .first()
     )
-    def post(self, request):
-        serializer = SendOTPSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            
-            # Check if member exists with this email
-            if not Member.objects.filter(email=email).exists():
-                return Response({"error": "No member found with this email."}, status=status.HTTP_404_NOT_FOUND)
-
-            # Generate 6-digit OTP
-            otp_code = str(random.randint(100000, 999999))
-            
-            # Save OTP
-            EmailOTP.objects.create(email=email, otp=otp_code)
-            
-            # Send Email
-            try:
-                send_mail(
-                    'Your Gym Login OTP',
-                    f'Your OTP for login is {otp_code}. It is valid for 10 minutes.',
-                    settings.EMAIL_HOST_USER,
-                    [email],
-                    fail_silently=False,
-                )
-            except Exception as e:
-                print(f"Error sending email: {e}")
-                # For development fallback if email fails
-                print(f"OTP for {email} is {otp_code}")
-
-            return Response({"message": "OTP sent successfully to your email."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class VerifyEmailOTPView(APIView):
-    permission_classes = [AllowAny]
-
-    @swagger_auto_schema(
-        tags=['Member App API'],
-        operation_description="Verify OTP and Login",
-        request_body=VerifyOTPSerializer,
-        responses={200: "Login successful", 400: "Invalid OTP", 404: "Member not found"}
+def _login_member(identifier):
+    if '@' in identifier:
+        return _login_member_by_email(identifier)
+    return (
+        Member.objects.select_related('user', 'gym', 'branch')
+        .filter(user__isnull=False, user__role='member', member_id__iexact=identifier)
+        .first()
     )
-    def post(self, request):
-        serializer = VerifyOTPSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            otp = serializer.validated_data['otp']
-            
-            # Verify OTP
-            otp_obj = EmailOTP.objects.filter(email=email, otp=otp).order_by('-created_at').first()
-            if not otp_obj or not otp_obj.is_valid():
-                return Response({"error": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            otp_obj.is_verified = True
-            otp_obj.save()
-            
-            # Find Member
-            member = Member.objects.filter(email=email).first()
-            if not member:
-                return Response({"error": "Member not found."}, status=status.HTTP_404_NOT_FOUND)
-            
-            # Find or Create CustomUser
-            user = CustomUser.objects.filter(email=email).first()
-            if not user:
-                import secrets
-                user = CustomUser.objects.create_user(
-                    email=email,
-                    password=secrets.token_urlsafe(12),
-                    role='member',
-                    gym=member.gym,
-                    phone_number=member.mobile_number,
-                    username=f"member_{member.member_id}"
-                )
-            
-            # Link user to member if not already linked
-            if not hasattr(member, 'user') or member.user != user:
-                member.user = user
-                member.save()
 
-            tokens = get_tokens_for_user(user)
-            return Response({
-                "message": "Login successful.",
-                "tokens": tokens,
-                "is_password_set": user.has_usable_password() # If they want to prompt for setting password
-            }, status=status.HTTP_200_OK)
-            
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def _session_response(request, member, message):
+    account = get_account(member)
+    update_last_login(None, member.user)
+    return Response({
+        'message': message,
+        'tokens': get_tokens_for_user(member.user),
+        'must_change_password': account.must_change_password,
+        'member': MemberSummarySerializer(member, context={'request': request}).data,
+    })
+
+
+def _disabled_response():
+    return Response(
+        {'code': MEMBER_APP_DISABLED, 'error': 'Your gym has turned off the member app. Contact your gym for help.'},
+        status=status.HTTP_403_FORBIDDEN,
+    )
 
 
 class EmailPasswordLoginView(APIView):
+    """Sign in with Member ID or email and password."""
     permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'member_auth'
 
     @swagger_auto_schema(
-        tags=['Member App API'],
-        operation_description="Login with Email and Password",
-        request_body=EmailPasswordLoginSerializer,
-        responses={200: "Login successful", 401: "Invalid credentials", 403: "Not a member account"}
+        tags=[TAG],
+        operation_description="Sign in with Member ID or email and password. "
+                              "If must_change_password is true, the app must call auth/change-password/ next.",
+        request_body=MemberLoginSerializer,
+        responses={200: "Signed in", 401: "Wrong credentials", 403: "Login turned off"},
     )
     def post(self, request):
-        serializer = EmailPasswordLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
-            
-            user = authenticate(request, username=email, password=password)
-            if user is not None:
-                if user.role != 'member':
-                    return Response({"error": "Not a member account."}, status=status.HTTP_403_FORBIDDEN)
-                
-                tokens = get_tokens_for_user(user)
-                return Response({
-                    "message": "Login successful.",
-                    "tokens": tokens
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
-                
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = MemberLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        member = _login_member(serializer.validated_data['identifier'])
+
+        if member is None or not member.user.check_password(serializer.validated_data['password']):
+            return Response({'error': 'Wrong Member ID, email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not member.user.is_active:
+            return Response(
+                {'error': 'Your app login has been turned off. Contact your gym for help.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not MemberAppSettings.for_gym(member.gym).member_login_enabled:
+            return _disabled_response()
+        return _session_response(request, member, 'Signed in.')
+
+
+class SendEmailOTPView(APIView):
+    """Start a password reset by emailing a one-time code."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'member_otp'
+
+    @swagger_auto_schema(
+        tags=[TAG],
+        operation_description="Email a 6-digit code for resetting the password. "
+                              "The response is the same whether or not the email has an account.",
+        request_body=SendOTPSerializer,
+        responses={200: "Code sent if the account exists"},
+    )
+    def post(self, request):
+        serializer = SendOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].strip().lower()
+        reply = Response({'message': 'If this email has a ProFit member login, a code has been sent to it.'})
+
+        member = _login_member_by_email(email)
+        if (
+            member is None
+            or not member.user.is_active
+            or not MemberAppSettings.for_gym(member.gym).member_login_enabled
+        ):
+            return reply
+
+        recent = EmailOTP.objects.filter(email=email, created_at__gte=timezone.now() - OTP_RESEND_INTERVAL)
+        if recent.exists():
+            return reply
+
+        EmailOTP.objects.filter(email=email, is_verified=False).delete()
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        EmailOTP.objects.create(email=email, otp=code)
+        try:
+            send_mail(
+                f'{member.gym.name} app password reset code',
+                f'Your code is {code}. It is valid for 10 minutes.\n\n'
+                'If you did not ask to reset your password, you can ignore this email.',
+                settings.DEFAULT_FROM_EMAIL,
+                [member.user.email],
+                fail_silently=False,
+            )
+        except Exception:
+            logger.exception("Could not send member OTP email for member %s", member.pk)
+        return reply
+
+
+class VerifyEmailOTPView(APIView):
+    """Exchange the emailed code for a session that must set a new password."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'member_auth'
+
+    @swagger_auto_schema(
+        tags=[TAG],
+        operation_description="Verify the emailed code. The member is signed in with must_change_password set.",
+        request_body=VerifyOTPSerializer,
+        responses={200: "Signed in", 400: "Wrong or expired code"},
+    )
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].strip().lower()
+        code = serializer.validated_data['otp'].strip()
+
+        otp = EmailOTP.objects.filter(email=email, is_verified=False).order_by('-created_at').first()
+        if otp is None or not otp.is_valid():
+            return Response({'error': 'This code has expired. Ask for a new one.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not secrets.compare_digest(otp.otp, code):
+            otp.attempts += 1
+            otp.save(update_fields=['attempts'])
+            return Response({'error': 'Wrong code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp.is_verified = True
+        otp.save(update_fields=['is_verified'])
+
+        member = _login_member_by_email(email)
+        if member is None or not member.user.is_active:
+            return Response({'error': 'This code has expired. Ask for a new one.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not MemberAppSettings.for_gym(member.gym).member_login_enabled:
+            return _disabled_response()
+
+        account = get_account(member)
+        account.must_change_password = True
+        account.save(update_fields=['must_change_password'])
+        return _session_response(request, member, 'Code verified. Set a new password.')
 
 
 class SetPasswordView(APIView):
-    permission_classes = [IsAuthenticated]
+    """Replace the password. The current one is not needed while a change is required."""
+    permission_classes = [IsAppMember]
+    allow_pending_password = True
 
     @swagger_auto_schema(
-        tags=['Member App API'],
-        operation_description="Set new password for authenticated member",
+        tags=[TAG],
+        operation_description="Set a new password. current_password is required unless must_change_password is true. "
+                              "Other sessions are signed out and new tokens are returned.",
         request_body=SetPasswordSerializer,
-        responses={200: "Password set successfully", 400: "Bad Request", 403: "Forbidden"}
+        responses={200: "Password changed", 400: "Bad Request"},
     )
     def post(self, request):
-        if request.user.role != 'member':
-            return Response({"error": "Only members can use this API."}, status=status.HTTP_403_FORBIDDEN)
-
         serializer = SetPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            user = request.user
-            user.set_password(serializer.validated_data['password'])
-            user.save()
-            return Response({"message": "Password set successfully."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        account = get_account(request.member)
+
+        if not account.must_change_password and not user.check_password(
+            serializer.validated_data.get('current_password') or ''
+        ):
+            return Response({'current_password': ['Current password is wrong.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        password = serializer.validated_data['password']
+        error = validate_new_password(user, password)
+        if error:
+            return Response({'password': [error]}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(password)
+        user.save()
+        MemberAppAccount.objects.filter(pk=account.pk).update(
+            must_change_password=False, password_changed_at=timezone.now()
+        )
+        _revoke_sessions(user)
+        return Response({'message': 'Password changed.', 'tokens': get_tokens_for_user(user)})
+
+
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @swagger_auto_schema(tags=[TAG], request_body=LogoutSerializer, responses={205: "Signed out"})
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            RefreshToken(serializer.validated_data['refresh']).blacklist()
+        except TokenError:
+            pass
+        return Response(status=status.HTTP_205_RESET_CONTENT)
+
+
+class MemberAppConfigView(APIView):
+    """Everything the app needs at start-up: who is signed in and which features are on."""
+    permission_classes = [IsAppMember]
+    allow_pending_password = True
+
+    @swagger_auto_schema(tags=[TAG], operation_description="Signed-in member, password state and gym feature switches.")
+    def get(self, request):
+        member = request.member
+        return Response({
+            'member': MemberSummarySerializer(member, context={'request': request}).data,
+            'must_change_password': get_account(member).must_change_password,
+            'features': MemberAppSettingsSerializer(MemberAppSettings.for_gym(member.gym)).data,
+        })
 
 
 class MemberProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAppMember]
 
     @swagger_auto_schema(
-        tags=['Member App API'],
+        tags=[TAG],
         operation_description="Get authenticated member profile",
-        responses={200: MemberProfileSerializer, 403: "Forbidden", 404: "Profile not found"}
+        responses={200: MemberProfileSerializer},
     )
     def get(self, request):
-        user = request.user
-        if user.role != 'member':
-            return Response({"error": "Only members can access this profile."}, status=status.HTTP_403_FORBIDDEN)
-            
-        try:
-            member = user.member_profile
-        except Member.DoesNotExist:
-            return Response({"error": "Member profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
-            
-        serializer = MemberProfileSerializer(member)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(MemberProfileSerializer(request.member, context={'request': request}).data)

@@ -77,16 +77,17 @@
         <a href="{% url 'user-staff-list' %}" class="pf-nav-link {% if 'staff' in un %}active{% endif %}" title="Staff">
             <i class="bi bi-person-badge-fill pf-ico"></i><span>Staff</span>
         </a>
-        <a class="pf-nav-link {% if 'hik-config' in un or 'gym-config' in un or 'subscription-config' in un or 'batch' in un or 'subtype' in un or 'subperiod' in un %}active{% endif %}"
+        <a class="pf-nav-link {% if 'hik-config' in un or 'member-app' in un or 'gym-config' in un or 'subscription-config' in un or 'batch' in un or 'subtype' in un or 'subperiod' in un %}active{% endif %}"
            data-bs-toggle="collapse" href="#pfSettings" role="button" title="Settings"
-           aria-expanded="{% if 'hik-config' in un or 'config' in un or 'batch' in un or 'subtype' in un or 'subperiod' in un %}true{% else %}false{% endif %}" aria-controls="pfSettings">
+           aria-expanded="{% if 'hik-config' in un or 'member-app' in un or 'config' in un or 'batch' in un or 'subtype' in un or 'subperiod' in un %}true{% else %}false{% endif %}" aria-controls="pfSettings">
             <i class="bi bi-gear-fill pf-ico"></i><span>Settings</span><i class="bi bi-chevron-down pf-caret"></i>
         </a>
-        <div class="collapse {% if 'hik-config' in un or 'config' in un or 'batch' in un or 'subtype' in un or 'subperiod' in un %}show{% endif %}" id="pfSettings">
+        <div class="collapse {% if 'hik-config' in un or 'member-app' in un or 'config' in un or 'batch' in un or 'subtype' in un or 'subperiod' in un %}show{% endif %}" id="pfSettings">
             <div class="pf-subnav">
                 <a href="{% url 'gym-config-list' %}" class="pf-nav-link {% if 'gym-config' in un or 'batch' in un %}active{% endif %}"><span>Gym Configuration</span></a>
                 <a href="{% url 'subscription-config-list' %}" class="pf-nav-link {% if 'subscription-config' in un or 'subtype' in un or 'subperiod' in un %}active{% endif %}"><span>Plans &amp; Periods</span></a>
                 <a href="{% url 'user-hik-config-list' %}" class="pf-nav-link {% if 'hik-config' in un %}active{% endif %}"><span>Access Devices</span></a>
+                <a href="{% url 'member-app-settings' %}" class="pf-nav-link {% if 'member-app' in un %}active{% endif %}"><span>Member App</span></a>
             </div>
         </div>
         {% endif %}
