@@ -15,6 +15,7 @@ from home.models import GymBranch, CustomUser, HikConfigurationDb
 import requests
 from django.http import JsonResponse
 from payments.models import Payment, GymOffer
+from member_api.services import login_status
 
 @login_required
 def payment_receipt(request, pk):
@@ -247,7 +248,9 @@ def member_detail(request, pk):
         'title': f"Member Details: {member.full_name}",
         'subscriptions': member.subscriptions.all().order_by('-created_at'),
         'active_offers': filtered_offers,
-        'active_trainers': active_trainers
+        'active_trainers': active_trainers,
+        'app_login': login_status(member),
+        'can_manage_app_login': user.role in ('gym_admin', 'branch_admin', 'staff'),
     }
     return render(request, "user/members/member_detail.html", context)
 
@@ -281,79 +284,52 @@ def member_assign_trainer(request, pk):
             
     return redirect('member-detail', pk=pk)
 
-@login_required
-def member_enable_login(request, pk):
+def _member_login_action(request, pk, action):
+    """Run a member app login action from the member detail page."""
+    from member_api import services as login_services
+    from member_api.permissions import can_manage_member
+
     user = request.user
     member = get_object_or_404(Member, pk=pk, gym=user.gym)
-    
-    if user.role == 'branch_admin' and member.branch != user.branch:
-        messages.error(request, "Access denied. You can only edit members of your branch.")
+    if request.method != 'POST':
         return redirect('member-detail', pk=pk)
-        
-    if not member.email:
-        messages.error(request, "Member must have an email address to enable login.")
+    if user.role not in ('gym_admin', 'branch_admin', 'staff') or not can_manage_member(user, member):
+        messages.error(request, "You do not have permission to manage this member's app login.")
         return redirect('member-detail', pk=pk)
-
-    # Check if a CustomUser already exists for this email
-    custom_user = CustomUser.objects.filter(email=member.email).first()
-    generated_password = None
-    if not custom_user:
-        import secrets
-        generated_password = secrets.token_urlsafe(8) # Shorter password for easier typing
-        custom_user = CustomUser.objects.create_user(
-            email=member.email,
-            password=generated_password,
-            role='member',
-            gym=member.gym,
-            phone_number=member.mobile_number,
-            username=f"member_{member.member_id}"
-        )
-    
-    if not hasattr(member, 'user') or member.user != custom_user:
-        member.user = custom_user
-        member.save()
-        
-        # Send Email with credentials if we generated a new password
-        if generated_password:
-            try:
-                from django.core.mail import send_mail
-                from django.conf import settings
-                send_mail(
-                    'Your Gym App Login Credentials',
-                    f'Hello {member.first_name},\n\nYour mobile app login has been enabled!\n\nYou can login using:\nEmail: {member.email}\nTemporary Password: {generated_password}\n\nPlease change your password after logging in or use the OTP login method.',
-                    settings.EMAIL_HOST_USER,
-                    [member.email],
-                    fail_silently=False,
-                )
-                messages.success(request, f"Mobile App Login enabled for {member.full_name}. Credentials sent to their email.")
-            except Exception as e:
-                print(f"Error sending email: {e}")
-                messages.warning(request, f"Login enabled for {member.full_name}, but failed to send the email with the temporary password. They can still login via OTP.")
-        else:
-            messages.success(request, f"Mobile App Login enabled for {member.full_name}.")
+    try:
+        level, text = action(member, login_services)
+    except login_services.MemberLoginError as error:
+        messages.error(request, str(error))
     else:
-        messages.info(request, f"Mobile App Login is already enabled for {member.full_name}.")
-        
+        getattr(messages, level)(request, text)
     return redirect('member-detail', pk=pk)
+
+
+def _sent(member, credentials, services):
+    if services.send_credentials(credentials):
+        return 'success', f"Login details sent to {member.email}."
+    return 'warning', ("Login is ready, but the email could not be sent. "
+                       "Check the email settings, then use Resend.")
+
+
+@login_required
+def member_enable_login(request, pk):
+    return _member_login_action(
+        request, pk, lambda m, svc: _sent(m, svc.enable_login(m, request.user), svc))
+
+
+@login_required
+def member_resend_login(request, pk):
+    return _member_login_action(
+        request, pk, lambda m, svc: _sent(m, svc.reset_credentials(m, request.user), svc))
+
 
 @login_required
 def member_disable_login(request, pk):
-    user = request.user
-    member = get_object_or_404(Member, pk=pk, gym=user.gym)
-    
-    if user.role == 'branch_admin' and member.branch != user.branch:
-        messages.error(request, "Access denied. You can only edit members of your branch.")
-        return redirect('member-detail', pk=pk)
-        
-    if member.user:
-        # Delete the CustomUser entirely. 
-        # The OneToOneField on Member with SET_NULL will automatically set member.user to None
-        member.user.delete()
-        messages.success(request, f"Mobile App Login has been disabled and login user account deleted for {member.full_name}.")
-    else:
-        messages.info(request, f"Mobile App Login is not enabled for {member.full_name}.")
-        
-    return redirect('member-detail', pk=pk)
+    def disable(member, svc):
+        svc.disable_login(member)
+        return 'success', f"App login turned off for {member.full_name}."
+    return _member_login_action(request, pk, disable)
 
 def hik_sync_member_status(member):
     """

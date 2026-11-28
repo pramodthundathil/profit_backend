@@ -15,6 +15,7 @@ urlpatterns = [
     path('user/members/<int:pk>/assign-trainer/', views_user.member_assign_trainer, name='member-assign-trainer'),
     path('user/members/<int:pk>/enable-login/', views_user.member_enable_login, name='member-enable-login'),
     path('user/members/<int:pk>/disable-login/', views_user.member_disable_login, name='member-disable-login'),
+    path('user/members/<int:pk>/resend-login/', views_user.member_resend_login, name='member-resend-login'),
     path('user/members/<int:pk>/hik-check/', views_user.hik_check_member, name='member-hik-check'),
     path('user/members/<int:pk>/hik-add/', views_user.hik_add_member, name='member-hik-add'),
     path('user/members/<int:pk>/subscription/add/', views_user.member_add_subscription, name='member-subscription-add'),
