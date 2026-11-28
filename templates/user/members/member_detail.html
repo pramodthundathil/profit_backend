@@ -756,27 +756,7 @@
 
 {% block scripts %}
 <script>
-    $(document).ready(function() {
-        // Global delegate for all forms
-        $(document).on('submit', 'form', function(e) {
-            const $form = $(this);
-            const $btn = $form.find('.submit-btn');
-            
-            if ($btn.length && !$btn.hasClass('is-processing')) {
-                // Check validity first
-                if (this.checkValidity()) {
-                    // Mark as processing
-                    $btn.addClass('is-processing');
-                    
-                    // Small delay to let browser start submission before the UI 'locks'
-                    setTimeout(function() {
-                        $btn.prop('disabled', true);
-                        $btn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...');
-                    }, 50);
-                }
-            }
-        });
-    });
+    // Submit-button double-click protection lives in user/base.html.
 
     // Handle URL Hash for tabs
     document.addEventListener('DOMContentLoaded', function() {
