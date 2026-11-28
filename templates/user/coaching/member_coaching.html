@@ -1,0 +1,143 @@
+{% extends 'user/base.html' %}
+
+{% block title %}Coaching | {{ member.full_name }}{% endblock %}
+{% block header_title %}{{ member.full_name }}{% endblock %}
+{% block header_subtitle %}{{ member.member_id }} · Food log and instructions{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'member-list' %}" class="text-decoration-none text-muted">Members</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.member_id }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Coaching</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block header_actions %}
+{% if features.trainer_instructions_enabled %}
+<div class="dropdown">
+    <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-plus-lg"></i> New instruction</button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{% url 'member-coaching-instruction-new' member.pk %}?kind=workout"><i class="bi bi-activity me-2"></i>Workout plan</a></li>
+        <li><a class="dropdown-item" href="{% url 'member-coaching-instruction-new' member.pk %}?kind=diet"><i class="bi bi-egg-fried me-2"></i>Diet plan</a></li>
+        <li><a class="dropdown-item" href="{% url 'member-coaching-instruction-new' member.pk %}?kind=note"><i class="bi bi-chat-left-text me-2"></i>Note</a></li>
+    </ul>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .meal-photo { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; }
+    .coach-day + .coach-day { margin-top: 1.5rem; }
+    .macro { font-size: .8rem; color: var(--pf-text-muted, #6c757d); }
+    .rating-btn input { display: none; }
+    .rating-btn span { cursor: pointer; }
+    .rating-btn input:checked + span { background: var(--bs-dark); color: #fff; }
+    .exercise-row td { padding: .35rem .5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not member.user_id %}
+<div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i>{{ member.first_name }} has no app login yet, so they cannot log meals or see instructions. Enable it on their <a href="{% url 'member-detail' member.pk %}">profile</a>.</div>
+{% endif %}
+
+<ul class="nav nav-pills mb-4 gap-2">
+    {% if features.food_log_enabled %}
+    <li class="nav-item"><a class="nav-link {% if tab == 'food' %}active{% endif %}" href="?tab=food"><i class="bi bi-egg-fried me-1"></i>Food log</a></li>
+    {% endif %}
+    {% if features.trainer_instructions_enabled %}
+    <li class="nav-item"><a class="nav-link {% if tab == 'plans' %}active{% endif %}" href="?tab=plans"><i class="bi bi-clipboard-check me-1"></i>Instructions</a></li>
+    {% endif %}
+</ul>
+
+{% if not features.food_log_enabled and not features.trainer_instructions_enabled %}
+<div class="alert alert-warning">Food log and trainer instructions are both turned off in <a href="{% url 'member-app-settings' %}">Member App settings</a>.</div>
+{% endif %}
+
+{% if tab == 'food' and features.food_log_enabled %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a class="btn btn-light btn-sm" href="?tab=food&date={{ prev_date }}"><i class="bi bi-chevron-left"></i> Earlier</a>
+    <span class="small text-muted">7 days to {{ end|date:"j M Y" }}</span>
+    {% if next_date %}<a class="btn btn-light btn-sm" href="?tab=food&date={{ next_date }}">Later <i class="bi bi-chevron-right"></i></a>{% else %}<span style="width:80px"></span>{% endif %}
+</div>
+
+{% for day in days %}
+<div class="coach-day">
+    <div class="d-flex justify-content-between align-items-baseline mb-2">
+        <h6 class="mb-0 fw-bold">{{ day.date|date:"l, j M" }}</h6>
+        <span class="small text-muted">
+            {{ day.summary.meals }} meal{{ day.summary.meals|pluralize }}
+            {% if day.summary.totals.calories %} · {{ day.summary.totals.calories|floatformat:0 }}{% if day.summary.targets.calories %} / {{ day.summary.targets.calories }}{% endif %} kcal{% endif %}
+        </span>
+    </div>
+    {% for meal in day.meals %}
+    <div class="card border-0 shadow-sm mb-2" id="meal-{{ meal.pk }}">
+        <div class="card-body">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
+                <div>
+                    <span class="fw-semibold">{{ meal.get_meal_type_display }}</span>
+                    {% if meal.meal_time %}<span class="text-muted small ms-1">{{ meal.meal_time|time:"g:i A" }}</span>{% endif %}
+                </div>
+                <div class="macro">
+                    {% if meal.calories %}{{ meal.calories }} kcal{% endif %}
+                    {% if meal.protein_g %} · P {{ meal.protein_g|floatformat:"-1" }}g{% endif %}
+                    {% if meal.carbs_g %} · C {{ meal.carbs_g|floatformat:"-1" }}g{% endif %}
+                    {% if meal.fat_g %} · F {{ meal.fat_g|floatformat:"-1" }}g{% endif %}
+                </div>
+            </div>
+            {% if meal.description %}<p class="mb-2 mt-1">{{ meal.description|linebreaksbr }}</p>{% endif %}
+            {% if meal.photos.all %}
+            <div class="d-flex gap-2 flex-wrap mb-2">
+                {% for p in meal.photos.all %}<a href="{{ p.image.url }}" target="_blank" rel="noopener"><img src="{{ p.image.url }}" class="meal-photo" alt="Photo of {{ meal.get_meal_type_display|lower }}" loading="lazy"></a>{% endfor %}
+            </div>
+            {% endif %}
+
+            {% for fb in meal.feedback.all %}
+            <div class="border-start border-3 ps-2 my-2 small {% if fb.rating == 'great' %}border-success{% elif fb.rating == 'improve' %}border-danger{% else %}border-warning{% endif %}">
+                <strong>{% firstof fb.author.username fb.author.email "Former staff" %}</strong>
+                {% if fb.rating %}<span class="badge bg-light text-dark border ms-1">{{ fb.get_rating_display }}</span>{% endif %}
+                <span class="text-muted ms-1">{{ fb.created_at|timesince }} ago</span>
+                {% if fb.comment %}<div>{{ fb.comment|linebreaksbr }}</div>{% endif %}
+            </div>
+            {% endfor %}
+
+            <form method="post" action="{% url 'member-coaching-feedback' member.pk meal.pk %}" class="mt-2">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ end|date:'Y-m-d' }}">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    {% for value, label in ratings %}
+                    <label class="rating-btn m-0"><input type="radio" name="rating" value="{{ value }}"><span class="badge rounded-pill border text-dark bg-light px-3 py-2">{{ label }}</span></label>
+                    {% endfor %}
+                    <input type="text" name="comment" class="form-control form-control-sm flex-grow-1" style="min-width:200px" placeholder="Feedback for {{ member.first_name }}" maxlength="2000">
+                    <button class="btn btn-dark btn-sm submit-btn">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-muted small ps-1">No meals logged.</div>
+    {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+
+{% if tab == 'plans' and features.trainer_instructions_enabled %}
+{% for ins in active_instructions %}
+    {% include 'user/coaching/_instruction_card.html' with ins=ins %}
+{% empty %}
+<div class="card border-0 shadow-sm"><div class="card-body text-center text-muted py-5">
+    <i class="bi bi-clipboard fs-1 d-block mb-2 opacity-25"></i>No active instructions. Use <strong>New instruction</strong> to send a workout plan, diet plan or note.
+</div></div>
+{% endfor %}
+
+{% if past_instructions %}
+<h6 class="mt-4 mb-2 text-muted">Past instructions</h6>
+{% for ins in past_instructions %}
+    {% include 'user/coaching/_instruction_card.html' with ins=ins %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endblock %}

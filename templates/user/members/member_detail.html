@@ -18,6 +18,11 @@
 {% endblock %}
 
 {% block header_actions %}
+{% if request.user.role == 'trainer' or request.user.role == 'gym_admin' or request.user.role == 'branch_admin' %}
+<a href="{% url 'member-coaching' member.pk %}" class="btn btn-light">
+    <i class="bi bi-clipboard-heart"></i> Coaching
+</a>
+{% endif %}
 <a href="{% url 'subscription-list' %}?member={{ member.pk }}" class="btn btn-light">
     <i class="bi bi-calendar2-check"></i> Subscriptions
     {% with n=member.subscriptions.count %}{% if n %}<span class="badge bg-secondary rounded-pill">{{ n }}</span>{% endif %}{% endwith %}

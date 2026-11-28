@@ -1,0 +1,180 @@
+{% extends 'user/base.html' %}
+
+{% block title %}{{ title }} | {{ member.full_name }}{% endblock %}
+{% block header_title %}{{ title|capfirst }}{% endblock %}
+{% block header_subtitle %}For {{ member.full_name }} ({{ member.member_id }}){% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'member-detail' member.pk %}" class="text-decoration-none text-muted">{{ member.member_id }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'member-coaching' member.pk %}?tab=plans" class="text-decoration-none text-muted">Coaching</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ title|capfirst }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .plan-day { border: 1px solid var(--bs-border-color); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+    .plan-grid { display: grid; grid-template-columns: 2fr 70px 90px 90px 2fr 32px; gap: 6px; align-items: center; }
+    .meal-grid { display: grid; grid-template-columns: 1.2fr 90px 3fr 32px; gap: 6px; align-items: start; }
+    .plan-grid .hdr, .meal-grid .hdr { font-size: .75rem; color: var(--bs-secondary-color); }
+    @media (max-width: 768px) {
+        .plan-grid { grid-template-columns: 1fr 1fr 1fr; }
+        .plan-grid .hdr { display: none; }
+        .plan-grid .ex-name, .plan-grid .ex-notes { grid-column: span 3; }
+        .meal-grid { grid-template-columns: 1fr 1fr; }
+        .meal-grid .hdr { display: none; }
+        .meal-grid .meal-items { grid-column: span 2; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-xl-9">
+<form method="post" id="instructionForm" class="card border-0 shadow-sm">
+    {% csrf_token %}
+    <div class="card-body p-4">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="title">Title</label>
+            <input type="text" class="form-control" id="title" name="title" maxlength="200" required value="{{ values.title }}"
+                   placeholder="{% if kind == 'workout' %}e.g. 4-day strength split{% elif kind == 'diet' %}e.g. Fat loss – 1800 kcal{% else %}e.g. Rest days{% endif %}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="body">{% if kind == 'note' %}Note{% else %}Notes for {{ member.first_name }} <span class="text-muted fw-normal">(optional)</span>{% endif %}</label>
+            <textarea class="form-control" id="body" name="body" rows="{% if kind == 'note' %}6{% else %}3{% endif %}" {% if kind == 'note' %}required{% endif %}>{{ values.body }}</textarea>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6">
+                <label class="form-label fw-semibold" for="start_date">Starts</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ values.start_date }}">
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label fw-semibold" for="end_date">Ends <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ values.end_date }}">
+            </div>
+        </div>
+
+        {% if kind == 'workout' %}
+        <h6 class="fw-bold mb-2">Workout days</h6>
+        <div id="days"></div>
+        <button type="button" class="btn btn-outline-dark btn-sm" id="addDay"><i class="bi bi-plus-lg"></i> Add day</button>
+        {% elif kind == 'diet' %}
+        <h6 class="fw-bold mb-2">Daily targets</h6>
+        <div class="row g-2 mb-4">
+            <div class="col-6 col-md-3"><label class="form-label small" for="t-calories">Calories (kcal)</label><input type="number" min="0" class="form-control" id="t-calories" data-target="calories"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="t-protein">Protein (g)</label><input type="number" min="0" step="0.1" class="form-control" id="t-protein" data-target="protein_g"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="t-carbs">Carbs (g)</label><input type="number" min="0" step="0.1" class="form-control" id="t-carbs" data-target="carbs_g"></div>
+            <div class="col-6 col-md-3"><label class="form-label small" for="t-fat">Fat (g)</label><input type="number" min="0" step="0.1" class="form-control" id="t-fat" data-target="fat_g"></div>
+        </div>
+        <h6 class="fw-bold mb-2">Meals</h6>
+        <div class="meal-grid mb-1"><span class="hdr">Meal</span><span class="hdr">Time</span><span class="hdr">What to eat</span><span></span></div>
+        <div id="meals"></div>
+        <button type="button" class="btn btn-outline-dark btn-sm mt-2" id="addMeal"><i class="bi bi-plus-lg"></i> Add meal</button>
+        {% endif %}
+
+        <input type="hidden" name="plan" id="planInput">
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
+        <a href="{% url 'member-coaching' member.pk %}?tab=plans" class="btn btn-light">Cancel</a>
+        <button type="submit" class="btn btn-dark submit-btn"><i class="bi bi-send me-1"></i>{% if instruction %}Save changes{% else %}Send to {{ member.first_name }}{% endif %}</button>
+    </div>
+</form>
+{% if not instruction and kind != 'note' %}
+<p class="small text-muted mt-2">A new {{ kind }} plan replaces {{ member.first_name }}'s current one. The old plan stays in their history.</p>
+{% endif %}
+</div>
+</div>
+{{ values.plan|json_script:"initialPlan" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const kind = "{{ kind|escapejs }}";
+    const plan = JSON.parse(document.getElementById('initialPlan').textContent || '{}') || {};
+    const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    if (kind === 'workout') {
+        const days = document.getElementById('days');
+        const exerciseRow = (ex = {}) => el(`
+            <div class="plan-grid exercise mb-1" data-id="${esc(ex.id)}">
+                <input class="form-control form-control-sm ex-name" placeholder="Exercise" value="${esc(ex.name)}" aria-label="Exercise">
+                <input class="form-control form-control-sm ex-sets" type="number" min="0" max="50" placeholder="Sets" value="${esc(ex.sets)}" aria-label="Sets">
+                <input class="form-control form-control-sm ex-reps" placeholder="Reps" value="${esc(ex.reps)}" aria-label="Reps">
+                <input class="form-control form-control-sm ex-rest" placeholder="Rest" value="${esc(ex.rest)}" aria-label="Rest">
+                <input class="form-control form-control-sm ex-notes" placeholder="Notes" value="${esc(ex.notes)}" aria-label="Notes">
+                <button type="button" class="btn btn-sm btn-light text-danger remove" aria-label="Remove exercise"><i class="bi bi-x-lg"></i></button>
+            </div>`);
+        const addDay = (day = {}) => {
+            const index = days.children.length + 1;
+            const node = el(`
+                <div class="plan-day">
+                    <div class="d-flex gap-2 mb-2">
+                        <input class="form-control form-control-sm fw-semibold day-name" placeholder="Day ${index} – e.g. Chest & triceps" value="${esc(day.name)}" aria-label="Day name">
+                        <button type="button" class="btn btn-sm btn-light text-danger remove-day" aria-label="Remove day"><i class="bi bi-trash3"></i></button>
+                    </div>
+                    <div class="plan-grid mb-1"><span class="hdr">Exercise</span><span class="hdr">Sets</span><span class="hdr">Reps</span><span class="hdr">Rest</span><span class="hdr">Notes</span><span></span></div>
+                    <div class="exercises"></div>
+                    <button type="button" class="btn btn-link btn-sm px-0 add-ex"><i class="bi bi-plus"></i> Add exercise</button>
+                </div>`);
+            const list = node.querySelector('.exercises');
+            (day.exercises && day.exercises.length ? day.exercises : [{}, {}, {}]).forEach((ex) => list.appendChild(exerciseRow(ex)));
+            node.querySelector('.add-ex').onclick = () => list.appendChild(exerciseRow()).querySelector('input').focus();
+            node.querySelector('.remove-day').onclick = () => { if (days.children.length > 1) node.remove(); };
+            days.appendChild(node);
+        };
+        days.addEventListener('click', (e) => { const b = e.target.closest('.remove'); if (b) b.closest('.exercise').remove(); });
+        document.getElementById('addDay').onclick = () => addDay();
+        (plan.days && plan.days.length ? plan.days : [{}]).forEach(addDay);
+
+        document.getElementById('instructionForm').addEventListener('submit', () => {
+            const out = [...days.querySelectorAll('.plan-day')].map((d, i) => ({
+                name: d.querySelector('.day-name').value.trim() || `Day ${i + 1}`,
+                exercises: [...d.querySelectorAll('.exercise')].map((r) => ({
+                    id: r.dataset.id || undefined,
+                    name: r.querySelector('.ex-name').value.trim(),
+                    sets: r.querySelector('.ex-sets').value,
+                    reps: r.querySelector('.ex-reps').value.trim(),
+                    rest: r.querySelector('.ex-rest').value.trim(),
+                    notes: r.querySelector('.ex-notes').value.trim(),
+                })).filter((x) => x.name),
+            }));
+            document.getElementById('planInput').value = JSON.stringify({ days: out });
+        });
+    }
+
+    if (kind === 'diet') {
+        const meals = document.getElementById('meals');
+        document.querySelectorAll('[data-target]').forEach((input) => { input.value = plan[input.dataset.target] ?? ''; });
+        const mealRow = (m = {}) => el(`
+            <div class="meal-grid meal mb-1">
+                <input class="form-control form-control-sm m-name" placeholder="Breakfast" value="${esc(m.name)}" aria-label="Meal">
+                <input class="form-control form-control-sm m-time" placeholder="8:00 AM" value="${esc(m.time)}" aria-label="Time">
+                <textarea class="form-control form-control-sm m-items meal-items" rows="1" placeholder="Oats, 3 eggs, banana" aria-label="What to eat">${esc(m.items)}</textarea>
+                <button type="button" class="btn btn-sm btn-light text-danger remove" aria-label="Remove meal"><i class="bi bi-x-lg"></i></button>
+            </div>`);
+        meals.addEventListener('click', (e) => { const b = e.target.closest('.remove'); if (b) b.closest('.meal').remove(); });
+        document.getElementById('addMeal').onclick = () => meals.appendChild(mealRow()).querySelector('input').focus();
+        (plan.meals && plan.meals.length ? plan.meals : [{name: 'Breakfast'}, {name: 'Lunch'}, {name: 'Snack'}, {name: 'Dinner'}]).forEach((m) => meals.appendChild(mealRow(m)));
+
+        document.getElementById('instructionForm').addEventListener('submit', () => {
+            const out = { meals: [...meals.querySelectorAll('.meal')].map((r) => ({
+                name: r.querySelector('.m-name').value.trim(),
+                time: r.querySelector('.m-time').value.trim(),
+                items: r.querySelector('.m-items').value.trim(),
+            })).filter((m) => m.items) };
+            document.querySelectorAll('[data-target]').forEach((input) => { out[input.dataset.target] = input.value; });
+            document.getElementById('planInput').value = JSON.stringify(out);
+        });
+    }
+})();
+</script>
+{% endblock %}

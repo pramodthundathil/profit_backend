@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'notifications',
     'enquiry',
     'member_api',
+    'training',
 ]
 
 MIDDLEWARE = [
